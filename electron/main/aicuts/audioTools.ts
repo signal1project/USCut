@@ -90,6 +90,54 @@ export async function synthesizeVoiceover(
   };
 }
 
+/** ElevenLabs text-to-speech → MP3 in `outDir`. Requires an API key (Settings
+ * → Voice Studio); this is the upgrade path over the keyless SAPI default
+ * above — same VoiceoverResult shape so the caller doesn't need to branch. */
+export async function synthesizeVoiceoverElevenLabs(
+  text: string,
+  outDir: string,
+  apiKey: string,
+  voiceId: string,
+): Promise<VoiceoverResult> {
+  const clean = text.trim();
+  if (!clean) throw new Error('Voiceover text is empty.');
+
+  const res = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`,
+    {
+      method: 'POST',
+      headers: {
+        'xi-api-key': apiKey,
+        'Content-Type': 'application/json',
+        Accept: 'audio/mpeg',
+      },
+      body: JSON.stringify({
+        text: clean,
+        model_id: 'eleven_multilingual_v2',
+        voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+      }),
+    },
+  );
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(
+      `ElevenLabs request failed (${res.status})${detail ? `: ${detail.slice(0, 200)}` : ''}`,
+    );
+  }
+
+  fs.mkdirSync(outDir, { recursive: true });
+  const outMp3 = path.join(outDir, `voiceover-${uuidv4()}.mp3`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  fs.writeFileSync(outMp3, buf);
+
+  const probe = await probeVideo(outMp3);
+  return {
+    path: outMp3,
+    duration: probe.duration,
+    name: `Voiceover: ${clean.slice(0, 32)}${clean.length > 32 ? '…' : ''}`,
+  };
+}
+
 /** Bucket raw PCM into 0..1 peak values. Exported for tests. */
 export function bucketPeaks(samples: Int16Array, buckets: number): number[] {
   if (samples.length === 0 || buckets <= 0) return [];

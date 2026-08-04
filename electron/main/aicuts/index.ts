@@ -12,6 +12,7 @@ import { registerProjectHandlers } from './projects';
 import {
   transcribeVideoAudio,
   synthesizeVoiceover,
+  synthesizeVoiceoverElevenLabs,
   audioPeaks,
 } from './audioTools';
 import {
@@ -51,9 +52,19 @@ export function registerAiCutHandlers(win: Electron.BrowserWindow) {
     }
   });
 
-  // Keyless Windows TTS voiceover → wav in userData/voiceovers
+  // Voice Studio: ElevenLabs when a key is configured (Settings), otherwise
+  // the keyless Windows SAPI default — same result shape either way.
   ipcMain.handle('aicuts:tts', async (_, text: string, rate?: number) => {
     try {
+      const elevenLabsKey = settings.getElevenLabsKey();
+      if (elevenLabsKey) {
+        return await synthesizeVoiceoverElevenLabs(
+          text,
+          voiceoverDir,
+          elevenLabsKey,
+          settings.getElevenLabsVoiceId(),
+        );
+      }
       return await synthesizeVoiceover(text, voiceoverDir, rate ?? 1);
     } catch (err) {
       return { error: err instanceof Error ? err.message : 'TTS failed' };

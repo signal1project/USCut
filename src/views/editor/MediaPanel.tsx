@@ -638,7 +638,7 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
               </p>
             </div>
 
-            {/* Voice Studio — Windows TTS, keyless */}
+            {/* Voice Studio — Windows TTS keyless default, ElevenLabs upgrade in Settings */}
             <div className="p-3 rounded-xl bg-[#1d1d22] border border-[#26262d]">
               <div className="flex items-center gap-2 mb-2">
                 <Mic size={14} className="text-[#22c55e]" />
@@ -647,8 +647,9 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
                 </span>
               </div>
               <p className="text-[10px] text-[#71717f] mb-2.5">
-                Type a script — Windows speech synthesis reads it into a
-                voiceover clip in your Audio library. No key needed.
+                Type a script — turned into a voiceover clip in your Audio
+                library. Windows speech synthesis by default (no key needed);
+                add an ElevenLabs key in Settings for higher-quality voices.
               </p>
               <textarea
                 value={ttsText}

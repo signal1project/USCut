@@ -3,6 +3,9 @@ import { AI_PROVIDER_INFO } from '@mas/types';
 import { OLLAMA_DEFAULT_BASE_URL } from '../ai/ollamaProvider';
 import type { OAuthClientConfig } from '../oauth/oauthService';
 
+/** "Rachel" — one of ElevenLabs' own premade public voices, safe as a default. */
+export const DEFAULT_ELEVENLABS_VOICE_ID = '21m00Tcm4TlvDq8ikWAM';
+
 // Key/value seam (electron-store in production; faked in tests). Distinct from
 // the credential store — this holds non-secret-ish config (client ids, provider
 // selection). API keys live here too but are only ever read in the main process.
@@ -33,6 +36,8 @@ const K = {
   providerModel: (n: AIProviderName) => `mas.settings.ai.model.${n}`,
   ollamaBaseUrl: 'mas.settings.ai.ollama.baseUrl',
   chatgptTokens: 'mas.settings.ai.chatgpt.tokens',
+  elevenLabsKey: 'mas.settings.tts.elevenlabs.key',
+  elevenLabsVoiceId: 'mas.settings.tts.elevenlabs.voiceId',
   brandKit: 'mas.settings.brand.kit',
   brandProfiles: 'mas.settings.brand.profiles',
   platformBrands: 'mas.settings.brand.platformAssignments',
@@ -203,6 +208,30 @@ export class Settings {
 
   setOllamaBaseUrl(url: string): void {
     this.store.set(K.ollamaBaseUrl, url);
+  }
+
+  // ── Voice Studio (TTS) ───────────────────────────────────────────────────────
+  // Separate from the AIProviderName system above — ElevenLabs is TTS-only, not
+  // a text-generation provider, and Voice Studio's default (Windows SAPI) needs
+  // no key at all. This is purely an optional upgrade path.
+
+  getElevenLabsKey(): string {
+    return (this.store.get(K.elevenLabsKey) as string | undefined) ?? '';
+  }
+
+  setElevenLabsKey(apiKey: string): void {
+    this.store.set(K.elevenLabsKey, apiKey);
+  }
+
+  getElevenLabsVoiceId(): string {
+    return (
+      (this.store.get(K.elevenLabsVoiceId) as string | undefined) ??
+      DEFAULT_ELEVENLABS_VOICE_ID
+    );
+  }
+
+  setElevenLabsVoiceId(voiceId: string): void {
+    this.store.set(K.elevenLabsVoiceId, voiceId || DEFAULT_ELEVENLABS_VOICE_ID);
   }
 
   // ── Brand kit ──────────────────────────────────────────────────────────────

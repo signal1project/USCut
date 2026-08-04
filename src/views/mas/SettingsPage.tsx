@@ -12,6 +12,7 @@ import {
   Loader2,
   LogOut,
   MessageCircle,
+  Mic,
   Palette,
   Rocket,
   Server,
@@ -281,6 +282,124 @@ function ProviderCard({
   );
 }
 
+function VoiceStudioCard(): React.ReactElement {
+  const ipc = useMasIpc();
+  const [status, setStatus] = useState<{
+    configured: boolean;
+    voiceId: string;
+  } | null>(null);
+  const [apiKey, setApiKey] = useState('');
+  const [voiceId, setVoiceId] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const refresh = useCallback(() => {
+    void ipc
+      .getElevenLabsStatus()
+      .then((s) => {
+        setStatus(s);
+        setVoiceId(s.voiceId);
+      })
+      .catch(() => setStatus(null));
+  }, [ipc]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      await ipc.setElevenLabsKey(apiKey.trim(), voiceId.trim());
+      setApiKey('');
+      toast.success('ElevenLabs key saved');
+      refresh();
+    } catch {
+      toast.error('Could not save the ElevenLabs key');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const disconnect = async () => {
+    setBusy(true);
+    try {
+      await ipc.disconnectElevenLabs();
+      toast.success(
+        'ElevenLabs disconnected — Voice Studio uses Windows SAPI again',
+      );
+      refresh();
+    } catch {
+      toast.error('Could not disconnect');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Mic size={16} className="text-[#22c55e]" /> Voice Studio
+        </CardTitle>
+        <CardDescription>
+          Windows speech synthesis works out of the box, no key needed. Add an
+          ElevenLabs key for higher-quality, more natural voiceovers.
+          {status?.configured ? ' ElevenLabs is active.' : ''}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2.5">
+        <div className="flex gap-2">
+          <Input
+            type="password"
+            placeholder={
+              status?.configured
+                ? '••••••••  (saved — paste to replace)'
+                : 'Paste ElevenLabs API key'
+            }
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            className="text-xs flex-1"
+          />
+          <Button size="sm" disabled={!apiKey.trim() || busy} onClick={save}>
+            Save key
+          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder="Voice ID (defaults to a premade ElevenLabs voice)"
+            value={voiceId}
+            onChange={(e) => setVoiceId(e.target.value)}
+            className="text-xs flex-1"
+          />
+          {status?.configured && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busy}
+              onClick={disconnect}
+            >
+              <LogOut size={12} /> Disconnect
+            </Button>
+          )}
+        </div>
+        <p className="text-[11px] text-ink-muted">
+          Find voice IDs at{' '}
+          <a
+            href="https://elevenlabs.io/app/voice-library"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent hover:underline"
+          >
+            elevenlabs.io/app/voice-library
+          </a>
+          . Billed by ElevenLabs per character — check their pricing before
+          heavy use.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 function BackgroundPrefsCard(): React.ReactElement {
   const [prefs, setPrefs] = useState<{
     keepInTray: boolean;
@@ -413,6 +532,9 @@ export default function SettingsPage(): React.ReactElement {
           )}
         </CardContent>
       </Card>
+
+      {/* Voice Studio (Windows SAPI keyless default + optional ElevenLabs upgrade) */}
+      <VoiceStudioCard />
 
       {/* Social accounts */}
       <Card>

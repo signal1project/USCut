@@ -177,6 +177,27 @@ export function registerMasIpc(deps: MasIpcDeps): void {
     return { ok: true };
   });
 
+  // ── Voice Studio (ElevenLabs TTS upgrade — optional, SAPI is the keyless default) ──
+
+  ipcMain.handle('mas:tts:elevenlabs-get', () => ({
+    configured: settings.getElevenLabsKey().length > 0,
+    voiceId: settings.getElevenLabsVoiceId(),
+  }));
+
+  ipcMain.handle(
+    'mas:tts:elevenlabs-set',
+    (_e, apiKey: string, voiceId?: string) => {
+      settings.setElevenLabsKey(apiKey.trim());
+      if (voiceId !== undefined) settings.setElevenLabsVoiceId(voiceId.trim());
+      return { ok: true };
+    },
+  );
+
+  ipcMain.handle('mas:tts:elevenlabs-disconnect', () => {
+    settings.setElevenLabsKey('');
+    return { ok: true };
+  });
+
   // ── OpenRouter OAuth ───────────────────────────────────────────────────────
 
   /**

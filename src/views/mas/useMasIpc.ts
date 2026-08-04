@@ -123,6 +123,33 @@ export function useMasIpc() {
     }>;
   }, []);
 
+  /** Voice Studio: whether an ElevenLabs key is configured, and the active voice ID. */
+  const getElevenLabsStatus = useCallback(async () => {
+    return window.ipcRenderer.invoke('mas:tts:elevenlabs-get') as Promise<{
+      configured: boolean;
+      voiceId: string;
+    }>;
+  }, []);
+
+  /** Save an ElevenLabs API key (and optional voice ID) for Voice Studio. */
+  const setElevenLabsKey = useCallback(
+    async (apiKey: string, voiceId?: string) => {
+      return window.ipcRenderer.invoke(
+        'mas:tts:elevenlabs-set',
+        apiKey,
+        voiceId,
+      ) as Promise<{ ok: boolean }>;
+    },
+    [],
+  );
+
+  /** Forget the stored ElevenLabs key — Voice Studio falls back to Windows SAPI. */
+  const disconnectElevenLabs = useCallback(async () => {
+    return window.ipcRenderer.invoke(
+      'mas:tts:elevenlabs-disconnect',
+    ) as Promise<{ ok: boolean }>;
+  }, []);
+
   return {
     getSettingsStatus,
     setAIKey,
@@ -135,5 +162,8 @@ export function useMasIpc() {
     discoverOllama,
     setOllamaUrl,
     openOllamaInstallPage,
+    getElevenLabsStatus,
+    setElevenLabsKey,
+    disconnectElevenLabs,
   };
 }
