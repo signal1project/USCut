@@ -36,7 +36,7 @@ interface PlatformGuide {
   notes?: string;
 }
 
-const REDIRECT_URI = 'http://127.0.0.1:7766/callback';
+const REDIRECT_URI = 'http://localhost:7766/callback';
 
 const GUIDES: Record<Platform, PlatformGuide> = {
   facebook: {

@@ -306,7 +306,7 @@ function Step1({ onDone }: { onDone: () => void }) {
         </p>
         <p>
           2. Add redirect URI{' '}
-          <code className="text-accent">http://127.0.0.1:7766/callback</code>
+          <code className="text-accent">http://localhost:7766/callback</code>
         </p>
         <p>3. Copy your Client ID (and optionally Client Secret)</p>
         <p>
