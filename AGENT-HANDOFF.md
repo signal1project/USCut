@@ -1,7 +1,9 @@
 # AICut — Agent Handoff
 
-**Updated:** 2026-07-12 (Mick / ClaudeClaw) — v1.0 production build
-**Status:** ✅ 297 tests pass · tsc clean · vite build clean · pushed to `main`
+**Updated:** 2026-08-04 (Mick / ClaudeClaw) — v1.0 stabilization + roadmap items 1-3b
+**Status:** ✅ 287/297 tests pass (10 skipped, Electron-ABI) · tsc clean · eslint clean
+(0 errors/warnings — was previously broken, see decisions log) · vite build clean ·
+pushed to `main`
 **Read this FIRST before touching the repo.**
 
 ---
@@ -60,6 +62,31 @@ OpenRouter OAuth + Ollama + API keys (Claude/OpenAI/Groq). Full management on
    takes weeks; start first), X (media.write scope), Pinterest, TikTok, YouTube.
 2. Paste client IDs into ConnectAccounts (Advanced/API) per platform.
 3. Until then: webview posting works with plain sign-ins TODAY.
+
+---
+
+## v1.1 — Stabilization + roadmap items 1-3b (2026-08-04 session)
+
+**Stabilization:** `npm run lint` had been silently fatal-erroring on every run —
+`.eslintrc.cjs` referenced `react-hooks/exhaustive-deps` via inline disable comments
+in 4 files, but `eslint-plugin-react-hooks` was never installed/registered, so `--fix`
+never got to run across the repo. Fixed the config, which surfaced (and let `--fix`
+mechanically clean up) unused imports and Prettier formatting drift across ~150 files
+— no semantic changes, verified via tsc/tests/build before and after. Also found and
+fixed a real bug while investigating a rules-of-hooks false positive:
+`WebView/index.tsx`'s unmount cleanup closed over a stale `webViewId` (always -1),
+so webview browser views were likely never actually destroyed on unmount — fixed with
+a ref.
+
+**Shipped:**
+- Publish Reel shortcut (roadmap item 1) — see routing note in Feature Map below.
+- Local whisper.cpp fallback for auto-clip (roadmap item 2) — see Open Items below for
+  honest functional status (correctly engineered, blocked on machine-level prerequisites).
+- ElevenLabs upgrade for Voice Studio (roadmap item 3b) — optional, SAPI stays default.
+
+**Explicitly NOT built — Remove Background (roadmap item 3a):** the obvious local
+package is AGPLv3-licensed, incompatible with closed-source commercial distribution.
+Flagged to Dale rather than shipped; needs a direction decision (see Open Items).
 
 ---
 
@@ -170,14 +197,32 @@ mounted as a `FeatureRoute`. Add new features as sibling modules
 
 ## Open Items / Roadmap
 
-1. **"Publish Reel" shortcut** — generated reel → Scheduler prefilled (next natural step).
-2. Whisper local fallback (whisper.cpp) so auto-clip transcription is fully keyless.
-3. Remove Background + Voice Studio (ElevenLabs) — editor AI panel stubs.
+1. ~~"Publish Reel" shortcut~~ — **DONE** (2026-08-04): generated reel → Scheduler
+   prefilled via router state (ListingScraperPage → SchedulerPage).
+2. ~~Whisper local fallback~~ — **DONE, not yet functional** (2026-08-04):
+   transcribeViaLocalWhisper() wired as a 3rd tier (provided > OpenAI key >
+   local whisper.cpp), nodejs-whisper as an optionalDependency so it can't
+   break `npm install`. Needs a C++ build toolchain (CMake + MSVC) to actually
+   compile whisper-cli — same prerequisite as Mymo's virtual-camera phase —
+   plus nodejs-whisper's own Windows model-auto-downloader currently has a bug
+   (invokes a .cmd it doesn't ship). Degrades gracefully with a clear error
+   either way; paste-transcript and OpenAI-key paths are unaffected.
+3. Remove Background — **BLOCKED, needs Dale's call**: the obvious local
+   package (`@imgly/background-removal-node`) is AGPLv3 — incompatible with
+   closed-source commercial distribution, do not use it or anything else
+   AGPL/GPL here. A cloud API (remove.bg etc.) would mean per-frame charges
+   across a whole video at 30fps — real cost-surprise risk without an
+   explicit pricing decision. Needs Dale to pick a direction before building.
+   ~~Voice Studio (ElevenLabs)~~ — **DONE** (2026-08-04): optional upgrade
+   over the existing keyless SAPI default, key stored/managed on the Settings
+   page.
 4. Platform OAuth app registration — Dale, per dev portal (Meta/X/LinkedIn/etc.).
+   This is the only remaining blocker on the production social-posting pipeline.
 5. NSIS installer needs admin/Developer Mode (winCodeSign symlink issue); `package:win`
-   works today.
+   works today. Confirmed 2026-08-04: Developer Mode has never been enabled on
+   this machine — needs Dale to flip it (Settings → Privacy & security → For
+   developers) before packaging can proceed.
 6. DM inbox — vendor-gated on messaging scopes for the platform OAuth apps.
-7. Undo/redo in the editor (store scaffolding exists, not wired).
 
 ## How to Work With Dale
 
