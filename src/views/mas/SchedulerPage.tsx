@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Calendar,
   Clock,
@@ -43,9 +44,19 @@ interface ConnectedAccount {
   externalId: string;
 }
 
+/** Prefill payload other pages (e.g. the Listing Video Generator) can hand to the
+ * composer via router navigation state — see ListingScraperPage's "Schedule" button. */
+export interface SchedulerPrefill {
+  pubType: PubType;
+  mediaRef: string;
+  body?: string;
+}
+
 /** Scheduler: pick accounts, write caption, set date/time, queue the post. */
 export default function SchedulerPage(): React.ReactElement {
   const api = useMasApi();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
@@ -64,6 +75,22 @@ export default function SchedulerPage(): React.ReactElement {
   const [recycling, setRecycling] = useState(false);
   const [importing, setImporting] = useState(false);
   const csvInputRef = useRef<HTMLInputElement>(null);
+
+  // Consume a one-shot prefill handed off via navigation state (e.g. "Schedule"
+  // on a generated listing reel) and clear it from history so it doesn't
+  // reapply on back/forward navigation or a manual reload of this route.
+  useEffect(() => {
+    const prefill = (location.state as { prefill?: SchedulerPrefill } | null)
+      ?.prefill;
+    if (!prefill) return;
+    setPubType(prefill.pubType);
+    setImageUrl(prefill.mediaRef);
+    if (prefill.body) setBody(prefill.body);
+    toast.info('Reel loaded — pick accounts and a time to schedule it.');
+    navigate(location.pathname, { replace: true, state: null });
+    // Runs once per navigation-state arrival, not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const loadInsights = useCallback(async () => {
     if (!api) return;

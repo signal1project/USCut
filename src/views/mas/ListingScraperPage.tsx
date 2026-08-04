@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Building2,
   RefreshCw,
@@ -13,7 +14,9 @@ import {
   Check,
   Link,
   Film,
+  Send,
 } from 'lucide-react';
+import { PubType } from '@mas/types';
 import { useMasApi } from './useMasApi';
 import type {
   PropertyListingSummary,
@@ -21,6 +24,7 @@ import type {
   ListingVideoResult,
 } from '@mas/ui';
 import { Button, Badge, Card, CardContent, Input } from '@/components/ui';
+import type { SchedulerPrefill } from './SchedulerPage';
 
 const AD_PLATFORMS = ['facebook', 'instagram', 'linkedin'] as const;
 
@@ -48,6 +52,17 @@ function specs(l: PropertyListingSummary): string {
     .join(' · ');
 }
 
+function reelCaption(l: PropertyListingSummary): string {
+  const loc = [l.city, l.state].filter(Boolean).join(', ');
+  const parts = [
+    l.address,
+    loc || null,
+    formatPrice(l.price),
+    specs(l) || null,
+  ].filter(Boolean);
+  return parts.join(' | ');
+}
+
 /**
  * Listing Scraper page: browse property listings captured by the AICut
  * Listing Scraper Chrome extension (Zillow / Realtor.com / Redfin).
@@ -56,6 +71,7 @@ function specs(l: PropertyListingSummary): string {
  */
 export default function ListingScraperPage(): React.ReactElement {
   const api = useMasApi();
+  const navigate = useNavigate();
   const [listings, setListings] = useState<PropertyListingSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [cityFilter, setCityFilter] = useState('');
@@ -164,6 +180,20 @@ export default function ListingScraperPage(): React.ReactElement {
     } finally {
       setReelBusyId(null);
     }
+  };
+
+  const scheduleReel = (listing: PropertyListingSummary) => {
+    const reel = reels[listing.id];
+    if (!reel) return;
+    navigate('/mas/scheduler', {
+      state: {
+        prefill: {
+          pubType: PubType.VIDEO,
+          mediaRef: reel.path,
+          body: reelCaption(listing),
+        } satisfies SchedulerPrefill,
+      },
+    });
   };
 
   return (
@@ -398,12 +428,23 @@ export default function ListingScraperPage(): React.ReactElement {
                 {/* Generated reel */}
                 {reels[l.id] && (
                   <div className="mt-3 pt-3 border-t border-border/60">
-                    <p className="text-xs text-success flex items-center gap-1.5">
-                      <Film size={12} />
-                      Reel ready ({reels[l.id].durationSeconds}s,{' '}
-                      {reels[l.id].photosUsed} photos
-                      {reels[l.id].narrated ? ', narrated' : ''})
-                    </p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs text-success flex items-center gap-1.5">
+                        <Film size={12} />
+                        Reel ready ({reels[l.id].durationSeconds}s,{' '}
+                        {reels[l.id].photosUsed} photos
+                        {reels[l.id].narrated ? ', narrated' : ''})
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => scheduleReel(l)}
+                        title="Send this reel to the Scheduler, prefilled and ready to pick accounts + a time"
+                      >
+                        <Send size={13} />
+                        Schedule
+                      </Button>
+                    </div>
                     <p className="text-xs text-ink-muted mt-1 break-all select-all">
                       {reels[l.id].path}
                     </p>
