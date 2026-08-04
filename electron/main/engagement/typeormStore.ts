@@ -13,7 +13,9 @@ export class TypeOrmEngagementStore implements EngagementStore {
   }
 
   async getById(id: string): Promise<EngagementItem | null> {
-    const row = await this.ds.getRepository(EngagementQueueItemModel).findOneBy({ id });
+    const row = await this.ds
+      .getRepository(EngagementQueueItemModel)
+      .findOneBy({ id });
     return (row as unknown as EngagementItem) ?? null;
   }
 

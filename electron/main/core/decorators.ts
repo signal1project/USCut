@@ -18,7 +18,7 @@ export function Module(metadata: {
   controllers?: any[];
   providers?: any[];
 }) {
-  return function (target: any) {
+  return function (_target: any) {
     // 只注册 providers 和 controllers，不立即初始化
     metadata.providers?.forEach((provider) => {
       container.registerProvider(provider);

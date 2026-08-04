@@ -18,7 +18,15 @@ export interface BestTimeSlot {
   sampleSize: number;
 }
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const DAY_NAMES = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+];
 
 export function slotLabel(slot: BestTimeSlot): string {
   const h = slot.hour % 12 === 0 ? 12 : slot.hour % 12;
@@ -27,8 +35,14 @@ export function slotLabel(slot: BestTimeSlot): string {
 }
 
 /** Rank (dow, hour) buckets by average engagement. Requires >=1 sample per bucket. */
-export function computeBestTimes(posts: PostPerformance[], top = 5): BestTimeSlot[] {
-  const buckets = new Map<string, { total: number; n: number; dow: number; hour: number }>();
+export function computeBestTimes(
+  posts: PostPerformance[],
+  top = 5,
+): BestTimeSlot[] {
+  const buckets = new Map<
+    string,
+    { total: number; n: number; dow: number; hour: number }
+  >();
   for (const p of posts) {
     const d = p.publishedAt;
     const dow = d.getDay();
@@ -46,7 +60,10 @@ export function computeBestTimes(posts: PostPerformance[], top = 5): BestTimeSlo
       avgEngagements: Math.round((b.total / b.n) * 100) / 100,
       sampleSize: b.n,
     }))
-    .sort((a, b) => b.avgEngagements - a.avgEngagements || b.sampleSize - a.sampleSize)
+    .sort(
+      (a, b) =>
+        b.avgEngagements - a.avgEngagements || b.sampleSize - a.sampleSize,
+    )
     .slice(0, top);
 }
 
@@ -54,7 +71,11 @@ export function computeBestTimes(posts: PostPerformance[], top = 5): BestTimeSlo
  * Next occurrence of a slot after `from` (local time), at least `minLeadMinutes`
  * out so the scheduler never lands in the past.
  */
-export function nextOccurrence(slot: BestTimeSlot, from = new Date(), minLeadMinutes = 10): Date {
+export function nextOccurrence(
+  slot: BestTimeSlot,
+  from = new Date(),
+  minLeadMinutes = 10,
+): Date {
   const candidate = new Date(from);
   candidate.setMinutes(0, 0, 0);
   candidate.setHours(slot.hour);

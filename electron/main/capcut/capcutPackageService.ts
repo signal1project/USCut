@@ -8,7 +8,10 @@ import type {
 } from './types';
 
 function safeTimestamp(date: Date): string {
-  return date.toISOString().replace(/[-:]/g, '').replace(/\.([0-9]{3})Z$/, '$1000Z');
+  return date
+    .toISOString()
+    .replace(/[-:]/g, '')
+    .replace(/\.([0-9]{3})Z$/, '$1000Z');
 }
 
 function manifestTimestamp(date: Date): string {
@@ -61,7 +64,8 @@ export class CapCutPackageService {
       exports,
       rendering: {
         automatedExport: false,
-        instructions: 'Open in CapCut as an editable project package. Review scene timing, captions, overlays, music, and brand assets manually before exporting.',
+        instructions:
+          'Open in CapCut as an editable project package. Review scene timing, captions, overlays, music, and brand assets manually before exporting.',
       },
       approval: {
         required: true,
@@ -71,10 +75,15 @@ export class CapCutPackageService {
     };
   }
 
-  private buildScenes(lines: string[], input: CreateCapCutPackageInput): CapCutScene[] {
+  private buildScenes(
+    lines: string[],
+    input: CreateCapCutPackageInput,
+  ): CapCutScene[] {
     return lines.map((line, index): CapCutScene => {
       const isHook = index === 0;
-      const trend = input.trendKeywords[index % Math.max(1, input.trendKeywords.length)] ?? input.campaignTitle;
+      const trend =
+        input.trendKeywords[index % Math.max(1, input.trendKeywords.length)] ??
+        input.campaignTitle;
       return {
         id: `scene_${String(index + 1).padStart(2, '0')}`,
         durationSeconds: isHook ? 3 : 5,
@@ -90,7 +99,9 @@ export class CapCutPackageService {
 
   private buildExports(input: CreateCapCutPackageInput): CapCutExportTarget[] {
     return input.platforms.map((platform) => {
-      const variant = input.captionVariants.find((v) => v.platform === platform);
+      const variant = input.captionVariants.find(
+        (v) => v.platform === platform,
+      );
       return {
         platform,
         aspectRatio: aspectRatioFor(platform),

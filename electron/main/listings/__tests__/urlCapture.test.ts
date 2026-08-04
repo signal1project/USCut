@@ -29,7 +29,10 @@ const OG_PAGE = `<!DOCTYPE html><html><head>
 
 describe('extractListingFromHtml', () => {
   it('extracts from schema.org JSON-LD', () => {
-    const p = extractListingFromHtml(JSONLD_PAGE, 'https://www.realtor.com/realestateandhomes-detail/456-oak');
+    const p = extractListingFromHtml(
+      JSONLD_PAGE,
+      'https://www.realtor.com/realestateandhomes-detail/456-oak',
+    );
     expect(p).not.toBeNull();
     expect(p!.source).toBe('realtor');
     expect(p!.address).toBe('456 Oak Ave');
@@ -45,7 +48,10 @@ describe('extractListingFromHtml', () => {
   });
 
   it('falls back to OpenGraph title parsing', () => {
-    const p = extractListingFromHtml(OG_PAGE, 'https://someagentsite.com/listing/789');
+    const p = extractListingFromHtml(
+      OG_PAGE,
+      'https://someagentsite.com/listing/789',
+    );
     expect(p).not.toBeNull();
     expect(p!.source).toBe('manual');
     expect(p!.address).toBe('789 Pine Ct');
@@ -57,6 +63,11 @@ describe('extractListingFromHtml', () => {
   });
 
   it('returns null when nothing extractable', () => {
-    expect(extractListingFromHtml('<html><head><title>Blog</title></head></html>', 'https://x.com')).toBeNull();
+    expect(
+      extractListingFromHtml(
+        '<html><head><title>Blog</title></head></html>',
+        'https://x.com',
+      ),
+    ).toBeNull();
   });
 });

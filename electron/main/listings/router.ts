@@ -72,7 +72,10 @@ const listQuerySchema = z.object({
  */
 export function createListingsRouter(
   store: ListingStore,
-  opts: { adService?: ListingAdService; videoService?: ListingVideoService } = {},
+  opts: {
+    adService?: ListingAdService;
+    videoService?: ListingVideoService;
+  } = {},
 ): Router {
   const router = Router();
 

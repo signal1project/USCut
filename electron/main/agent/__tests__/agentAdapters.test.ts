@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { AgentAdapterRegistry, MockAgentAdapter, HermesAgentAdapter, createDefaultAgentRegistry } from '../index';
+import {
+  AgentAdapterRegistry,
+  MockAgentAdapter,
+  HermesAgentAdapter,
+  createDefaultAgentRegistry,
+} from '../index';
 
 // RED tests for the native white-label agent adapter seam.
 
@@ -25,7 +30,9 @@ describe('AgentAdapterRegistry', () => {
 
   it('throws a useful error for missing adapters', () => {
     const registry = createDefaultAgentRegistry();
-    expect(() => registry.get('missing')).toThrow('No agent adapter registered for "missing"');
+    expect(() => registry.get('missing')).toThrow(
+      'No agent adapter registered for "missing"',
+    );
   });
 });
 
@@ -50,11 +57,16 @@ describe('HermesAgentAdapter', () => {
     const calls: any[] = [];
     const fakeFetch = async (url: string, init?: RequestInit) => {
       calls.push({ url, init });
-      return new Response(JSON.stringify({
-        summary: 'Hermes completed the task',
-        output: { ok: true },
-        artifacts: [{ kind: 'brief', title: 'Trend brief', data: { ok: true } }],
-      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      return new Response(
+        JSON.stringify({
+          summary: 'Hermes completed the task',
+          output: { ok: true },
+          artifacts: [
+            { kind: 'brief', title: 'Trend brief', data: { ok: true } },
+          ],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      );
     };
 
     const adapter = new HermesAgentAdapter({
@@ -63,7 +75,10 @@ describe('HermesAgentAdapter', () => {
       fetcher: fakeFetch as typeof fetch,
     });
 
-    const result = await adapter.runTask({ taskType: 'campaign_strategy', objective: 'Build campaign' });
+    const result = await adapter.runTask({
+      taskType: 'campaign_strategy',
+      objective: 'Build campaign',
+    });
 
     expect(calls).toHaveLength(1);
     expect(calls[0].url).toBe('http://127.0.0.1:18790/api/agent-task');
@@ -76,10 +91,15 @@ describe('HermesAgentAdapter', () => {
     const adapter = new HermesAgentAdapter({
       endpoint: 'http://127.0.0.1:18790/api/agent-task',
       profile: 'omobono',
-      fetcher: async () => { throw new Error('connection refused'); },
+      fetcher: async () => {
+        throw new Error('connection refused');
+      },
     });
 
-    const result = await adapter.runTask({ taskType: 'campaign_strategy', objective: 'Build campaign' });
+    const result = await adapter.runTask({
+      taskType: 'campaign_strategy',
+      objective: 'Build campaign',
+    });
 
     expect(result.status).toBe('blocked');
     expect(result.summary).toContain('Hermes adapter could not reach');

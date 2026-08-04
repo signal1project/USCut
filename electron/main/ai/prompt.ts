@@ -7,7 +7,9 @@ export function systemPrompt(options?: GenerateTextOptions): string {
   const parts = ['You are an expert US social media copywriter.'];
   if (options?.platform) {
     const cfg = PLATFORM_CONFIG[options.platform];
-    parts.push(`Write for ${cfg.label}. Stay within ${cfg.maxChars} characters.`);
+    parts.push(
+      `Write for ${cfg.label}. Stay within ${cfg.maxChars} characters.`,
+    );
   }
   if (options?.tone) parts.push(`Use a ${options.tone} tone.`);
   parts.push('Return only the post text, with no preamble or quotation marks.');

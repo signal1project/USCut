@@ -28,13 +28,22 @@ export class TierTwoNotApprovedError extends Error {
 abstract class Tier2StubAdapter implements PlatformAdapter {
   abstract readonly platform: Platform;
 
-  async publish(_ctx: AdapterContext, _input: PublishInput): Promise<PublishResult> {
+  async publish(
+    _ctx: AdapterContext,
+    _input: PublishInput,
+  ): Promise<PublishResult> {
     throw new TierTwoNotApprovedError(this.platform);
   }
-  async fetchMetrics(_ctx: AdapterContext, _externalPostId: string): Promise<PostMetrics> {
+  async fetchMetrics(
+    _ctx: AdapterContext,
+    _externalPostId: string,
+  ): Promise<PostMetrics> {
     throw new TierTwoNotApprovedError(this.platform);
   }
-  async fetchComments(_ctx: AdapterContext, _externalPostId: string): Promise<PlatformComment[]> {
+  async fetchComments(
+    _ctx: AdapterContext,
+    _externalPostId: string,
+  ): Promise<PlatformComment[]> {
     throw new TierTwoNotApprovedError(this.platform);
   }
   async replyToComment(

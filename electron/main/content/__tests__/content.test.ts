@@ -7,7 +7,10 @@ import { startApiServer, type RunningApiServer } from '../../server';
 class FakeProvider implements AIProvider {
   readonly name = 'claude' as const;
   lastOptions?: GenerateTextOptions;
-  async generateText(prompt: string, options?: GenerateTextOptions): Promise<string> {
+  async generateText(
+    prompt: string,
+    options?: GenerateTextOptions,
+  ): Promise<string> {
     this.lastOptions = options;
     return `${options?.platform ?? 'generic'} post for "${prompt}" #social #${options?.platform ?? 'x'}`;
   }
@@ -18,7 +21,10 @@ class FakeProvider implements AIProvider {
 
 describe('extractHashtags', () => {
   it('extracts and dedupes hashtags', () => {
-    expect(extractHashtags('hello #fun world #fun #news')).toEqual(['#fun', '#news']);
+    expect(extractHashtags('hello #fun world #fun #news')).toEqual([
+      '#fun',
+      '#news',
+    ]);
   });
   it('returns empty when none present', () => {
     expect(extractHashtags('no tags here')).toEqual([]);
@@ -32,9 +38,16 @@ describe('ContentService.generate', () => {
       resolveProvider: () => provider,
       resolveImageProvider: () => provider,
     });
-    const result = await svc.generate({ brief: 'launch sale', platforms: ['facebook', 'twitter'], tone: 'excited' });
+    const result = await svc.generate({
+      brief: 'launch sale',
+      platforms: ['facebook', 'twitter'],
+      tone: 'excited',
+    });
     expect(result.provider).toBe('claude');
-    expect(result.items.map((i) => i.platform)).toEqual(['facebook', 'twitter']);
+    expect(result.items.map((i) => i.platform)).toEqual([
+      'facebook',
+      'twitter',
+    ]);
     expect(result.items[0].body).toContain('facebook post');
     expect(result.items[0].hashtags).toContain('#social');
     expect(provider.lastOptions?.tone).toBe('excited');
@@ -42,8 +55,13 @@ describe('ContentService.generate', () => {
 
   it('generates an image via the image provider', async () => {
     const provider = new FakeProvider();
-    const svc = new ContentService({ resolveProvider: () => provider, resolveImageProvider: () => provider });
-    expect(await svc.generateImage('a cat')).toEqual({ url: 'http://img/generated.png' });
+    const svc = new ContentService({
+      resolveProvider: () => provider,
+      resolveImageProvider: () => provider,
+    });
+    expect(await svc.generateImage('a cat')).toEqual({
+      url: 'http://img/generated.png',
+    });
   });
 });
 
@@ -51,18 +69,33 @@ describe('content API routes', () => {
   let api: RunningApiServer;
   beforeAll(async () => {
     const provider = new FakeProvider();
-    const svc = new ContentService({ resolveProvider: () => provider, resolveImageProvider: () => provider });
-    api = await startApiServer({ token: 'T', routes: [{ path: '/content', router: createContentRouter(svc) }] });
+    const svc = new ContentService({
+      resolveProvider: () => provider,
+      resolveImageProvider: () => provider,
+    });
+    api = await startApiServer({
+      token: 'T',
+      routes: [{ path: '/content', router: createContentRouter(svc) }],
+    });
   });
-  afterAll(async () => { await api.close(); });
+  afterAll(async () => {
+    await api.close();
+  });
 
-  const headers = { Authorization: 'Bearer T', 'Content-Type': 'application/json' };
+  const headers = {
+    Authorization: 'Bearer T',
+    'Content-Type': 'application/json',
+  };
 
   it('POST /api/content/generate returns per-platform items', async () => {
     const res = await fetch(`${api.url}/api/content/generate`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ brief: 'new product', platforms: ['instagram'], tone: 'fun' }),
+      body: JSON.stringify({
+        brief: 'new product',
+        platforms: ['instagram'],
+        tone: 'fun',
+      }),
     });
     expect(res.status).toBe(200);
     const json = await res.json();

@@ -25,7 +25,9 @@ export const nodeScheduleBackend: SchedulerBackend = {
 export class Scheduler {
   private readonly jobs = new Map<string, CancellableJob>();
 
-  constructor(private readonly backend: SchedulerBackend = nodeScheduleBackend) {}
+  constructor(
+    private readonly backend: SchedulerBackend = nodeScheduleBackend,
+  ) {}
 
   schedule(id: string, runAt: Date, task: ScheduledTask): boolean {
     this.cancel(id);

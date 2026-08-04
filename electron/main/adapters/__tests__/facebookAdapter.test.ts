@@ -30,7 +30,10 @@ class FakeHttp implements AdapterHttp {
   }
 }
 
-const ctx: AdapterContext = { accessToken: 'PAGE_TOKEN', externalId: 'PAGE_ID' };
+const ctx: AdapterContext = {
+  accessToken: 'PAGE_TOKEN',
+  externalId: 'PAGE_ID',
+};
 
 let http: FakeHttp;
 let fb: FacebookAdapter;
@@ -58,7 +61,11 @@ describe('FacebookAdapter.publish', () => {
   });
 
   it('uploads photos unpublished then attaches them to a feed post', async () => {
-    http.queueResponses({ id: 'PH1' }, { id: 'PH2' }, { id: 'FEED', post_id: 'PAGE_POST' });
+    http.queueResponses(
+      { id: 'PH1' },
+      { id: 'PH2' },
+      { id: 'FEED', post_id: 'PAGE_POST' },
+    );
     const res = await fb.publish(ctx, {
       pubType: PubType.IMAGE_TEXT,
       body: 'caption',
@@ -68,7 +75,10 @@ describe('FacebookAdapter.publish', () => {
     expect(res.externalPostId).toBe('PAGE_POST');
     expect(http.calls).toHaveLength(3);
     expect(http.calls[0].url).toContain('/PAGE_ID/photos');
-    expect(http.calls[0].data).toMatchObject({ url: 'http://img/1.jpg', published: false });
+    expect(http.calls[0].data).toMatchObject({
+      url: 'http://img/1.jpg',
+      published: false,
+    });
     expect(http.calls[2].url).toContain('/PAGE_ID/feed');
     expect(http.calls[2].data.attached_media).toEqual([
       { media_fbid: 'PH1' },
@@ -86,7 +96,10 @@ describe('FacebookAdapter.publish', () => {
     });
     expect(res.externalPostId).toBe('VID_1');
     expect(http.calls[0].url).toContain('/PAGE_ID/videos');
-    expect(http.calls[0].data).toMatchObject({ file_url: 'http://v/clip.mp4', published: true });
+    expect(http.calls[0].data).toMatchObject({
+      file_url: 'http://v/clip.mp4',
+      published: true,
+    });
   });
 });
 
@@ -101,12 +114,19 @@ describe('FacebookAdapter.fetchMetrics', () => {
       ],
     });
     const m = await fb.fetchMetrics(ctx, 'POST_1');
-    expect(m).toEqual({ impressions: 100, reach: 80, engagements: 12, clicks: 5 });
+    expect(m).toEqual({
+      impressions: 100,
+      reach: 80,
+      engagements: 12,
+      clicks: 5,
+    });
     expect(http.calls[0].url).toContain('/POST_1/insights');
   });
 
   it('defaults missing metrics to zero', async () => {
-    http.queueResponses({ data: [{ name: 'post_impressions', values: [{ value: 7 }] }] });
+    http.queueResponses({
+      data: [{ name: 'post_impressions', values: [{ value: 7 }] }],
+    });
     const m = await fb.fetchMetrics(ctx, 'POST_1');
     expect(m).toEqual({ impressions: 7, reach: 0, engagements: 0, clicks: 0 });
   });
@@ -122,8 +142,18 @@ describe('FacebookAdapter.fetchComments / replyToComment', () => {
     });
     const comments = await fb.fetchComments(ctx, 'POST_1');
     expect(comments).toEqual([
-      { externalCommentId: 'C1', externalPostId: 'POST_1', authorHandle: 'Jane', text: 'nice' },
-      { externalCommentId: 'C2', externalPostId: 'POST_1', authorHandle: '', text: '' },
+      {
+        externalCommentId: 'C1',
+        externalPostId: 'POST_1',
+        authorHandle: 'Jane',
+        text: 'nice',
+      },
+      {
+        externalCommentId: 'C2',
+        externalPostId: 'POST_1',
+        authorHandle: '',
+        text: '',
+      },
     ]);
   });
 

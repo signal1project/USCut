@@ -64,7 +64,11 @@ describe.skipIf(!nativeLoads)('TypeOrmListingStore', () => {
   });
 
   it('dedupes re-captures of the same listingUrl (update, not duplicate)', async () => {
-    const updated = await store.capture({ ...zillowCapture, price: 41900000, status: 'pending' });
+    const updated = await store.capture({
+      ...zillowCapture,
+      price: 41900000,
+      status: 'pending',
+    });
     expect(updated.price).toBe(41900000);
     expect(updated.status).toBe('pending');
     const { total } = await store.list();
@@ -79,7 +83,9 @@ describe.skipIf(!nativeLoads)('TypeOrmListingStore', () => {
       description: 'Lovely home, adults only building, no kids allowed.',
     });
     expect(flagged.complianceOk).toBe(false);
-    expect(flagged.complianceFlags.some((f) => f.rule === 'FH-FAMILIAL')).toBe(true);
+    expect(flagged.complianceFlags.some((f) => f.rule === 'FH-FAMILIAL')).toBe(
+      true,
+    );
   });
 
   it('lists with filters and pagination', async () => {

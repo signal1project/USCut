@@ -13,9 +13,15 @@ export interface ISaveFileParams {
 // Channels registered by views() — guarded with removeHandler so Electron dev
 // hot-reload (which re-calls views()) never throws "second handler" errors.
 const VIEW_CHANNELS = [
-  'app:info', 'window-minimize', 'window-maximize', 'window-close',
-  'OPEN_DEV_TOOLS', 'ICP_VIEWS_SAVE_FILE', 'ICP_VIEWS_GET_FILE_STREAM',
-  'ICP_VIEWS_CHOSE_VIDEO', 'ICP_VIEWS_CHOSE_IMG',
+  'app:info',
+  'window-minimize',
+  'window-maximize',
+  'window-close',
+  'OPEN_DEV_TOOLS',
+  'ICP_VIEWS_SAVE_FILE',
+  'ICP_VIEWS_GET_FILE_STREAM',
+  'ICP_VIEWS_CHOSE_VIDEO',
+  'ICP_VIEWS_CHOSE_IMG',
 ] as const;
 
 export function views(win: Electron.BrowserWindow) {
@@ -25,8 +31,8 @@ export function views(win: Electron.BrowserWindow) {
   // Provides platform info to the renderer (used by WindowControlButtons)
   ipcMain.handle('app:info', () => ({
     platform: process.platform,
-    version:  app.getVersion(),
-    name:     app.getName(),
+    version: app.getVersion(),
+    name: app.getName(),
   }));
 
   ipcMain.handle('window-minimize', function () {
@@ -71,9 +77,12 @@ export function views(win: Electron.BrowserWindow) {
     },
   );
 
-  ipcMain.handle('ICP_VIEWS_GET_FILE_STREAM', async (event, filePath: string) => {
-    return fs.readFileSync(filePath);
-  });
+  ipcMain.handle(
+    'ICP_VIEWS_GET_FILE_STREAM',
+    async (event, filePath: string) => {
+      return fs.readFileSync(filePath);
+    },
+  );
 
   ipcMain.handle('ICP_VIEWS_CHOSE_VIDEO', async (event, isMultiSelections) => {
     const properties = ['openFile'];
@@ -84,7 +93,10 @@ export function views(win: Electron.BrowserWindow) {
         filters: [{ name: 'Video files', extensions: ['mp4', 'mov'] }],
       });
       if (result.canceled) return null;
-      return result.filePaths.map((v) => ({ path: v, video: fs.readFileSync(v) }));
+      return result.filePaths.map((v) => ({
+        path: v,
+        video: fs.readFileSync(v),
+      }));
     } catch (error) {
       console.error('Error selecting video:', error);
       return null;
@@ -99,7 +111,10 @@ export function views(win: Electron.BrowserWindow) {
         properties: properties as Array<'openFile'>,
         filters: [{ name: 'Image files', extensions: ['jpg', 'png', 'jpeg'] }],
       });
-      return result.filePaths.map((v) => ({ path: v, file: fs.readFileSync(v) }));
+      return result.filePaths.map((v) => ({
+        path: v,
+        file: fs.readFileSync(v),
+      }));
     } catch (error) {
       console.error('Error selecting image:', error);
       return '';

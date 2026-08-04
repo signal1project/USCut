@@ -14,7 +14,10 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import os from 'os';
-import { registerMediaScheme, registerMediaProtocolHandler } from '../mediaProtocol';
+import {
+  registerMediaScheme,
+  registerMediaProtocolHandler,
+} from '../mediaProtocol';
 import { probeVideo } from '../ffmpegOps';
 import { ensurePreviewMedia } from '../previewProxy';
 
@@ -33,8 +36,13 @@ interface VideoResult {
   dur: number;
 }
 
-async function testVideo(win: BrowserWindow, filePath: string): Promise<VideoResult> {
-  await win.loadURL('data:text/html,<!doctype html><video id="v" muted></video>');
+async function testVideo(
+  win: BrowserWindow,
+  filePath: string,
+): Promise<VideoResult> {
+  await win.loadURL(
+    'data:text/html,<!doctype html><video id="v" muted></video>',
+  );
   const script = `new Promise((resolve) => {
     const v = document.getElementById('v');
     const report = (status) => resolve({ status, w: v.videoWidth, h: v.videoHeight, dur: v.duration });
@@ -58,7 +66,11 @@ app
     registerMediaProtocolHandler();
     const win = new BrowserWindow({
       show: false,
-      webPreferences: { webSecurity: true, nodeIntegration: false, contextIsolation: true },
+      webPreferences: {
+        webSecurity: true,
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
     });
 
     const h264 = path.join(MEDIA_DIR, 'normal_h264.mp4');

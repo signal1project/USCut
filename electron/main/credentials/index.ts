@@ -17,7 +17,9 @@ const safeStorageEncryptor: SecureEncryptor = {
 
 // Dedicated store, NOT the IPC-exposed global one — credentials must never be
 // reachable through the renderer's getStore/setStore channels.
-const credentialStore = new Store({ name: 'mas-credentials' }) as unknown as CredentialStore;
+const credentialStore = new Store({
+  name: 'mas-credentials',
+}) as unknown as CredentialStore;
 
 let instance: CredentialManager | null = null;
 

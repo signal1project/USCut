@@ -46,7 +46,9 @@ export function startApiServer(
         url: `http://127.0.0.1:${port}`,
         token,
         close: () =>
-          new Promise<void>((res, rej) => server.close((err) => (err ? rej(err) : res()))),
+          new Promise<void>((res, rej) =>
+            server.close((err) => (err ? rej(err) : res())),
+          ),
       });
     });
   });

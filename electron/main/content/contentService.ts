@@ -59,7 +59,10 @@ export function extractHashtags(text: string): string[] {
  * Combine the user's brief with an algorithm hint so the AI understands the
  * platform's current reward signals.
  */
-export function buildAlgorithmAwareBrief(brief: string, algorithmHint: string): string {
+export function buildAlgorithmAwareBrief(
+  brief: string,
+  algorithmHint: string,
+): string {
   return `${algorithmHint}\n\n---\nContent brief: ${brief}`;
 }
 
@@ -70,9 +73,14 @@ export function buildBrandAwareBrief(brief: string, kit: BrandKit): string {
   if (kit.bio) lines.push(`- Brand bio and business context: ${kit.bio}`);
   if (kit.voice) lines.push(`- Brand voice: ${kit.voice}`);
   if (kit.audience) lines.push(`- Target audience: ${kit.audience}`);
-  if (kit.hashtags.length) lines.push(`- Prefer these hashtags: ${kit.hashtags.join(' ')}`);
-  if (kit.bannedWords.length) lines.push(`- NEVER use these words/phrases: ${kit.bannedWords.join(', ')}`);
-  if (kit.signature) lines.push(`- End with this signature/CTA: ${kit.signature}`);
+  if (kit.hashtags.length)
+    lines.push(`- Prefer these hashtags: ${kit.hashtags.join(' ')}`);
+  if (kit.bannedWords.length)
+    lines.push(
+      `- NEVER use these words/phrases: ${kit.bannedWords.join(', ')}`,
+    );
+  if (kit.signature)
+    lines.push(`- End with this signature/CTA: ${kit.signature}`);
   if (lines.length === 0) return brief;
   return `${brief}\n\nBRAND RULES:\n${lines.join('\n')}`;
 }
@@ -82,7 +90,10 @@ export function buildBrandAwareBrief(brief: string, kit: BrandKit): string {
  * an object with a slides array, or JSON inside a fenced code block. Exported
  * for tests.
  */
-export function parseCarouselResponse(raw: string, slideCount: number): CarouselSlide[] | null {
+export function parseCarouselResponse(
+  raw: string,
+  slideCount: number,
+): CarouselSlide[] | null {
   const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
   const candidate = (fenced ? fenced[1] : raw).trim();
   const start = candidate.search(/[[{]/);
@@ -119,10 +130,17 @@ export function parseCarouselResponse(raw: string, slideCount: number): Carousel
 export class ContentService {
   constructor(private readonly deps: ContentServiceDeps) {}
 
-  private shapeBrief(brief: string, platform: Platform, skipAlgorithmHints?: boolean): string {
+  private shapeBrief(
+    brief: string,
+    platform: Platform,
+    skipAlgorithmHints?: boolean,
+  ): string {
     let shaped = brief;
     if (this.deps.algorithmAgent && !skipAlgorithmHints) {
-      shaped = buildAlgorithmAwareBrief(shaped, this.deps.algorithmAgent.getPromptHint(platform));
+      shaped = buildAlgorithmAwareBrief(
+        shaped,
+        this.deps.algorithmAgent.getPromptHint(platform),
+      );
     }
     const kit = this.deps.resolveBrandKit?.() ?? null;
     if (kit) shaped = buildBrandAwareBrief(shaped, kit);
@@ -143,16 +161,24 @@ export class ContentService {
 
     const jobs: Array<{ platform: Platform; variant: number }> = [];
     for (const platform of input.platforms) {
-      for (let v = 1; v <= variantCount; v++) jobs.push({ platform, variant: v });
+      for (let v = 1; v <= variantCount; v++)
+        jobs.push({ platform, variant: v });
     }
 
     const items = await Promise.all(
       jobs.map(async ({ platform, variant }): Promise<GeneratedContent> => {
-        let brief = this.shapeBrief(input.brief, platform, input.skipAlgorithmHints);
+        let brief = this.shapeBrief(
+          input.brief,
+          platform,
+          input.skipAlgorithmHints,
+        );
         if (variantCount > 1) {
           brief += `\n\nThis is variant ${variant} of ${variantCount} — take a distinctly different angle/hook from the other variants.`;
         }
-        const body = await provider.generateText(brief, { platform, tone: input.tone });
+        const body = await provider.generateText(brief, {
+          platform,
+          tone: input.tone,
+        });
         return {
           platform,
           body,
@@ -186,7 +212,10 @@ Slide 1 must be a scroll-stopping hook. The last slide must be a call-to-action.
 Respond with ONLY a JSON object of this exact shape:
 {"caption": "post caption with hashtags", "slides": [{"title": "...", "body": "1-2 short sentences", "imagePrompt": "visual description for this slide"}]}`;
 
-    const raw = await provider.generateText(prompt, { platform: input.platform, tone: input.tone });
+    const raw = await provider.generateText(prompt, {
+      platform: input.platform,
+      tone: input.tone,
+    });
     let slides = parseCarouselResponse(raw, slideCount);
     let caption = '';
 
@@ -195,11 +224,19 @@ Respond with ONLY a JSON object of this exact shape:
       caption = capMatch ? JSON.parse(`"${capMatch[1]}"`) : '';
     } else {
       // Deterministic fallback: split the raw text into slides.
-      const sentences = raw.replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/).filter(Boolean);
+      const sentences = raw
+        .replace(/\s+/g, ' ')
+        .split(/(?<=[.!?])\s+/)
+        .filter(Boolean);
       const per = Math.max(1, Math.ceil(sentences.length / slideCount));
       slides = Array.from({ length: slideCount }, (_, i) => ({
         index: i + 1,
-        title: i === 0 ? 'Hook' : i === slideCount - 1 ? 'Call to action' : `Slide ${i + 1}`,
+        title:
+          i === 0
+            ? 'Hook'
+            : i === slideCount - 1
+              ? 'Call to action'
+              : `Slide ${i + 1}`,
         body: sentences.slice(i * per, (i + 1) * per).join(' ') || '…',
         imagePrompt: '',
       }));
@@ -215,7 +252,10 @@ Respond with ONLY a JSON object of this exact shape:
     };
   }
 
-  async generateImage(prompt: string, options?: GenerateImageOptions): Promise<{ url: string }> {
+  async generateImage(
+    prompt: string,
+    options?: GenerateImageOptions,
+  ): Promise<{ url: string }> {
     const provider = this.deps.resolveImageProvider();
     const url = await provider.generateImage(prompt, options);
     return { url };

@@ -25,7 +25,10 @@ export class OpenRouterProvider implements AIProvider {
     private readonly textModel = 'openai/gpt-4o',
   ) {}
 
-  async generateText(prompt: string, options?: GenerateTextOptions): Promise<string> {
+  async generateText(
+    prompt: string,
+    options?: GenerateTextOptions,
+  ): Promise<string> {
     const res = await this.client.chat.completions.create({
       model: this.textModel,
       max_tokens: resolveMaxTokens(options),
@@ -37,7 +40,10 @@ export class OpenRouterProvider implements AIProvider {
     return (res.choices[0]?.message?.content ?? '').trim();
   }
 
-  async generateImage(_prompt: string, _options?: GenerateImageOptions): Promise<string> {
+  async generateImage(
+    _prompt: string,
+    _options?: GenerateImageOptions,
+  ): Promise<string> {
     throw new Error(
       'OpenRouter does not support image generation. Use the OpenAI provider for images.',
     );
@@ -48,7 +54,10 @@ export class OpenRouterProvider implements AIProvider {
  * Create an OpenRouterProvider backed by the real OpenAI SDK pointed at the
  * OpenRouter base URL. Not imported in tests — tests inject OpenAILike directly.
  */
-export function createOpenRouterProvider(apiKey: string, model?: string): OpenRouterProvider {
+export function createOpenRouterProvider(
+  apiKey: string,
+  model?: string,
+): OpenRouterProvider {
   const client = new OpenAI({
     apiKey,
     baseURL: OPENROUTER_BASE_URL,

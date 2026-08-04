@@ -18,7 +18,7 @@ import { Plus, X } from 'lucide-react';
 import { useUserStore } from '../../store/user';
 
 const FILE_BASE_URL = import.meta.env.VITE_APP_FILE_HOST as string;
-const VITE_APP_URL  = import.meta.env.VITE_APP_URL  as string;
+const VITE_APP_URL = import.meta.env.VITE_APP_URL as string;
 
 // ─── Minimal UploadFile shape (mirrors antd's type) ────────────────────────
 export interface UploadFile {
@@ -52,7 +52,7 @@ function getBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
-    reader.onload  = () => resolve(reader.result as string);
+    reader.onload = () => resolve(reader.result as string);
     reader.onerror = (err) => reject(err);
   });
 }
@@ -70,7 +70,9 @@ const Uploadimages = memo(
       }: IUploadimagesProps,
       ref: ForwardedRef<IUploadimagesRef>,
     ) => {
-      const [fileList, setFileList] = useState<UploadFile[]>(fileListValue ?? []);
+      const [fileList, setFileList] = useState<UploadFile[]>(
+        fileListValue ?? [],
+      );
       const inputRef = useRef<HTMLInputElement>(null);
       const token = useUserStore((state) => state.token);
 
@@ -80,6 +82,9 @@ const Uploadimages = memo(
 
       useEffect(() => {
         onUploadChange(fileList.filter((f) => f.url && f.status === 'done'));
+        // onUploadChange is a caller-supplied callback, not guaranteed stable across
+        // renders — only fileList changes should trigger this notification.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [fileList]);
 
       const handleFiles = async (files: FileList | null) => {
@@ -88,9 +93,9 @@ const Uploadimages = memo(
 
         for (const file of incoming) {
           // Extension check
-          const allowed = accept.split(',').some((ext) =>
-            file.type.includes(ext.replace('.', ''))
-          );
+          const allowed = accept
+            .split(',')
+            .some((ext) => file.type.includes(ext.replace('.', '')));
           if (!allowed) {
             toast.warning(`File type ${file.type} is not allowed.`);
             continue;
@@ -118,13 +123,20 @@ const Uploadimages = memo(
             setFileList((prev) =>
               prev.map((f) =>
                 f.uid === entry.uid
-                  ? { ...f, status: 'done', url: FILE_BASE_URL + json.data.name, response: json }
+                  ? {
+                      ...f,
+                      status: 'done',
+                      url: FILE_BASE_URL + json.data.name,
+                      response: json,
+                    }
                   : f,
               ),
             );
           } catch {
             setFileList((prev) =>
-              prev.map((f) => (f.uid === entry.uid ? { ...f, status: 'error' } : f)),
+              prev.map((f) =>
+                f.uid === entry.uid ? { ...f, status: 'error' } : f,
+              ),
             );
             toast.error(`Failed to upload ${file.name}`);
           }

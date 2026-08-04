@@ -33,7 +33,7 @@ export interface ListingVideoResult {
 export function escapeDrawtext(text: string): string {
   return text
     .replace(/\\/g, '\\\\')
-    .replace(/'/g, "’") // typographic apostrophe avoids quote-nesting entirely
+    .replace(/'/g, '’') // typographic apostrophe avoids quote-nesting entirely
     .replace(/:/g, '\\:')
     .replace(/%/g, '\\%')
     .replace(/,/g, '\\,')
@@ -57,7 +57,12 @@ function fontFile(): string | null {
   return null;
 }
 
-function drawtext(text: string, fontsize: number, y: string, opts: { boxAlpha?: number } = {}): string {
+function drawtext(
+  text: string,
+  fontsize: number,
+  y: string,
+  opts: { boxAlpha?: number } = {},
+): string {
   const font = fontFile();
   const parts = [
     `text='${escapeDrawtext(text)}'`,
@@ -78,7 +83,11 @@ function drawtext(text: string, fontsize: number, y: string, opts: { boxAlpha?: 
  * Even indexes slowly zoom in from center; odd indexes pan across at a fixed
  * zoom. Exported for tests.
  */
-export function buildKenBurnsFilter(index: number, seconds: number, banner: string): string {
+export function buildKenBurnsFilter(
+  index: number,
+  seconds: number,
+  banner: string,
+): string {
   const frames = Math.round(seconds * FPS);
   // Oversample before zoompan to avoid jitter.
   const pre = `scale=${OUT_W * 2}:${OUT_H * 2}:force_original_aspect_ratio=increase,crop=${OUT_W * 2}:${OUT_H * 2}`;
@@ -116,7 +125,10 @@ export function buildNarrationScript(l: PropertyListingSummary): string {
 }
 
 /** Windows SAPI TTS → WAV. Resolves null on any failure (narration is best-effort). */
-function synthesizeNarration(text: string, outWav: string): Promise<string | null> {
+function synthesizeNarration(
+  text: string,
+  outWav: string,
+): Promise<string | null> {
   if (process.platform !== 'win32') return Promise.resolve(null);
   const script = [
     'Add-Type -AssemblyName System.Speech;',
@@ -127,9 +139,13 @@ function synthesizeNarration(text: string, outWav: string): Promise<string | nul
     '$s.Dispose();',
   ].join(' ');
   return new Promise((resolve) => {
-    const ps = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
-      windowsHide: true,
-    });
+    const ps = spawn(
+      'powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-Command', script],
+      {
+        windowsHide: true,
+      },
+    );
     ps.on('error', () => resolve(null));
     ps.on('exit', (code) => {
       resolve(code === 0 && fs.existsSync(outWav) ? outWav : null);
@@ -137,7 +153,11 @@ function synthesizeNarration(text: string, outWav: string): Promise<string | nul
   });
 }
 
-async function downloadPhoto(url: string, dir: string, index: number): Promise<string | null> {
+async function downloadPhoto(
+  url: string,
+  dir: string,
+  index: number,
+): Promise<string | null> {
   try {
     if (!/^https?:\/\//i.test(url)) {
       // Local path (used by tests and manual captures).
@@ -147,7 +167,10 @@ async function downloadPhoto(url: string, dir: string, index: number): Promise<s
     if (!res.ok) return null;
     const buf = Buffer.from(await res.arrayBuffer());
     if (buf.length < 100) return null;
-    const file = path.join(dir, `photo_${index}${path.extname(new URL(url).pathname) || '.jpg'}`);
+    const file = path.join(
+      dir,
+      `photo_${index}${path.extname(new URL(url).pathname) || '.jpg'}`,
+    );
     fs.writeFileSync(file, buf);
     return file;
   } catch {
@@ -155,7 +178,12 @@ async function downloadPhoto(url: string, dir: string, index: number): Promise<s
   }
 }
 
-function renderPhotoSegment(photo: string, filter: string, seconds: number, out: string): Promise<void> {
+function renderPhotoSegment(
+  photo: string,
+  filter: string,
+  seconds: number,
+  out: string,
+): Promise<void> {
   return new Promise((resolve, reject) => {
     ffmpeg(photo)
       .inputOptions(['-loop 1'])
@@ -171,9 +199,20 @@ function renderPhotoSegment(photo: string, filter: string, seconds: number, out:
   });
 }
 
-function renderCardSegment(lines: string[], seconds: number, out: string): Promise<void> {
+function renderCardSegment(
+  lines: string[],
+  seconds: number,
+  out: string,
+): Promise<void> {
   const texts = lines
-    .map((line, i) => drawtext(line, i === 0 ? 58 : 44, `(h-text_h)/2+${(i - (lines.length - 1) / 2) * 130}`, { boxAlpha: 0 }))
+    .map((line, i) =>
+      drawtext(
+        line,
+        i === 0 ? 58 : 44,
+        `(h-text_h)/2+${(i - (lines.length - 1) / 2) * 130}`,
+        { boxAlpha: 0 },
+      ),
+    )
     .join(',');
   return new Promise((resolve, reject) => {
     ffmpeg(`color=c=0x0c0c0f:s=${OUT_W}x${OUT_H}:d=${seconds}:r=${FPS}`)
@@ -224,7 +263,10 @@ export class ListingVideoService {
     private readonly outputDir: string,
   ) {}
 
-  async generateVideo(listingId: string, opts: ListingVideoOptions = {}): Promise<ListingVideoResult | null> {
+  async generateVideo(
+    listingId: string,
+    opts: ListingVideoOptions = {},
+  ): Promise<ListingVideoResult | null> {
     const listing = await this.store.get(listingId);
     if (!listing) return null;
 
@@ -238,7 +280,9 @@ export class ListingVideoService {
     try {
       // 1. Photos
       const photoFiles: string[] = [];
-      for (const [i, url] of (listing.photoUrls ?? []).slice(0, maxPhotos).entries()) {
+      for (const [i, url] of (listing.photoUrls ?? [])
+        .slice(0, maxPhotos)
+        .entries()) {
         const file = await downloadPhoto(url, work, i);
         if (file) photoFiles.push(file);
       }
@@ -260,7 +304,13 @@ export class ListingVideoService {
         // No photos — open with a title card instead.
         const intro = path.join(work, 'seg_intro.mp4');
         await renderCardSegment(
-          ['JUST LISTED', listing.address, `${listing.city}, ${listing.state}`, price, specs].filter(Boolean),
+          [
+            'JUST LISTED',
+            listing.address,
+            `${listing.city}, ${listing.state}`,
+            price,
+            specs,
+          ].filter(Boolean),
           4,
           intro,
         );
@@ -268,7 +318,12 @@ export class ListingVideoService {
       } else {
         for (const [i, photo] of photoFiles.entries()) {
           const seg = path.join(work, `seg_${i}.mp4`);
-          await renderPhotoSegment(photo, buildKenBurnsFilter(i, perPhoto, banner), perPhoto, seg);
+          await renderPhotoSegment(
+            photo,
+            buildKenBurnsFilter(i, perPhoto, banner),
+            perPhoto,
+            seg,
+          );
           segments.push(seg);
         }
       }
@@ -276,7 +331,13 @@ export class ListingVideoService {
       // 3. CTA end card
       const cta = path.join(work, 'seg_cta.mp4');
       await renderCardSegment(
-        [price || 'FOR SALE', listing.address, specs, '', 'DM us to schedule a showing'].filter(Boolean),
+        [
+          price || 'FOR SALE',
+          listing.address,
+          specs,
+          '',
+          'DM us to schedule a showing',
+        ].filter(Boolean),
         3,
         cta,
       );
@@ -295,7 +356,9 @@ export class ListingVideoService {
       const concatList = path.join(work, 'concat.txt');
       fs.writeFileSync(
         concatList,
-        segments.map((s) => `file '${s.replace(/\\/g, '/').replace(/'/g, "'\\''")}'`).join('\n'),
+        segments
+          .map((s) => `file '${s.replace(/\\/g, '/').replace(/'/g, "'\\''")}'`)
+          .join('\n'),
       );
       fs.mkdirSync(this.outputDir, { recursive: true });
       const outPath = path.join(
@@ -304,7 +367,8 @@ export class ListingVideoService {
       );
       await concatWithAudio(concatList, narrationWav, outPath);
 
-      const photoSeconds = photoFiles.length > 0 ? photoFiles.length * perPhoto : 4;
+      const photoSeconds =
+        photoFiles.length > 0 ? photoFiles.length * perPhoto : 4;
       return {
         listingId,
         path: outPath,

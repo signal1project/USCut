@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { parseSrtOrVtt, toSrt } from '../transcription';
-import { scoreSegment, pickHighlightsHeuristic, pickHighlights } from '../autoClip';
+import {
+  scoreSegment,
+  pickHighlightsHeuristic,
+  pickHighlights,
+} from '../autoClip';
 import type { AIProvider } from '@mas/types';
 
 const SRT = `1
@@ -48,14 +52,17 @@ Hello there.`;
 
 describe('highlight picking', () => {
   it('scores hook-y segments higher', () => {
-    expect(scoreSegment('Here are 3 mistakes you should never make!')).toBeGreaterThan(
-      scoreSegment('And that wraps up the video.'),
-    );
+    expect(
+      scoreSegment('Here are 3 mistakes you should never make!'),
+    ).toBeGreaterThan(scoreSegment('And that wraps up the video.'));
   });
 
   it('heuristic picks non-overlapping windows around the best segments', () => {
     const segs = parseSrtOrVtt(SRT);
-    const wins = pickHighlightsHeuristic(segs, { maxClips: 2, clipSeconds: 10 });
+    const wins = pickHighlightsHeuristic(segs, {
+      maxClips: 2,
+      clipSeconds: 10,
+    });
     expect(wins.length).toBeGreaterThanOrEqual(1);
     expect(wins.length).toBeLessThanOrEqual(2);
     for (let i = 1; i < wins.length; i++) {
@@ -67,10 +74,15 @@ describe('highlight picking', () => {
   it('uses AI picks when the provider returns valid JSON', async () => {
     const provider = {
       name: 'mock',
-      generateText: async () => '[{"start": 4.5, "end": 20, "hook": "3 mistakes"}]',
+      generateText: async () =>
+        '[{"start": 4.5, "end": 20, "hook": "3 mistakes"}]',
     } as unknown as AIProvider;
     const segs = parseSrtOrVtt(SRT);
-    const { windows, pickedBy } = await pickHighlights(segs, { maxClips: 2, clipSeconds: 15 }, provider);
+    const { windows, pickedBy } = await pickHighlights(
+      segs,
+      { maxClips: 2, clipSeconds: 15 },
+      provider,
+    );
     expect(pickedBy).toBe('ai');
     expect(windows[0]).toMatchObject({ start: 4.5, end: 20 });
   });
@@ -81,7 +93,11 @@ describe('highlight picking', () => {
       generateText: async () => 'sorry, I cannot help with that',
     } as unknown as AIProvider;
     const segs = parseSrtOrVtt(SRT);
-    const { pickedBy, windows } = await pickHighlights(segs, { maxClips: 1, clipSeconds: 10 }, provider);
+    const { pickedBy, windows } = await pickHighlights(
+      segs,
+      { maxClips: 1, clipSeconds: 10 },
+      provider,
+    );
     expect(pickedBy).toBe('heuristic');
     expect(windows.length).toBe(1);
   });

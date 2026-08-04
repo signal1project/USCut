@@ -55,6 +55,11 @@ export interface PropertyListingSummary {
   agentEmail: string | null;
   listingUrl: string | null;
   complianceOk: boolean;
-  complianceFlags: Array<{ rule: string; severity: string; matched: string; detail: string }>;
+  complianceFlags: Array<{
+    rule: string;
+    severity: string;
+    matched: string;
+    detail: string;
+  }>;
   capturedAt: string;
 }

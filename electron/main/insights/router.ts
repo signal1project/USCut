@@ -32,7 +32,9 @@ const bioPageSchema = z.object({
   phone: z.string().optional(),
   email: z.string().optional(),
   accentColor: z.string().optional(),
-  links: z.array(z.object({ label: z.string().min(1), url: z.string().min(1) })).default([]),
+  links: z
+    .array(z.object({ label: z.string().min(1), url: z.string().min(1) }))
+    .default([]),
   listings: z
     .array(
       z.object({
@@ -95,7 +97,11 @@ export function createInsightsRouter(deps: InsightsRouterDeps): Router {
     validateBody(competitorSchema),
     asyncHandler(async (req, res) => {
       const b = req.body as z.infer<typeof competitorSchema>;
-      const entry: CompetitorEntry = { id: crypto.randomUUID(), ...b, snapshots: [] };
+      const entry: CompetitorEntry = {
+        id: crypto.randomUUID(),
+        ...b,
+        snapshots: [],
+      };
       settings.setCompetitors([...settings.getCompetitors(), entry]);
       res.status(201).json({ competitor: entry });
     }),

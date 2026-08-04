@@ -11,7 +11,12 @@ export interface TranscriptSegment {
 function timeToSeconds(t: string): number {
   const m = t.trim().match(/(\d+):(\d{2}):(\d{2})[,.](\d{1,3})/);
   if (!m) return NaN;
-  return Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]) + Number(m[4].padEnd(3, '0')) / 1000;
+  return (
+    Number(m[1]) * 3600 +
+    Number(m[2]) * 60 +
+    Number(m[3]) +
+    Number(m[4].padEnd(3, '0')) / 1000
+  );
 }
 
 /** Parse SRT or WebVTT into transcript segments. Exported for tests. */
@@ -19,7 +24,9 @@ export function parseSrtOrVtt(raw: string): TranscriptSegment[] {
   const segments: TranscriptSegment[] = [];
   const blocks = raw.replace(/\r/g, '').split(/\n\n+/);
   for (const block of blocks) {
-    const lines = block.split('\n').filter((l) => l.trim() !== '' && l.trim() !== 'WEBVTT');
+    const lines = block
+      .split('\n')
+      .filter((l) => l.trim() !== '' && l.trim() !== 'WEBVTT');
     const timeLineIdx = lines.findIndex((l) => l.includes('-->'));
     if (timeLineIdx === -1) continue;
     const [startRaw, endRaw] = lines[timeLineIdx].split('-->');
@@ -35,7 +42,10 @@ export function parseSrtOrVtt(raw: string): TranscriptSegment[] {
   return segments;
 }
 
-export function toSrt(segments: TranscriptSegment[], offsetSeconds = 0): string {
+export function toSrt(
+  segments: TranscriptSegment[],
+  offsetSeconds = 0,
+): string {
   const fmt = (s: number): string => {
     const t = Math.max(0, s - offsetSeconds);
     const h = Math.floor(t / 3600);
@@ -45,7 +55,10 @@ export function toSrt(segments: TranscriptSegment[], offsetSeconds = 0): string 
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')},${String(ms).padStart(3, '0')}`;
   };
   return segments
-    .map((seg, i) => `${i + 1}\n${fmt(seg.start)} --> ${fmt(seg.end)}\n${seg.text}\n`)
+    .map(
+      (seg, i) =>
+        `${i + 1}\n${fmt(seg.start)} --> ${fmt(seg.end)}\n${seg.text}\n`,
+    )
     .join('\n');
 }
 
@@ -76,8 +89,13 @@ export async function transcribeViaOpenAI(
     duration?: number;
   };
   if (data.segments?.length) {
-    return data.segments.map((s) => ({ start: s.start, end: s.end, text: s.text.trim() }));
+    return data.segments.map((s) => ({
+      start: s.start,
+      end: s.end,
+      text: s.text.trim(),
+    }));
   }
-  if (data.text) return [{ start: 0, end: data.duration ?? 60, text: data.text.trim() }];
+  if (data.text)
+    return [{ start: 0, end: data.duration ?? 60, text: data.text.trim() }];
   return [];
 }

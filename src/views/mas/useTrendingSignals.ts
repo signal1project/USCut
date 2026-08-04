@@ -30,6 +30,7 @@ export function useTrendingSignals(
   const [tick, setTick] = useState(0);
 
   const refresh = useCallback(() => setTick((t) => t + 1), []);
+  const sourcesKey = (params?.sources ?? []).join(',');
 
   useEffect(() => {
     if (!api) return;
@@ -50,7 +51,11 @@ export function useTrendingSignals(
       })
       .catch((err: unknown) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load trending signals');
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'Failed to load trending signals',
+          );
           setLoading(false);
         }
       });
@@ -58,8 +63,11 @@ export function useTrendingSignals(
     return () => {
       cancelled = true;
     };
+    // Deliberately keyed on the individual params fields (not `params` itself) —
+    // callers commonly pass a fresh inline object each render, so depending on the
+    // whole object would refetch every render instead of only on real value changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [api, params?.niche, (params?.sources ?? []).join(','), params?.limit, tick]);
+  }, [api, params?.niche, sourcesKey, params?.limit, tick]);
 
   return { signals, cachedUntil, sources, loading, error, refresh };
 }

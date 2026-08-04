@@ -32,10 +32,14 @@ const stub: IpcBridge = {
 };
 
 export function hasIpc(): boolean {
-  return typeof window !== 'undefined' && !!(window as { ipcRenderer?: unknown }).ipcRenderer;
+  return (
+    typeof window !== 'undefined' &&
+    !!(window as { ipcRenderer?: unknown }).ipcRenderer
+  );
 }
 
 export const ipc: IpcBridge =
-  typeof window !== 'undefined' && (window as { ipcRenderer?: IpcBridge }).ipcRenderer
-    ? ((window as unknown as { ipcRenderer: IpcBridge }).ipcRenderer)
+  typeof window !== 'undefined' &&
+  (window as { ipcRenderer?: IpcBridge }).ipcRenderer
+    ? (window as unknown as { ipcRenderer: IpcBridge }).ipcRenderer
     : stub;

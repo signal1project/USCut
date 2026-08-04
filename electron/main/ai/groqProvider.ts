@@ -14,7 +14,9 @@ export interface GroqLike {
         model: string;
         max_tokens?: number;
         messages: Array<{ role: 'system' | 'user'; content: string }>;
-      }): Promise<{ choices: Array<{ message?: { content?: string | null } }> }>;
+      }): Promise<{
+        choices: Array<{ message?: { content?: string | null } }>;
+      }>;
     };
   };
 }
@@ -27,7 +29,10 @@ export class GroqProvider implements AIProvider {
     private readonly model = 'llama-3.3-70b-versatile',
   ) {}
 
-  async generateText(prompt: string, options?: GenerateTextOptions): Promise<string> {
+  async generateText(
+    prompt: string,
+    options?: GenerateTextOptions,
+  ): Promise<string> {
     const res = await this.client.chat.completions.create({
       model: this.model,
       max_tokens: resolveMaxTokens(options),
@@ -39,7 +44,12 @@ export class GroqProvider implements AIProvider {
     return (res.choices[0]?.message?.content ?? '').trim();
   }
 
-  async generateImage(_prompt: string, _options?: GenerateImageOptions): Promise<string> {
-    throw new Error('Groq does not support image generation. Use the OpenAI provider for images.');
+  async generateImage(
+    _prompt: string,
+    _options?: GenerateImageOptions,
+  ): Promise<string> {
+    throw new Error(
+      'Groq does not support image generation. Use the OpenAI provider for images.',
+    );
   }
 }

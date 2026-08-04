@@ -8,7 +8,12 @@
 import { Column, PrimaryGeneratedColumn } from 'typeorm';
 import { TempModel } from './temp';
 import { PlatType } from '../../../commont/AccountEnum';
-type CookiesType = Array<{ name: string; value: string; domain?: string; path?: string }>;
+type CookiesType = Array<{
+  name: string;
+  value: string;
+  domain?: string;
+  path?: string;
+}>;
 type ILocationDataItem = Record<string, unknown>;
 type WxSphEvent = Record<string, unknown>;
 import {

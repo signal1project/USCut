@@ -9,12 +9,20 @@ const campaignSchema = z.object({
   objective: z.string().min(1),
   niche: z.string().min(1),
   platforms: z.array(z.enum(PLATFORMS)).min(1),
-  approvalMode: z.enum(['dale_required', 'omobono_only', 'autopublish_allowed']).optional(),
+  approvalMode: z
+    .enum(['dale_required', 'omobono_only', 'autopublish_allowed'])
+    .optional(),
   tone: z.string().optional(),
 });
 
 const statusSchema = z.object({
-  status: z.enum(['needs_approval', 'approved', 'scheduled', 'published', 'rejected']),
+  status: z.enum([
+    'needs_approval',
+    'approved',
+    'scheduled',
+    'published',
+    'rejected',
+  ]),
 });
 
 const publicationFeedbackSchema = z.object({
@@ -25,16 +33,26 @@ const publicationFeedbackSchema = z.object({
   notes: z.string().optional(),
 });
 
-const listStatusSchema = z.enum(['needs_approval', 'approved', 'scheduled', 'published', 'rejected']);
+const listStatusSchema = z.enum([
+  'needs_approval',
+  'approved',
+  'scheduled',
+  'published',
+  'rejected',
+]);
 
-export function createWorkflowRouter(service: SocialEngineWorkflowService): Router {
+export function createWorkflowRouter(
+  service: SocialEngineWorkflowService,
+): Router {
   const router = express.Router();
 
   router.post(
     '/campaign-package',
     validateBody(campaignSchema),
     asyncHandler(async (req, res) => {
-      const result = await service.createCampaignPackage(req.body as z.infer<typeof campaignSchema>);
+      const result = await service.createCampaignPackage(
+        req.body as z.infer<typeof campaignSchema>,
+      );
       res.json(result);
     }),
   );
@@ -42,7 +60,9 @@ export function createWorkflowRouter(service: SocialEngineWorkflowService): Rout
   router.get(
     '/campaign-packages',
     asyncHandler(async (req, res) => {
-      const parsedStatus = req.query.status ? listStatusSchema.safeParse(req.query.status) : null;
+      const parsedStatus = req.query.status
+        ? listStatusSchema.safeParse(req.query.status)
+        : null;
       if (parsedStatus && !parsedStatus.success) {
         res.status(400).json({ error: 'invalid_status' });
         return;
@@ -74,7 +94,10 @@ export function createWorkflowRouter(service: SocialEngineWorkflowService): Rout
     validateBody(statusSchema),
     asyncHandler(async (req, res) => {
       const packageId = String(req.params.id);
-      const result = await service.updateCampaignPackageStatus(packageId, req.body.status);
+      const result = await service.updateCampaignPackageStatus(
+        packageId,
+        req.body.status,
+      );
       res.json(result);
     }),
   );
@@ -89,7 +112,10 @@ export function createWorkflowRouter(service: SocialEngineWorkflowService): Rout
         publishedAt: req.body.publishedAt ?? new Date().toISOString(),
         analyticsStatus: 'pending_capture' as const,
       };
-      const result = await service.recordPublicationFeedback(packageId, feedback);
+      const result = await service.recordPublicationFeedback(
+        packageId,
+        feedback,
+      );
       res.json(result);
     }),
   );

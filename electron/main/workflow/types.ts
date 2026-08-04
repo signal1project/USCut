@@ -4,9 +4,15 @@ import type { ContentService, GenerateResult } from '../content';
 import type { TrendingResearchService, TrendSignal } from '../research';
 import type { AgentAdapter, AgentTaskResult } from '../agent';
 import type { CapCutPackageService, CapCutProductionPackage } from '../capcut';
-import type { CampaignPackageStore, CampaignPackageSummary } from './campaignPackageStore';
+import type {
+  CampaignPackageStore,
+  CampaignPackageSummary,
+} from './campaignPackageStore';
 
-export type ApprovalMode = 'dale_required' | 'omobono_only' | 'autopublish_allowed';
+export type ApprovalMode =
+  | 'dale_required'
+  | 'omobono_only'
+  | 'autopublish_allowed';
 
 export interface CreateCampaignPackageInput {
   campaignTitle: string;
@@ -34,7 +40,12 @@ export interface PublishingFeedbackSnapshot {
 }
 
 export interface PublishingPlanSnapshot {
-  status: 'needs_approval' | 'ready_to_schedule' | 'scheduled' | 'published' | 'rejected';
+  status:
+    | 'needs_approval'
+    | 'ready_to_schedule'
+    | 'scheduled'
+    | 'published'
+    | 'rejected';
   approvalMode: ApprovalMode;
   gates: string[];
   platforms: Platform[];

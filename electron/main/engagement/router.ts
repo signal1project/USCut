@@ -18,7 +18,9 @@ export function createEngagementRouter(service: EngagementService): Router {
     validateBody(ingestSchema),
     asyncHandler(async (req, res) => {
       const b = req.body as z.infer<typeof ingestSchema>;
-      res.json({ items: await service.ingestComments(b.accountId, b.externalPostId) });
+      res.json({
+        items: await service.ingestComments(b.accountId, b.externalPostId),
+      });
     }),
   );
 
@@ -33,7 +35,10 @@ export function createEngagementRouter(service: EngagementService): Router {
     '/:id/draft',
     validateBody(draftSchema),
     asyncHandler(async (req, res) => {
-      await service.updateDraft(String(req.params.id), (req.body as z.infer<typeof draftSchema>).draftReply);
+      await service.updateDraft(
+        String(req.params.id),
+        (req.body as z.infer<typeof draftSchema>).draftReply,
+      );
       res.json({ ok: true });
     }),
   );

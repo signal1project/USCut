@@ -1,8 +1,14 @@
 import type { RawTrendSignal, TrendFetcher } from './trendingService';
 
-export type PlatformTrendSource = 'tiktok' | 'instagram' | 'youtube' | 'x' | 'rumble';
+export type PlatformTrendSource =
+  | 'tiktok'
+  | 'instagram'
+  | 'youtube'
+  | 'x'
+  | 'rumble';
 
-const GOOGLE_NEWS_RSS = 'https://news.google.com/rss/search?hl=en-US&gl=US&ceid=US:en&q=';
+const GOOGLE_NEWS_RSS =
+  'https://news.google.com/rss/search?hl=en-US&gl=US&ceid=US:en&q=';
 
 const PLATFORM_QUERIES: Record<PlatformTrendSource, string> = {
   tiktok: 'site:tiktok.com trending OR viral OR creator',
@@ -30,18 +36,34 @@ function normalizeTitle(title: string): string {
 
 function toHashtags(keyword: string, platform: PlatformTrendSource): string[] {
   const cleaned = keyword.replace(/[^\p{L}\p{N}\s]/gu, ' ').trim();
-  const words = cleaned.split(/\s+/).filter((w) => w.length > 2).slice(0, 4);
+  const words = cleaned
+    .split(/\s+/)
+    .filter((w) => w.length > 2)
+    .slice(0, 4);
   const phrase = words.join('');
-  const tags = [`#${platform}`, phrase ? `#${phrase}` : '', ...words.map((w) => `#${w.charAt(0).toUpperCase()}${w.slice(1)}`)];
+  const tags = [
+    `#${platform}`,
+    phrase ? `#${phrase}` : '',
+    ...words.map((w) => `#${w.charAt(0).toUpperCase()}${w.slice(1)}`),
+  ];
   return [...new Set(tags.filter(Boolean))].slice(0, 5);
 }
 
 export function extractGoogleNewsTitles(xml: string): string[] {
-  const itemBlocks = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].map((m) => m[1]);
+  const itemBlocks = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(
+    (m) => m[1],
+  );
   return itemBlocks
-    .map((item) => item.match(/<title><!\[CDATA\[([\s\S]*?)\]\]><\/title>|<title>([\s\S]*?)<\/title>/)?.[1]
-      ?? item.match(/<title><!\[CDATA\[([\s\S]*?)\]\]><\/title>|<title>([\s\S]*?)<\/title>/)?.[2]
-      ?? '')
+    .map(
+      (item) =>
+        item.match(
+          /<title><!\[CDATA\[([\s\S]*?)\]\]><\/title>|<title>([\s\S]*?)<\/title>/,
+        )?.[1] ??
+        item.match(
+          /<title><!\[CDATA\[([\s\S]*?)\]\]><\/title>|<title>([\s\S]*?)<\/title>/,
+        )?.[2] ??
+        '',
+    )
     .map(normalizeTitle)
     .filter((title) => title.length > 0);
 }
@@ -64,17 +86,22 @@ export class PlatformTrendFetcher implements TrendFetcher {
 
   async fetch(): Promise<RawTrendSignal[]> {
     try {
-      const resp = await this.httpFetch(`${GOOGLE_NEWS_RSS}${encodeURIComponent(this.query)}`, {
-        headers: { 'User-Agent': 'Social-Manager-AI/1.0' },
-      });
+      const resp = await this.httpFetch(
+        `${GOOGLE_NEWS_RSS}${encodeURIComponent(this.query)}`,
+        {
+          headers: { 'User-Agent': 'Social-Manager-AI/1.0' },
+        },
+      );
       if (!resp.ok) return [];
       const xml = await resp.text();
-      return extractGoogleNewsTitles(xml).slice(0, 10).map((keyword, index) => ({
-        source: this.sourceName,
-        keyword,
-        hashtags: toHashtags(keyword, this.sourceName),
-        trafficScore: Math.max(20, 90 - index * 7),
-      }));
+      return extractGoogleNewsTitles(xml)
+        .slice(0, 10)
+        .map((keyword, index) => ({
+          source: this.sourceName,
+          keyword,
+          hashtags: toHashtags(keyword, this.sourceName),
+          trafficScore: Math.max(20, 90 - index * 7),
+        }));
     } catch {
       return [];
     }

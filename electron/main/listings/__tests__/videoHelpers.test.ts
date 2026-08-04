@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { escapeDrawtext, buildKenBurnsFilter, buildNarrationScript } from '../videoService';
+import {
+  escapeDrawtext,
+  buildKenBurnsFilter,
+  buildNarrationScript,
+} from '../videoService';
 import type { PropertyListingSummary } from '../types';
 
 const listing: PropertyListingSummary = {

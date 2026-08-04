@@ -41,11 +41,13 @@ const WebView = memo(
   forwardRef(
     (
       { url, cookieParams, partition, account, allowpopups }: IWebViewProps,
-      ref: ForwardedRef<IWebViewRef>,
+      _ref: ForwardedRef<IWebViewRef>,
     ) => {
       const webviewRef = useRef<HTMLWebViewElement>(null);
-      // webView id
-      const [webViewId, setWebViewId] = useState(-1);
+      // webView id — a ref (not state) because it's only read by the unmount
+      // cleanup below, which needs the current value, not a stale mount-time
+      // closure (id is only known after the async 'dom-ready' handler fires)
+      const webViewIdRef = useRef(-1);
       const [loading, setLoading] = useState(true);
       // 隔离ID
       const partitionId = useRef(generateUUID());
@@ -55,7 +57,7 @@ const WebView = memo(
         console.log(JSON.stringify(cookieParams));
         setLoading(true);
 
-        webviewRef.current?.addEventListener('dom-ready', async (e) => {
+        webviewRef.current?.addEventListener('dom-ready', async (_e) => {
           // 每个平台localStorage添加
           if (account) {
             let jsCode;
@@ -74,7 +76,7 @@ const WebView = memo(
           if (webviewRef.current?.getURL() === 'about:blank') {
             // @ts-ignore
             const id = webviewRef.current!.getWebContentsId();
-            setWebViewId(id);
+            webViewIdRef.current = id;
 
             // @ts-ignore
             await window.ipcRenderer.invoke('ICP_ACCOUNT_CREATE_BROWSER_VIEW', {
@@ -88,20 +90,45 @@ const WebView = memo(
         return () => {
           window.ipcRenderer.invoke(
             'ICP_ACCOUNT_DESTROY_BROWSER_VIEW',
-            webViewId,
+            webViewIdRef.current,
           );
         };
+        // dom-ready listener + cleanup are wired once per webview instance by design;
+        // account/cookieParams are read at listener-fire time via closure, not meant
+        // to re-subscribe on every change.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
       }, []);
 
       return (
         url && (
           <div className={styles.webview}>
-            <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-            {loading && (
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', zIndex: 10 }}>
-                <div style={{ width: 24, height: 24, border: '3px solid #34d399', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.75s linear infinite' }} />
-              </div>
-            )}
+            <div
+              style={{ position: 'relative', width: '100%', height: '100%' }}
+            >
+              {loading && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: 'rgba(0,0,0,0.4)',
+                    zIndex: 10,
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 24,
+                      height: 24,
+                      border: '3px solid #34d399',
+                      borderTopColor: 'transparent',
+                      borderRadius: '50%',
+                      animation: 'spin 0.75s linear infinite',
+                    }}
+                  />
+                </div>
+              )}
               <webview
                 // @ts-ignore
                 disablewebsecurity={'true'}

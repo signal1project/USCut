@@ -24,7 +24,12 @@ export function scoreSegment(text: string): number {
   if (/\?/.test(text)) score += 2;
   if (/!/.test(text)) score += 1;
   if (/\d/.test(text)) score += 2;
-  if (/\b(how|why|what|secret|mistake|never|always|top|best|worst|free|stop|before you)\b/i.test(text)) score += 3;
+  if (
+    /\b(how|why|what|secret|mistake|never|always|top|best|worst|free|stop|before you)\b/i.test(
+      text,
+    )
+  )
+    score += 3;
   if (/\b(you|your)\b/i.test(text)) score += 1;
   const words = text.split(/\s+/).length;
   if (words >= 8 && words <= 40) score += 1;
@@ -43,7 +48,7 @@ function windowAround(
   while (len() < clipSeconds && (lo > 0 || hi < segments.length - 1)) {
     const canDown = lo > 0;
     const canUp = hi < segments.length - 1;
-    if (canUp && (!canDown || (hi - seedIdx) <= (seedIdx - lo))) hi += 1;
+    if (canUp && (!canDown || hi - seedIdx <= seedIdx - lo)) hi += 1;
     else if (canDown) lo -= 1;
     else break;
   }
@@ -82,7 +87,10 @@ export async function pickHighlights(
   provider?: AIProvider | null,
 ): Promise<{ windows: HighlightWindow[]; pickedBy: 'ai' | 'heuristic' }> {
   if (!provider || segments.length === 0) {
-    return { windows: pickHighlightsHeuristic(segments, opts), pickedBy: 'heuristic' };
+    return {
+      windows: pickHighlightsHeuristic(segments, opts),
+      pickedBy: 'heuristic',
+    };
   }
 
   const transcriptText = segments
@@ -103,14 +111,19 @@ Respond with ONLY a JSON array: [{"start": seconds, "end": seconds, "hook": "one
     const raw = await provider.generateText(prompt, {});
     const jsonStart = raw.search(/\[/);
     if (jsonStart === -1) throw new Error('no_json');
-    const parsed = JSON.parse(raw.slice(jsonStart, raw.lastIndexOf(']') + 1)) as Array<{
+    const parsed = JSON.parse(
+      raw.slice(jsonStart, raw.lastIndexOf(']') + 1),
+    ) as Array<{
       start: number;
       end: number;
       hook?: string;
     }>;
     const maxEnd = segments[segments.length - 1].end;
     const windows = parsed
-      .filter((w) => Number.isFinite(w.start) && Number.isFinite(w.end) && w.end > w.start)
+      .filter(
+        (w) =>
+          Number.isFinite(w.start) && Number.isFinite(w.end) && w.end > w.start,
+      )
       .map((w) => ({
         start: Math.max(0, w.start),
         end: Math.min(maxEnd, w.end),
@@ -121,6 +134,9 @@ Respond with ONLY a JSON array: [{"start": seconds, "end": seconds, "hook": "one
     if (windows.length === 0) throw new Error('empty');
     return { windows, pickedBy: 'ai' };
   } catch {
-    return { windows: pickHighlightsHeuristic(segments, opts), pickedBy: 'heuristic' };
+    return {
+      windows: pickHighlightsHeuristic(segments, opts),
+      pickedBy: 'heuristic',
+    };
   }
 }

@@ -1,27 +1,37 @@
 import React, { useState } from 'react';
-import { Flame, Zap, RefreshCw, Search, Newspaper, ExternalLink } from 'lucide-react';
+import {
+  Flame,
+  Zap,
+  RefreshCw,
+  Search,
+  Newspaper,
+  ExternalLink,
+} from 'lucide-react';
 import { useMasApi } from './useMasApi';
 import { useTrendingSignals } from './useTrendingSignals';
 import type { ContentIdea } from '@mas/ui';
 import {
   Button,
   Badge,
-  Card, CardContent,
+  Card,
+  CardContent,
   Input,
   Progress,
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
 const SOURCE_VARIANT: Record<string, 'default' | 'info' | 'secondary'> = {
-  google:       'info',
+  google: 'info',
   ai_generated: 'default',
-  twitter:      'secondary',
+  twitter: 'secondary',
 };
 
 /** Research page: live trending signals from Google Trends + AI, plus the Idea Scraper (Google News). */
 export default function ResearchPage(): React.ReactElement {
   const api = useMasApi();
-  const [activeTab, setActiveTab] = useState<'trending' | 'scraper'>('trending');
+  const [activeTab, setActiveTab] = useState<'trending' | 'scraper'>(
+    'trending',
+  );
   const [nicheInput, setNicheInput] = useState('');
   const [debouncedNiche, setDebouncedNiche] = useState('');
 
@@ -39,7 +49,8 @@ export default function ResearchPage(): React.ReactElement {
     try {
       const result = await api.scrapeContent(scrapeKeyword.trim());
       setScrapeIdeas(result.ideas);
-      if (result.ideas.length === 0) setScrapeError('No articles found — try a different keyword.');
+      if (result.ideas.length === 0)
+        setScrapeError('No articles found — try a different keyword.');
     } catch (err) {
       setScrapeError(err instanceof Error ? err.message : 'Scrape failed');
     } finally {
@@ -47,10 +58,11 @@ export default function ResearchPage(): React.ReactElement {
     }
   };
 
-  const { signals, sources, cachedUntil, loading, error, refresh } = useTrendingSignals(api, {
-    niche: debouncedNiche,
-    limit: 20,
-  });
+  const { signals, sources, cachedUntil, loading, error, refresh } =
+    useTrendingSignals(api, {
+      niche: debouncedNiche,
+      limit: 20,
+    });
 
   const handleSearch = () => setDebouncedNiche(nicheInput.trim());
 
@@ -62,8 +74,8 @@ export default function ResearchPage(): React.ReactElement {
           Research
         </h2>
         <p className="text-sm text-ink-muted mt-0.5">
-          Trending topics and the Idea Scraper — find what to post about. For property
-          listings, use the Listing Scraper on the Listings page.
+          Trending topics and the Idea Scraper — find what to post about. For
+          property listings, use the Listing Scraper on the Listings page.
         </p>
       </div>
 
@@ -99,13 +111,21 @@ export default function ResearchPage(): React.ReactElement {
                   onKeyDown={(e) => e.key === 'Enter' && void runScrape()}
                   className="flex-1"
                 />
-                <Button onClick={runScrape} disabled={!api || !scrapeKeyword.trim() || scrapeLoading}>
-                  {scrapeLoading ? <RefreshCw size={14} className="animate-spin" /> : <Search size={14} />}
+                <Button
+                  onClick={runScrape}
+                  disabled={!api || !scrapeKeyword.trim() || scrapeLoading}
+                >
+                  {scrapeLoading ? (
+                    <RefreshCw size={14} className="animate-spin" />
+                  ) : (
+                    <Search size={14} />
+                  )}
                   Scrape
                 </Button>
               </div>
               <p className="text-xs text-ink-muted mt-2">
-                Pulls live article headlines from Google News — turn them into content ideas.
+                Pulls live article headlines from Google News — turn them into
+                content ideas.
               </p>
             </CardContent>
           </Card>
@@ -126,16 +146,25 @@ export default function ResearchPage(): React.ReactElement {
           {scrapeIdeas.length > 0 && (
             <div className="space-y-2">
               {scrapeIdeas.map((idea, i) => (
-                <Card key={i} className="hover:border-border/80 transition-colors">
+                <Card
+                  key={i}
+                  className="hover:border-border/80 transition-colors"
+                >
                   <CardContent className="pt-3 pb-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-ink-strong leading-snug">{idea.title}</p>
+                        <p className="text-sm font-medium text-ink-strong leading-snug">
+                          {idea.title}
+                        </p>
                         {idea.snippet && (
-                          <p className="text-xs text-ink-muted mt-1 line-clamp-2">{idea.snippet}</p>
+                          <p className="text-xs text-ink-muted mt-1 line-clamp-2">
+                            {idea.snippet}
+                          </p>
                         )}
                         <div className="flex items-center gap-2 mt-1.5">
-                          <Badge variant="secondary" className="text-xs">{idea.source}</Badge>
+                          <Badge variant="secondary" className="text-xs">
+                            {idea.source}
+                          </Badge>
                           {idea.publishedAt && (
                             <span className="text-xs text-ink-subtle">
                               {new Date(idea.publishedAt).toLocaleDateString()}
@@ -163,160 +192,186 @@ export default function ResearchPage(): React.ReactElement {
 
           {!scrapeLoading && scrapeIdeas.length === 0 && !scrapeError && (
             <p className="text-center text-ink-muted py-12 text-sm">
-              Enter a keyword and click Scrape to pull content ideas from Google News.
+              Enter a keyword and click Scrape to pull content ideas from Google
+              News.
             </p>
           )}
         </div>
       )}
 
       {/* ── Trending Tab ── */}
-      {activeTab === 'trending' && <>
+      {activeTab === 'trending' && (
+        <>
+          {/* Search bar */}
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter your niche (e.g. real estate, fitness, tech)"
+                  value={nicheInput}
+                  onChange={(e) => setNicheInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  className="flex-1"
+                />
+                <Button onClick={handleSearch} disabled={!api}>
+                  <Search size={15} />
+                  Search
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* Search bar */}
-      <Card>
-        <CardContent className="pt-4">
-          <div className="flex gap-2">
-            <Input
-              placeholder="Enter your niche (e.g. real estate, fitness, tech)"
-              value={nicheInput}
-              onChange={(e) => setNicheInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="flex-1"
-            />
-            <Button onClick={handleSearch} disabled={!api}>
-              <Search size={15} />
-              Search
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          {/* Error */}
+          {error && (
+            <div className="rounded-md border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
+              {error}
+            </div>
+          )}
 
-      {/* Error */}
-      {error && (
-        <div className="rounded-md border border-error/30 bg-error/10 px-4 py-3 text-sm text-error">
-          {error}
-        </div>
-      )}
+          {/* API not ready */}
+          {!api && !loading && (
+            <div className="rounded-md border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
+              API not ready — waiting for the embedded server to start.
+            </div>
+          )}
 
-      {/* API not ready */}
-      {!api && !loading && (
-        <div className="rounded-md border border-warning/30 bg-warning/10 px-4 py-3 text-sm text-warning">
-          API not ready — waiting for the embedded server to start.
-        </div>
-      )}
+          {/* Cache status row */}
+          {cachedUntil && (
+            <div className="flex items-center flex-wrap gap-2 text-xs text-ink-muted">
+              <span>
+                Cache expires: {new Date(cachedUntil).toLocaleTimeString()}
+              </span>
+              <span>·</span>
+              <span>Sources:</span>
+              {sources.map((s) => (
+                <Badge
+                  key={s}
+                  variant={SOURCE_VARIANT[s] ?? 'secondary'}
+                  className="text-xs"
+                >
+                  {s}
+                </Badge>
+              ))}
+              <Button
+                size="icon-sm"
+                variant="ghost"
+                onClick={refresh}
+                className="ml-1 h-6 w-6"
+                title="Force refresh"
+              >
+                <RefreshCw size={12} />
+              </Button>
+            </div>
+          )}
 
-      {/* Cache status row */}
-      {cachedUntil && (
-        <div className="flex items-center flex-wrap gap-2 text-xs text-ink-muted">
-          <span>Cache expires: {new Date(cachedUntil).toLocaleTimeString()}</span>
-          <span>·</span>
-          <span>Sources:</span>
-          {sources.map((s) => (
-            <Badge key={s} variant={SOURCE_VARIANT[s] ?? 'secondary'} className="text-xs">
-              {s}
-            </Badge>
-          ))}
-          <Button
-            size="icon-sm"
-            variant="ghost"
-            onClick={refresh}
-            className="ml-1 h-6 w-6"
-            title="Force refresh"
-          >
-            <RefreshCw size={12} />
-          </Button>
-        </div>
-      )}
+          {/* Loading skeleton */}
+          {loading && signals.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 gap-3 text-ink-muted text-sm">
+              <RefreshCw size={24} className="animate-spin text-accent" />
+              Fetching trending signals…
+            </div>
+          )}
 
-      {/* Loading skeleton */}
-      {loading && signals.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-16 gap-3 text-ink-muted text-sm">
-          <RefreshCw size={24} className="animate-spin text-accent" />
-          Fetching trending signals…
-        </div>
-      )}
+          {/* Empty state */}
+          {!loading && signals.length === 0 && api && (
+            <p className="text-center text-ink-muted py-12 text-sm">
+              {debouncedNiche
+                ? `No signals found for "${debouncedNiche}"`
+                : 'Enter a niche above and click Search to load trending signals.'}
+            </p>
+          )}
 
-      {/* Empty state */}
-      {!loading && signals.length === 0 && api && (
-        <p className="text-center text-ink-muted py-12 text-sm">
-          {debouncedNiche
-            ? `No signals found for "${debouncedNiche}"`
-            : 'Enter a niche above and click Search to load trending signals.'}
-        </p>
-      )}
+          {/* Signals list */}
+          {signals.length > 0 && (
+            <div className="space-y-2">
+              {signals.map((signal, index) => (
+                <Card
+                  key={signal.id}
+                  className="hover:border-border/80 transition-colors"
+                >
+                  <CardContent className="pt-3 pb-3">
+                    <div className="flex items-start gap-3">
+                      {/* Rank */}
+                      <span className="text-lg font-bold text-accent min-w-[2rem] text-center leading-tight">
+                        {index + 1}
+                      </span>
 
-      {/* Signals list */}
-      {signals.length > 0 && (
-        <div className="space-y-2">
-          {signals.map((signal, index) => (
-            <Card key={signal.id} className="hover:border-border/80 transition-colors">
-              <CardContent className="pt-3 pb-3">
-                <div className="flex items-start gap-3">
-                  {/* Rank */}
-                  <span className="text-lg font-bold text-accent min-w-[2rem] text-center leading-tight">
-                    {index + 1}
-                  </span>
+                      <div className="flex-1 min-w-0 space-y-2">
+                        {/* Keyword + source */}
+                        <div className="flex items-center flex-wrap gap-2">
+                          <span className="text-sm font-semibold text-ink-strong">
+                            {signal.keyword}
+                          </span>
+                          <Badge
+                            variant={
+                              SOURCE_VARIANT[signal.source] ?? 'secondary'
+                            }
+                            className="text-xs"
+                          >
+                            {signal.source}
+                          </Badge>
+                        </div>
 
-                  <div className="flex-1 min-w-0 space-y-2">
-                    {/* Keyword + source */}
-                    <div className="flex items-center flex-wrap gap-2">
-                      <span className="text-sm font-semibold text-ink-strong">{signal.keyword}</span>
-                      <Badge variant={SOURCE_VARIANT[signal.source] ?? 'secondary'} className="text-xs">
-                        {signal.source}
-                      </Badge>
-                    </div>
+                        {/* Hashtags */}
+                        {signal.hashtags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {signal.hashtags.map((tag) => (
+                              <Badge
+                                key={tag}
+                                variant="info"
+                                className="text-xs"
+                              >
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
 
-                    {/* Hashtags */}
-                    {signal.hashtags.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
-                        {signal.hashtags.map((tag) => (
-                          <Badge key={tag} variant="info" className="text-xs">{tag}</Badge>
-                        ))}
+                        {/* Score bars */}
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                          {signal.nicheScore > 0 && (
+                            <div>
+                              <p className="text-xs text-ink-muted flex items-center gap-1 mb-1">
+                                <Zap size={10} /> Niche match{' '}
+                                {signal.nicheScore}%
+                              </p>
+                              <Progress
+                                value={signal.nicheScore}
+                                className="h-1.5"
+                                indicatorClassName={cn(
+                                  signal.nicheScore >= 70
+                                    ? 'bg-success'
+                                    : signal.nicheScore >= 40
+                                      ? 'bg-warning'
+                                      : 'bg-error',
+                                )}
+                              />
+                            </div>
+                          )}
+
+                          {signal.trafficScore !== null && (
+                            <div>
+                              <p className="text-xs text-ink-muted flex items-center gap-1 mb-1">
+                                <Flame size={10} /> Trend volume{' '}
+                                {signal.trafficScore}%
+                              </p>
+                              <Progress
+                                value={signal.trafficScore}
+                                className="h-1.5"
+                                indicatorClassName="bg-info"
+                              />
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
-
-                    {/* Score bars */}
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-1">
-                      {signal.nicheScore > 0 && (
-                        <div>
-                          <p className="text-xs text-ink-muted flex items-center gap-1 mb-1">
-                            <Zap size={10} /> Niche match {signal.nicheScore}%
-                          </p>
-                          <Progress
-                            value={signal.nicheScore}
-                            className="h-1.5"
-                            indicatorClassName={cn(
-                              signal.nicheScore >= 70
-                                ? 'bg-success'
-                                : signal.nicheScore >= 40
-                                  ? 'bg-warning'
-                                  : 'bg-error',
-                            )}
-                          />
-                        </div>
-                      )}
-
-                      {signal.trafficScore !== null && (
-                        <div>
-                          <p className="text-xs text-ink-muted flex items-center gap-1 mb-1">
-                            <Flame size={10} /> Trend volume {signal.trafficScore}%
-                          </p>
-                          <Progress
-                            value={signal.trafficScore}
-                            className="h-1.5"
-                            indicatorClassName="bg-info"
-                          />
-                        </div>
-                      )}
                     </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
       )}
-      </>}
     </div>
   );
 }

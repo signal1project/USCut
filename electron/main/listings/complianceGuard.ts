@@ -27,39 +27,50 @@ export interface ComplianceFlag {
 // ── Fair Housing protected-class terms ─────────────────────────────────────
 // These terms signal discriminatory preference/limitation when used to
 // describe a property's desirability or target audience.
-const FAIR_HOUSING_BLOCKED: { pattern: RegExp; rule: string; detail: string }[] = [
+const FAIR_HOUSING_BLOCKED: {
+  pattern: RegExp;
+  rule: string;
+  detail: string;
+}[] = [
   // Race / National Origin
   {
     pattern:
       /\b(white[s]?\s+(only|preferred|neighborhood|area)|blacks?\s+only|no\s+(blacks?|whites?|asians?|hispanics?|latinos?|mexicans?))\b/i,
     rule: 'FH-RACE',
-    detail: 'Explicit racial preference or exclusion is prohibited under the Fair Housing Act.',
+    detail:
+      'Explicit racial preference or exclusion is prohibited under the Fair Housing Act.',
   },
   // Religion
   {
     pattern:
       /\b(christian[s]?\s+(only|community|neighborhood)|jewish\s+(only|neighborhood)|no\s+(muslims?|christians?|jews?|catholics?))\b/i,
     rule: 'FH-RELIGION',
-    detail: 'Religious preference or exclusion is prohibited under the Fair Housing Act.',
+    detail:
+      'Religious preference or exclusion is prohibited under the Fair Housing Act.',
   },
   // Familial Status
   {
     pattern:
       /\b(no\s+(kids?|children|families|families\s+with\s+children)|adults?\s+only|mature\s+(adults?|community)|child[- ]?free)\b/i,
     rule: 'FH-FAMILIAL',
-    detail: 'Excluding families with children is prohibited. Exception: qualifying 55+ communities.',
+    detail:
+      'Excluding families with children is prohibited. Exception: qualifying 55+ communities.',
   },
   // Disability
   {
-    pattern: /\b(no\s+(disabled|handicapped|wheelchairs?)|able[- ]?bodied\s+only)\b/i,
+    pattern:
+      /\b(no\s+(disabled|handicapped|wheelchairs?)|able[- ]?bodied\s+only)\b/i,
     rule: 'FH-DISABILITY',
-    detail: 'Excluding persons with disabilities is prohibited under the Fair Housing Act.',
+    detail:
+      'Excluding persons with disabilities is prohibited under the Fair Housing Act.',
   },
   // Sex / Gender
   {
-    pattern: /\b(females?\s+only|males?\s+only|no\s+(men|women|females?|males?))\b/i,
+    pattern:
+      /\b(females?\s+only|males?\s+only|no\s+(men|women|females?|males?))\b/i,
     rule: 'FH-SEX',
-    detail: 'Sex-based preference or exclusion is prohibited under the Fair Housing Act.',
+    detail:
+      'Sex-based preference or exclusion is prohibited under the Fair Housing Act.',
   },
   // Steering language (subtle discrimination signals)
   {
@@ -74,23 +85,27 @@ const FAIR_HOUSING_BLOCKED: { pattern: RegExp; rule: string; detail: string }[] 
 const FAIR_HOUSING_WARN: { pattern: RegExp; rule: string; detail: string }[] = [
   // Neighbourhood descriptions that proxy for protected class
   {
-    pattern: /\b(exclusive|prestigious|elite|high[- ]class)\s+(neighborhood|area|community)\b/i,
+    pattern:
+      /\b(exclusive|prestigious|elite|high[- ]class)\s+(neighborhood|area|community)\b/i,
     rule: 'FH-EXCLUSIVITY-WARN',
     detail:
       'Terms implying exclusivity can signal preference for certain groups. Consider neutral phrasing.',
   },
   // "Perfect for" targeting demographics
   {
-    pattern: /\bperfect\s+for\s+(young\s+professionals?|retirees|empty\s+nesters?|singles?)\b/i,
+    pattern:
+      /\bperfect\s+for\s+(young\s+professionals?|retirees|empty\s+nesters?|singles?)\b/i,
     rule: 'FH-TARGETING-WARN',
-    detail: 'Targeting specific life stages may imply preference against families with children.',
+    detail:
+      'Targeting specific life stages may imply preference against families with children.',
   },
 ];
 
 // ── RESPA rules ───────────────────────────────────────────────────────────────
 const RESPA_BLOCKED: { pattern: RegExp; rule: string; detail: string }[] = [
   {
-    pattern: /\b(referral\s+fee|kickback|split\s+commission|fee\s+for\s+referral)\b/i,
+    pattern:
+      /\b(referral\s+fee|kickback|split\s+commission|fee\s+for\s+referral)\b/i,
     rule: 'RESPA-KICKBACK',
     detail: 'Advertising referral fees or kickbacks violates RESPA § 8.',
   },
@@ -102,7 +117,8 @@ const DISCLOSURE_WARN: { pattern: RegExp; rule: string; detail: string }[] = [
   {
     pattern: /\b(investment\s+property|guaranteed\s+(return|income|rent))\b/i,
     rule: 'DISCLOSURE-INVESTMENT',
-    detail: 'Investment return claims require factual substantiation and disclosure.',
+    detail:
+      'Investment return claims require factual substantiation and disclosure.',
   },
   {
     pattern: /\b(as[- ]is|sold\s+as[- ]is)\b/i,
@@ -129,17 +145,35 @@ export class ComplianceGuard {
 
     for (const rule of FAIR_HOUSING_WARN) {
       const m = content.match(rule.pattern);
-      if (m) flags.push({ rule: rule.rule, severity: 'warn', matched: m[0], detail: rule.detail });
+      if (m)
+        flags.push({
+          rule: rule.rule,
+          severity: 'warn',
+          matched: m[0],
+          detail: rule.detail,
+        });
     }
 
     for (const rule of RESPA_BLOCKED) {
       const m = content.match(rule.pattern);
-      if (m) flags.push({ rule: rule.rule, severity: 'block', matched: m[0], detail: rule.detail });
+      if (m)
+        flags.push({
+          rule: rule.rule,
+          severity: 'block',
+          matched: m[0],
+          detail: rule.detail,
+        });
     }
 
     for (const rule of DISCLOSURE_WARN) {
       const m = content.match(rule.pattern);
-      if (m) flags.push({ rule: rule.rule, severity: 'warn', matched: m[0], detail: rule.detail });
+      if (m)
+        flags.push({
+          rule: rule.rule,
+          severity: 'warn',
+          matched: m[0],
+          detail: rule.detail,
+        });
     }
 
     const hasBlock = flags.some((f) => f.severity === 'block');

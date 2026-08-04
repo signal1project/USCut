@@ -42,7 +42,10 @@ export class OllamaProvider implements AIProvider {
     private readonly model = 'llama3',
   ) {}
 
-  async generateText(prompt: string, options?: GenerateTextOptions): Promise<string> {
+  async generateText(
+    prompt: string,
+    options?: GenerateTextOptions,
+  ): Promise<string> {
     const res = await this.client.chat.completions.create({
       model: this.model,
       max_tokens: resolveMaxTokens(options),
@@ -54,7 +57,10 @@ export class OllamaProvider implements AIProvider {
     return (res.choices[0]?.message?.content ?? '').trim();
   }
 
-  async generateImage(_prompt: string, _options?: GenerateImageOptions): Promise<string> {
+  async generateImage(
+    _prompt: string,
+    _options?: GenerateImageOptions,
+  ): Promise<string> {
     throw new Error(
       'Ollama does not support image generation. Use the OpenAI provider for images.',
     );

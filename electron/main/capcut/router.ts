@@ -28,7 +28,9 @@ export function createCapCutRouter(service: CapCutPackageService): Router {
     '/packages',
     validateBody(createPackageSchema),
     asyncHandler(async (req, res) => {
-      const result = service.createPackage(req.body as z.infer<typeof createPackageSchema>);
+      const result = service.createPackage(
+        req.body as z.infer<typeof createPackageSchema>,
+      );
       res.json(result);
     }),
   );

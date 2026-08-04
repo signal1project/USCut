@@ -124,6 +124,7 @@ function useLoading() {
 
 // ----------------------------------------------------------------------
 
+// eslint-disable-next-line react-hooks/rules-of-hooks -- useLoading is a plain factory fn, not a React hook (no React runtime in preload)
 const { appendLoading, removeLoading } = useLoading();
 domReady().then(appendLoading);
 

@@ -1,7 +1,11 @@
 import { createHash, randomBytes } from 'node:crypto';
 
 function base64url(buf: Buffer): string {
-  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return buf
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
 }
 
 /** RFC 7636 code_verifier: 43–128 chars of unreserved characters. */

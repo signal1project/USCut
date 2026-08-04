@@ -58,7 +58,12 @@ export class PublishEngine {
     const account = await this.deps.accounts.getById(accountId);
     if (!account) {
       // No history row possible without a known platform; surface as failure.
-      return { accountId, status: PubStatus.FAILED, error: 'account_not_found', historyId: '' };
+      return {
+        accountId,
+        status: PubStatus.FAILED,
+        error: 'account_not_found',
+        historyId: '',
+      };
     }
 
     const record = await this.deps.history.create({
@@ -74,7 +79,11 @@ export class PublishEngine {
       const adapter = this.deps.resolveAdapter(account.platform);
       const result = await this.deps.queue.run(account.platform, () =>
         adapter.publish(
-          { accessToken: token, externalId: account.externalId, meta: account.metadata },
+          {
+            accessToken: token,
+            externalId: account.externalId,
+            meta: account.metadata,
+          },
           {
             pubType: content.pubType,
             body: content.body,
@@ -89,11 +98,16 @@ export class PublishEngine {
         externalPostId: result.externalPostId,
         publishedAt: this.now(),
       });
-      await this.deps.audit.record(AuditAction.PUBLISH, 'mas_publish_history', record.id, {
-        accountId,
-        platform: account.platform,
-        externalPostId: result.externalPostId,
-      });
+      await this.deps.audit.record(
+        AuditAction.PUBLISH,
+        'mas_publish_history',
+        record.id,
+        {
+          accountId,
+          platform: account.platform,
+          externalPostId: result.externalPostId,
+        },
+      );
       return {
         accountId,
         status: PubStatus.PUBLISHED,
@@ -102,18 +116,34 @@ export class PublishEngine {
       };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      await this.deps.history.update(record.id, { status: PubStatus.FAILED, error: message });
-      await this.deps.audit.record(AuditAction.PUBLISH, 'mas_publish_history', record.id, {
-        accountId,
-        platform: account.platform,
+      await this.deps.history.update(record.id, {
+        status: PubStatus.FAILED,
         error: message,
       });
-      return { accountId, status: PubStatus.FAILED, error: message, historyId: record.id };
+      await this.deps.audit.record(
+        AuditAction.PUBLISH,
+        'mas_publish_history',
+        record.id,
+        {
+          accountId,
+          platform: account.platform,
+          error: message,
+        },
+      );
+      return {
+        accountId,
+        status: PubStatus.FAILED,
+        error: message,
+        historyId: record.id,
+      };
     }
   }
 
   /** Publish immediately to every account, returning a combined outcome. */
-  async publishNow(accountIds: string[], content: PublishContentInput): Promise<PublishOutcome> {
+  async publishNow(
+    accountIds: string[],
+    content: PublishContentInput,
+  ): Promise<PublishOutcome> {
     const results = await Promise.all(
       accountIds.map((id) => this.publishToAccount(id, content)),
     );
@@ -148,11 +178,16 @@ export class PublishEngine {
         runAt,
         status: PubStatus.QUEUED,
       });
-      await this.deps.audit.record(AuditAction.SCHEDULE, 'mas_scheduled_post', row.id, {
-        accountId,
-        platform: account.platform,
-        runAt: runAt.toISOString(),
-      });
+      await this.deps.audit.record(
+        AuditAction.SCHEDULE,
+        'mas_scheduled_post',
+        row.id,
+        {
+          accountId,
+          platform: account.platform,
+          runAt: runAt.toISOString(),
+        },
+      );
       ids.push(row.id);
     }
     return { scheduledPostIds: ids };

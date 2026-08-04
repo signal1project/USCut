@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { computeBestTimes, nextOccurrence, slotLabel, DEFAULT_SLOTS } from '../bestTimes';
+import {
+  computeBestTimes,
+  nextOccurrence,
+  slotLabel,
+  DEFAULT_SLOTS,
+} from '../bestTimes';
 import { buildBioPageHtml } from '../bioPage';
 
 describe('computeBestTimes', () => {
@@ -25,9 +30,15 @@ describe('computeBestTimes', () => {
   });
 
   it('labels slots readably', () => {
-    expect(slotLabel({ dayOfWeek: 2, hour: 10, avgEngagements: 0, sampleSize: 0 })).toBe('Tuesday 10:00 AM');
-    expect(slotLabel({ dayOfWeek: 0, hour: 19, avgEngagements: 0, sampleSize: 0 })).toBe('Sunday 7:00 PM');
-    expect(slotLabel({ dayOfWeek: 6, hour: 0, avgEngagements: 0, sampleSize: 0 })).toBe('Saturday 12:00 AM');
+    expect(
+      slotLabel({ dayOfWeek: 2, hour: 10, avgEngagements: 0, sampleSize: 0 }),
+    ).toBe('Tuesday 10:00 AM');
+    expect(
+      slotLabel({ dayOfWeek: 0, hour: 19, avgEngagements: 0, sampleSize: 0 }),
+    ).toBe('Sunday 7:00 PM');
+    expect(
+      slotLabel({ dayOfWeek: 6, hour: 0, avgEngagements: 0, sampleSize: 0 }),
+    ).toBe('Saturday 12:00 AM');
   });
 });
 
@@ -60,7 +71,13 @@ describe('buildBioPageHtml', () => {
       name: 'Dale <Brown>',
       tagline: 'Houston "Homes" & More',
       links: [{ label: 'Search Homes', url: 'https://example.com/search' }],
-      listings: [{ address: '123 Main St', price: '$425,000', url: 'https://example.com/l/1' }],
+      listings: [
+        {
+          address: '123 Main St',
+          price: '$425,000',
+          url: 'https://example.com/l/1',
+        },
+      ],
     });
     expect(html).toContain('Dale &lt;Brown&gt;');
     expect(html).toContain('Houston &quot;Homes&quot; &amp; More');

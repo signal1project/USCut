@@ -47,7 +47,12 @@ export interface PublishHistoryStore {
   }): Promise<PublishHistoryRecord>;
   update(
     id: string,
-    patch: Partial<Pick<PublishHistoryRecord, 'status' | 'externalPostId' | 'error' | 'publishedAt'>>,
+    patch: Partial<
+      Pick<
+        PublishHistoryRecord,
+        'status' | 'externalPostId' | 'error' | 'publishedAt'
+      >
+    >,
   ): Promise<void>;
 }
 
@@ -59,11 +64,19 @@ export interface ScheduledPostStore {
     runAt: Date;
     status: PubStatus;
   }): Promise<ScheduledPostRecord>;
-  update(id: string, patch: Partial<Pick<ScheduledPostRecord, 'status'>>): Promise<void>;
+  update(
+    id: string,
+    patch: Partial<Pick<ScheduledPostRecord, 'status'>>,
+  ): Promise<void>;
 }
 
 export interface AuditStore {
-  record(action: AuditAction, entity: string, entityId: string, details: Record<string, unknown>): Promise<void>;
+  record(
+    action: AuditAction,
+    entity: string,
+    entityId: string,
+    details: Record<string, unknown>,
+  ): Promise<void>;
 }
 
 // Resolves a fresh access token for an account (wraps OAuth ensureFresh + settings).

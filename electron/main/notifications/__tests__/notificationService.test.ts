@@ -10,12 +10,18 @@ import {
 class FakeOs implements OsNotifier {
   supported = true;
   shown: Array<{ title: string; body: string }> = [];
-  isSupported() { return this.supported; }
-  show(title: string, body: string) { this.shown.push({ title, body }); }
+  isSupported() {
+    return this.supported;
+  }
+  show(title: string, body: string) {
+    this.shown.push({ title, body });
+  }
 }
 class FakeBroadcaster implements RendererBroadcaster {
   sent: Array<{ channel: string; payload: NotificationPayload }> = [];
-  send(channel: string, payload: NotificationPayload) { this.sent.push({ channel, payload }); }
+  send(channel: string, payload: NotificationPayload) {
+    this.sent.push({ channel, payload });
+  }
 }
 
 let os: FakeOs;
@@ -33,7 +39,10 @@ describe('NotificationService', () => {
     svc.success('Published', 'Your post went live');
     expect(bc.sent).toHaveLength(1);
     expect(bc.sent[0].channel).toBe(NOTIFY_CHANNEL);
-    expect(bc.sent[0].payload).toMatchObject({ level: 'success', title: 'Published' });
+    expect(bc.sent[0].payload).toMatchObject({
+      level: 'success',
+      title: 'Published',
+    });
     expect(typeof bc.sent[0].payload.at).toBe('number');
   });
 

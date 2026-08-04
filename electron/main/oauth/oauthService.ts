@@ -1,7 +1,16 @@
-import { PLATFORM_CONFIG, tokenBundleSchema, type Platform, type TokenBundle } from '@mas/types';
+import {
+  PLATFORM_CONFIG,
+  tokenBundleSchema,
+  type Platform,
+  type TokenBundle,
+} from '@mas/types';
 import { Injectable } from '../core/decorators';
 import { CredentialManager } from '../credentials/credentialManager';
-import { challengeFromVerifier, generateCodeVerifier, generateState } from './pkce';
+import {
+  challengeFromVerifier,
+  generateCodeVerifier,
+  generateState,
+} from './pkce';
 
 export interface OAuthClientConfig {
   clientId: string;
@@ -46,7 +55,10 @@ export class OAuthService {
   ) {}
 
   /** Build the platform authorize URL plus the state/verifier to retain for the callback. */
-  buildAuthorizeUrl(platform: Platform, config: OAuthClientConfig): AuthorizeRequest {
+  buildAuthorizeUrl(
+    platform: Platform,
+    config: OAuthClientConfig,
+  ): AuthorizeRequest {
     const { oauth } = PLATFORM_CONFIG[platform];
     const state = generateState();
     const params = new URLSearchParams({
@@ -65,7 +77,11 @@ export class OAuthService {
     }
 
     const sep = oauth.authorizeUrl.includes('?') ? '&' : '?';
-    return { url: `${oauth.authorizeUrl}${sep}${params.toString()}`, state, codeVerifier };
+    return {
+      url: `${oauth.authorizeUrl}${sep}${params.toString()}`,
+      state,
+      codeVerifier,
+    };
   }
 
   /** Extract the authorization code from a redirect URL, enforcing state match. */
@@ -74,7 +90,9 @@ export class OAuthService {
     const error = url.searchParams.get('error');
     if (error) {
       const desc = url.searchParams.get('error_description');
-      throw new Error(`OAuth callback error: ${error}${desc ? ` — ${desc}` : ''}`);
+      throw new Error(
+        `OAuth callback error: ${error}${desc ? ` — ${desc}` : ''}`,
+      );
     }
     const state = url.searchParams.get('state');
     if (!state || state !== expectedState) {
@@ -99,7 +117,8 @@ export class OAuthService {
       client_id: config.clientId,
     };
     if (config.clientSecret) body.client_secret = config.clientSecret;
-    if (oauth.usesPkce && args.codeVerifier) body.code_verifier = args.codeVerifier;
+    if (oauth.usesPkce && args.codeVerifier)
+      body.code_verifier = args.codeVerifier;
 
     const resp = await this.http.postForm(oauth.tokenUrl, body);
     return this.toBundle(resp);
@@ -135,7 +154,8 @@ export class OAuthService {
     now: Date = new Date(),
   ): Promise<TokenBundle> {
     const bundle = this.credentials.retrieve(credentialRef);
-    if (!bundle) throw new Error(`No stored credentials for ref "${credentialRef}".`);
+    if (!bundle)
+      throw new Error(`No stored credentials for ref "${credentialRef}".`);
 
     const needsRefresh =
       bundle.expiresAt !== null &&
@@ -143,7 +163,9 @@ export class OAuthService {
 
     if (!needsRefresh) return bundle;
     if (!bundle.refreshToken) {
-      throw new Error(`Token for "${credentialRef}" expired and no refresh token is available.`);
+      throw new Error(
+        `Token for "${credentialRef}" expired and no refresh token is available.`,
+      );
     }
 
     const refreshed = await this.refresh(platform, config, bundle.refreshToken);
@@ -151,7 +173,10 @@ export class OAuthService {
     return refreshed;
   }
 
-  private toBundle(resp: TokenEndpointResponse, fallbackRefresh?: string): TokenBundle {
+  private toBundle(
+    resp: TokenEndpointResponse,
+    fallbackRefresh?: string,
+  ): TokenBundle {
     const obtainedAt = new Date();
     const expiresAt =
       typeof resp.expires_in === 'number'

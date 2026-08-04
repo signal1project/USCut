@@ -1,4 +1,10 @@
-import type { AgentAdapter, AgentArtifact, AgentTaskInput, AgentTaskResult, HermesAgentAdapterConfig } from './types';
+import type {
+  AgentAdapter,
+  AgentArtifact,
+  AgentTaskInput,
+  AgentTaskResult,
+  HermesAgentAdapterConfig,
+} from './types';
 
 const DEFAULT_HERMES_ENDPOINT = 'http://127.0.0.1:18790/api/agent-task';
 const DEFAULT_HERMES_PROFILE = 'omobono';
@@ -12,8 +18,14 @@ export class HermesAgentAdapter implements AgentAdapter {
   private readonly fetcher: typeof fetch;
 
   constructor(config: HermesAgentAdapterConfig = {}) {
-    this.endpoint = config.endpoint ?? process.env.MAS_HERMES_AGENT_ENDPOINT ?? DEFAULT_HERMES_ENDPOINT;
-    this.profile = config.profile ?? process.env.MAS_HERMES_AGENT_PROFILE ?? DEFAULT_HERMES_PROFILE;
+    this.endpoint =
+      config.endpoint ??
+      process.env.MAS_HERMES_AGENT_ENDPOINT ??
+      DEFAULT_HERMES_ENDPOINT;
+    this.profile =
+      config.profile ??
+      process.env.MAS_HERMES_AGENT_PROFILE ??
+      DEFAULT_HERMES_PROFILE;
     this.fetcher = config.fetcher ?? fetch;
   }
 
@@ -26,10 +38,13 @@ export class HermesAgentAdapter implements AgentAdapter {
       });
 
       if (!resp.ok) {
-        return this.blocked(input, `Hermes adapter received HTTP ${resp.status} from ${this.endpoint}`);
+        return this.blocked(
+          input,
+          `Hermes adapter received HTTP ${resp.status} from ${this.endpoint}`,
+        );
       }
 
-      const body = await resp.json() as {
+      const body = (await resp.json()) as {
         summary?: string;
         output?: unknown;
         artifacts?: AgentArtifact[];
@@ -45,7 +60,10 @@ export class HermesAgentAdapter implements AgentAdapter {
       };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      return this.blocked(input, `Hermes adapter could not reach ${this.endpoint}: ${message}`);
+      return this.blocked(
+        input,
+        `Hermes adapter could not reach ${this.endpoint}: ${message}`,
+      );
     }
   }
 

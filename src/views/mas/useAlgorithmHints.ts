@@ -42,7 +42,11 @@ export function useAlgorithmHints(
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load algorithm hints');
+          setError(
+            err instanceof Error
+              ? err.message
+              : 'Failed to load algorithm hints',
+          );
           setLoading(false);
         }
       });

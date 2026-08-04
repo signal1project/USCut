@@ -29,7 +29,10 @@ export function createAlgorithmRouter(agent: PlatformAlgorithmAgent): Router {
         // Validate each platform name.
         const parsed = z.array(z.enum(PLATFORMS)).safeParse(names);
         if (!parsed.success) {
-          res.status(400).json({ error: 'Invalid platform in list', details: parsed.error.errors });
+          res.status(400).json({
+            error: 'Invalid platform in list',
+            details: parsed.error.errors,
+          });
           return;
         }
         res.json(agent.getHintsForPlatforms(parsed.data));

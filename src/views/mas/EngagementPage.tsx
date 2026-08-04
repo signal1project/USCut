@@ -5,7 +5,9 @@ import { PlatformBadge, StatusTag, type EngagementItem } from '@mas/ui';
 import { useMasApi } from './useMasApi';
 import {
   Button,
-  Card, CardHeader, CardTitle, CardContent,
+  Card,
+  CardHeader,
+  CardContent,
   Textarea,
   Badge,
 } from '@/components/ui';
@@ -63,8 +65,9 @@ export default function EngagementPage(): React.ReactElement {
         <div>
           <h2 className="text-lg font-semibold text-ink-strong">Inbox</h2>
           <p className="text-xs text-ink-muted mt-0.5">
-            Comments with AI-drafted replies — edit, approve, or dismiss. Platform DMs land here
-            once the platform OAuth apps grant messaging scopes.
+            Comments with AI-drafted replies — edit, approve, or dismiss.
+            Platform DMs land here once the platform OAuth apps grant messaging
+            scopes.
           </p>
         </div>
         <Button variant="secondary" size="sm" onClick={refresh} disabled={!api}>
@@ -74,7 +77,9 @@ export default function EngagementPage(): React.ReactElement {
       </div>
 
       {items.length === 0 ? (
-        <p className="text-center text-ink-muted py-12 text-sm">No pending comments</p>
+        <p className="text-center text-ink-muted py-12 text-sm">
+          No pending comments
+        </p>
       ) : (
         <div className="space-y-3">
           {items.map((item) => (
@@ -82,7 +87,9 @@ export default function EngagementPage(): React.ReactElement {
               <CardHeader className="pb-2">
                 <div className="flex items-center flex-wrap gap-2">
                   <PlatformBadge platform={item.platform} />
-                  <span className="text-sm font-medium text-ink-base">@{item.authorHandle}</span>
+                  <span className="text-sm font-medium text-ink-base">
+                    @{item.authorHandle}
+                  </span>
                   <StatusTag status={item.status} />
                   {item.highConversion && (
                     <Badge variant="warning">
@@ -93,12 +100,16 @@ export default function EngagementPage(): React.ReactElement {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                <p className="text-sm text-ink-muted italic">&ldquo;{item.commentText}&rdquo;</p>
+                <p className="text-sm text-ink-muted italic">
+                  &ldquo;{item.commentText}&rdquo;
+                </p>
 
                 <Textarea
                   rows={2}
                   value={drafts[item.id] ?? ''}
-                  onChange={(e) => setDrafts((d) => ({ ...d, [item.id]: e.target.value }))}
+                  onChange={(e) =>
+                    setDrafts((d) => ({ ...d, [item.id]: e.target.value }))
+                  }
                   placeholder="AI-drafted reply…"
                 />
 

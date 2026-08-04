@@ -1,5 +1,9 @@
 import { BrowserWindow, shell } from 'electron';
-import { challengeFromVerifier, generateCodeVerifier, generateState } from '../oauth/pkce';
+import {
+  challengeFromVerifier,
+  generateCodeVerifier,
+  generateState,
+} from '../oauth/pkce';
 
 export const OPENROUTER_AUTH_URL = 'https://openrouter.ai/auth';
 export const OPENROUTER_KEY_EXCHANGE_URL = 'https://openrouter.ai/auth/keys';
@@ -78,7 +82,9 @@ export async function exchangeOpenRouterCode(
  *  4. Extract `code`; close the window.
  *  5. POST to /auth/keys with code + verifier → return the API key.
  */
-export async function runOpenRouterOAuthFlow(parent: BrowserWindow): Promise<string> {
+export async function runOpenRouterOAuthFlow(
+  parent: BrowserWindow,
+): Promise<string> {
   const pending = buildOpenRouterAuthUrl();
 
   return new Promise<string>((resolve, reject) => {
@@ -129,7 +135,9 @@ export async function runOpenRouterOAuthFlow(parent: BrowserWindow): Promise<str
     authWin.webContents.on('will-navigate', (_e, url) => void handleNav(url));
 
     authWin.on('closed', () => {
-      reject(new Error('OpenRouter auth window was closed without completing.'));
+      reject(
+        new Error('OpenRouter auth window was closed without completing.'),
+      );
     });
   });
 }

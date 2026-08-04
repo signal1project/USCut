@@ -1,7 +1,12 @@
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import type { Platform } from '@mas/types';
 
-export type CampaignPackageStatus = 'needs_approval' | 'approved' | 'scheduled' | 'published' | 'rejected';
+export type CampaignPackageStatus =
+  | 'needs_approval'
+  | 'approved'
+  | 'scheduled'
+  | 'published'
+  | 'rejected';
 
 @Entity({ name: 'mas_campaign_package' })
 export class CampaignPackageModel {

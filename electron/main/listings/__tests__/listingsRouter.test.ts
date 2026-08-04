@@ -79,7 +79,9 @@ beforeAll(async () => {
   // Authed surface (as mounted by the MAS runtime)
   api = await startApiServer({
     token: 'listing-test-token',
-    routes: [{ path: '/listings', router: createListingsRouter(store, { adService }) }],
+    routes: [
+      { path: '/listings', router: createListingsRouter(store, { adService }) },
+    ],
   });
   // Capture-server shape: router WITHOUT adService
   openApi = await startApiServer({
@@ -93,7 +95,10 @@ afterAll(async () => {
   await openApi.close();
 });
 
-const auth = { Authorization: 'Bearer listing-test-token', 'Content-Type': 'application/json' };
+const auth = {
+  Authorization: 'Bearer listing-test-token',
+  'Content-Type': 'application/json',
+};
 
 describe('listings router over HTTP', () => {
   let listingId = '';
@@ -128,15 +133,26 @@ describe('listings router over HTTP', () => {
   });
 
   it('generates a listing ad (template fallback) with compliance results', async () => {
-    const res = await fetch(`${api.url}/api/listings/${listingId}/generate-ad`, {
-      method: 'POST',
-      headers: auth,
-      body: JSON.stringify({ platforms: ['facebook', 'instagram'], highlight: 'lake views' }),
-    });
+    const res = await fetch(
+      `${api.url}/api/listings/${listingId}/generate-ad`,
+      {
+        method: 'POST',
+        headers: auth,
+        body: JSON.stringify({
+          platforms: ['facebook', 'instagram'],
+          highlight: 'lake views',
+        }),
+      },
+    );
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
       provider: string;
-      items: Array<{ platform: string; body: string; complianceOk: boolean; hashtags: string[] }>;
+      items: Array<{
+        platform: string;
+        body: string;
+        complianceOk: boolean;
+        hashtags: string[];
+      }>;
     };
     expect(body.provider).toBe('template');
     expect(body.items).toHaveLength(2);
@@ -155,20 +171,29 @@ describe('listings router over HTTP', () => {
   });
 
   it('400s ad generation with an invalid platform', async () => {
-    const res = await fetch(`${api.url}/api/listings/${listingId}/generate-ad`, {
-      method: 'POST',
-      headers: auth,
-      body: JSON.stringify({ platforms: ['myspace'] }),
-    });
+    const res = await fetch(
+      `${api.url}/api/listings/${listingId}/generate-ad`,
+      {
+        method: 'POST',
+        headers: auth,
+        body: JSON.stringify({ platforms: ['myspace'] }),
+      },
+    );
     expect(res.status).toBe(400);
   });
 
   it('returns 503 for generate-ad on the capture-server shape (no adService)', async () => {
-    const res = await fetch(`${openApi.url}/api/listings/${listingId}/generate-ad`, {
-      method: 'POST',
-      headers: { Authorization: 'Bearer unused', 'Content-Type': 'application/json' },
-      body: JSON.stringify({ platforms: ['facebook'] }),
-    });
+    const res = await fetch(
+      `${openApi.url}/api/listings/${listingId}/generate-ad`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer unused',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ platforms: ['facebook'] }),
+      },
+    );
     expect(res.status).toBe(503);
   });
 });

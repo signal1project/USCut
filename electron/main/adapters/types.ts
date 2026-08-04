@@ -43,8 +43,14 @@ export interface PlatformComment {
 export interface PlatformAdapter {
   readonly platform: Platform;
   publish(ctx: AdapterContext, input: PublishInput): Promise<PublishResult>;
-  fetchMetrics(ctx: AdapterContext, externalPostId: string): Promise<PostMetrics>;
-  fetchComments(ctx: AdapterContext, externalPostId: string): Promise<PlatformComment[]>;
+  fetchMetrics(
+    ctx: AdapterContext,
+    externalPostId: string,
+  ): Promise<PostMetrics>;
+  fetchComments(
+    ctx: AdapterContext,
+    externalPostId: string,
+  ): Promise<PlatformComment[]>;
   replyToComment(
     ctx: AdapterContext,
     externalCommentId: string,

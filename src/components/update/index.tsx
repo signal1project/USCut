@@ -73,7 +73,7 @@ const Update = () => {
   );
 
   const onUpdateDownloaded = useCallback(
-    (_event: Electron.IpcRendererEvent, ...args: any[]) => {
+    (_event: Electron.IpcRendererEvent, ..._args: any[]) => {
       setProgressInfo({ percent: 100 });
       setModalBtn((state) => ({
         ...state,
@@ -98,6 +98,9 @@ const Update = () => {
       window.ipcRenderer.off('download-progress', onDownloadProgress);
       window.ipcRenderer.off('update-downloaded', onUpdateDownloaded);
     };
+    // Handlers are useCallback-memoized with stable ([]) deps; this subscribes once
+    // on mount and tears down once on unmount by design.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

@@ -11,52 +11,82 @@ function probe(overrides: Partial<ProbeResult>): ProbeResult {
 describe('decidePreviewStrategy', () => {
   it('plays h264/aac mp4 directly', () => {
     expect(
-      decidePreviewStrategy(probe({ width: 1920, videoCodec: 'h264', audioCodec: 'aac' }), 'C:\\v\\a.mp4'),
+      decidePreviewStrategy(
+        probe({ width: 1920, videoCodec: 'h264', audioCodec: 'aac' }),
+        'C:\\v\\a.mp4',
+      ),
     ).toBe('direct');
   });
 
   it('remuxes h264/aac in a .mov container (no re-encode)', () => {
     expect(
-      decidePreviewStrategy(probe({ width: 1920, videoCodec: 'h264', audioCodec: 'aac' }), 'C:\\v\\a.mov'),
+      decidePreviewStrategy(
+        probe({ width: 1920, videoCodec: 'h264', audioCodec: 'aac' }),
+        'C:\\v\\a.mov',
+      ),
     ).toBe('remux');
   });
 
   it('transcodes HEVC phone video', () => {
     expect(
-      decidePreviewStrategy(probe({ width: 3840, videoCodec: 'hevc', audioCodec: 'aac' }), 'C:\\v\\IMG_1234.MOV'),
+      decidePreviewStrategy(
+        probe({ width: 3840, videoCodec: 'hevc', audioCodec: 'aac' }),
+        'C:\\v\\IMG_1234.MOV',
+      ),
     ).toBe('transcode');
   });
 
   it('transcodes hevc even in an mp4 container', () => {
     expect(
-      decidePreviewStrategy(probe({ width: 1920, videoCodec: 'hevc', audioCodec: 'aac' }), 'C:\\v\\a.mp4'),
+      decidePreviewStrategy(
+        probe({ width: 1920, videoCodec: 'hevc', audioCodec: 'aac' }),
+        'C:\\v\\a.mp4',
+      ),
     ).toBe('transcode');
   });
 
   it('transcodes when audio codec is unplayable even if video is fine', () => {
     expect(
-      decidePreviewStrategy(probe({ width: 1920, videoCodec: 'h264', audioCodec: 'ac3' }), 'C:\\v\\a.mp4'),
+      decidePreviewStrategy(
+        probe({ width: 1920, videoCodec: 'h264', audioCodec: 'ac3' }),
+        'C:\\v\\a.mp4',
+      ),
     ).toBe('transcode');
   });
 
   it('handles video with no audio stream', () => {
     expect(
-      decidePreviewStrategy(probe({ width: 1280, videoCodec: 'h264', hasAudio: false }), 'C:\\v\\a.mp4'),
+      decidePreviewStrategy(
+        probe({ width: 1280, videoCodec: 'h264', hasAudio: false }),
+        'C:\\v\\a.mp4',
+      ),
     ).toBe('direct');
   });
 
   it('plays common audio files directly', () => {
-    expect(decidePreviewStrategy(probe({ audioCodec: 'mp3' }), 'C:\\a\\song.mp3')).toBe('direct');
-    expect(decidePreviewStrategy(probe({ audioCodec: 'pcm_s16le' }), 'C:\\a\\take.wav')).toBe('direct');
+    expect(
+      decidePreviewStrategy(probe({ audioCodec: 'mp3' }), 'C:\\a\\song.mp3'),
+    ).toBe('direct');
+    expect(
+      decidePreviewStrategy(
+        probe({ audioCodec: 'pcm_s16le' }),
+        'C:\\a\\take.wav',
+      ),
+    ).toBe('direct');
   });
 
   it('transcodes exotic audio containers', () => {
-    expect(decidePreviewStrategy(probe({ audioCodec: 'wmav2' }), 'C:\\a\\old.wma')).toBe('transcode');
+    expect(
+      decidePreviewStrategy(probe({ audioCodec: 'wmav2' }), 'C:\\a\\old.wma'),
+    ).toBe('transcode');
   });
 
   it('remuxes vp9 in mkv', () => {
     expect(
-      decidePreviewStrategy(probe({ width: 1920, videoCodec: 'vp9', audioCodec: 'opus' }), 'C:\\v\\a.mkv'),
+      decidePreviewStrategy(
+        probe({ width: 1920, videoCodec: 'vp9', audioCodec: 'opus' }),
+        'C:\\v\\a.mkv',
+      ),
     ).toBe('remux');
   });
 });

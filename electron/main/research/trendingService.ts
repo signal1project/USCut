@@ -99,7 +99,9 @@ export class TrendingResearchService {
       ? this.fetchers.filter((f) => sources.includes(f.sourceName))
       : this.fetchers;
 
-    const rawBatches = await Promise.allSettled(activeFetchers.map((f) => f.fetch()));
+    const rawBatches = await Promise.allSettled(
+      activeFetchers.map((f) => f.fetch()),
+    );
     const now = new Date();
     const expiresAt = new Date(now.getTime() + CACHE_TTL_MS);
 
@@ -157,20 +159,21 @@ export class TrendingResearchService {
       .execute();
   }
 
-  private toResponse(signals: TrendSignalModel[], limit: number): TrendingResponse {
-    const sorted = signals
-      .slice(0, limit)
-      .map((s) => ({
-        id: s.id,
-        source: s.source,
-        keyword: s.keyword,
-        hashtags: s.hashtags,
-        trafficScore: s.trafficScore,
-        nicheScore: s.nicheScore,
-        niche: s.niche,
-        fetchedAt: s.fetchedAt,
-        expiresAt: s.expiresAt,
-      }));
+  private toResponse(
+    signals: TrendSignalModel[],
+    limit: number,
+  ): TrendingResponse {
+    const sorted = signals.slice(0, limit).map((s) => ({
+      id: s.id,
+      source: s.source,
+      keyword: s.keyword,
+      hashtags: s.hashtags,
+      trafficScore: s.trafficScore,
+      nicheScore: s.nicheScore,
+      niche: s.niche,
+      fetchedAt: s.fetchedAt,
+      expiresAt: s.expiresAt,
+    }));
 
     const maxExpiry = signals.reduce(
       (max, s) => (s.expiresAt > max ? s.expiresAt : max),

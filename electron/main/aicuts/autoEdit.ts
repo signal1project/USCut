@@ -49,8 +49,12 @@ export async function autoEdit(input: AutoEditInput): Promise<AutoEditResult> {
   const userMessage = [
     `Clips: ${JSON.stringify(clipsInfo)}`,
     `Instruction: ${input.prompt}`,
-    input.targetDuration ? `Target duration: ${input.targetDuration} seconds` : '',
-  ].filter(Boolean).join('\n');
+    input.targetDuration
+      ? `Target duration: ${input.targetDuration} seconds`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
 
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
@@ -59,7 +63,8 @@ export async function autoEdit(input: AutoEditInput): Promise<AutoEditResult> {
     messages: [{ role: 'user', content: userMessage }],
   });
 
-  const text = response.content[0].type === 'text' ? response.content[0].text : '{}';
+  const text =
+    response.content[0].type === 'text' ? response.content[0].text : '{}';
 
   try {
     return JSON.parse(text) as AutoEditResult;
@@ -77,7 +82,10 @@ export async function autoEdit(input: AutoEditInput): Promise<AutoEditResult> {
       cursor += c.duration;
       return d;
     });
-    return { decisions, summary: 'Auto-edit fallback: clips placed in original order.' };
+    return {
+      decisions,
+      summary: 'Auto-edit fallback: clips placed in original order.',
+    };
   }
 }
 
@@ -91,13 +99,16 @@ export async function generateCaptionsFromTranscript(
     system: `You are a caption generator. Given a transcript and video clip timeline, return a JSON array of caption segments.
 Each segment: { startTime: number, endTime: number, text: string }
 Times are in seconds. Keep each segment under 10 words. Respond ONLY with valid JSON array.`,
-    messages: [{
-      role: 'user',
-      content: `Transcript: ${transcript}\n\nTotal duration: ${clips.reduce((max, c) => Math.max(max, c.startTime + c.duration - c.trimStart - c.trimEnd), 0).toFixed(1)}s`,
-    }],
+    messages: [
+      {
+        role: 'user',
+        content: `Transcript: ${transcript}\n\nTotal duration: ${clips.reduce((max, c) => Math.max(max, c.startTime + c.duration - c.trimStart - c.trimEnd), 0).toFixed(1)}s`,
+      },
+    ],
   });
 
-  const text = response.content[0].type === 'text' ? response.content[0].text : '[]';
+  const text =
+    response.content[0].type === 'text' ? response.content[0].text : '[]';
   try {
     return JSON.parse(text);
   } catch {

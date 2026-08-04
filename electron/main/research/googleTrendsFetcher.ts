@@ -1,6 +1,7 @@
 import type { TrendFetcher, RawTrendSignal } from './trendingService';
 
-const GOOGLE_TRENDS_RSS = 'https://trends.google.com/trends/trendingsearches/daily/rss?geo=US';
+const GOOGLE_TRENDS_RSS =
+  'https://trends.google.com/trends/trendingsearches/daily/rss?geo=US';
 
 /**
  * Simple XML title extractor — avoids pulling in a full XML parser.
@@ -18,7 +19,9 @@ function extractTitles(xml: string): string[] {
 
 /** Extract approximate traffic volume from <ht:approx_traffic> tags. */
 function extractTrafficScores(xml: string): (number | null)[] {
-  const matches = [...xml.matchAll(/<ht:approx_traffic>([0-9,+KM]+)<\/ht:approx_traffic>/g)];
+  const matches = [
+    ...xml.matchAll(/<ht:approx_traffic>([0-9,+KM]+)<\/ht:approx_traffic>/g),
+  ];
   return matches.map((m) => {
     const raw = m[1].replace(/[,+]/g, '');
     const n = parseInt(raw.replace(/K$/i, '000').replace(/M$/i, '000000'), 10);
@@ -30,7 +33,9 @@ function extractTrafficScores(xml: string): (number | null)[] {
 function toHashtags(keyword: string): string[] {
   const words = keyword.split(/\s+/).filter((w) => w.length > 2);
   const tag = '#' + keyword.replace(/\s+/g, '');
-  const wordTags = words.map((w) => '#' + w.charAt(0).toUpperCase() + w.slice(1));
+  const wordTags = words.map(
+    (w) => '#' + w.charAt(0).toUpperCase() + w.slice(1),
+  );
   return [...new Set([tag, ...wordTags])].slice(0, 5);
 }
 

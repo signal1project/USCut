@@ -10,7 +10,9 @@ import type { PlatformAdapter } from './types';
 
 // Builds the platform→adapter map: Tier 1 are live; Tier 2 are stubs that throw
 // until platform developer approval lands.
-export function buildAdapterRegistry(http: AdapterHttp = axiosHttp): Map<Platform, PlatformAdapter> {
+export function buildAdapterRegistry(
+  http: AdapterHttp = axiosHttp,
+): Map<Platform, PlatformAdapter> {
   const registry = new Map<Platform, PlatformAdapter>();
   registry.set('facebook', new FacebookAdapter(http));
   registry.set('instagram', new InstagramAdapter(http));
@@ -28,6 +30,7 @@ let defaultRegistry: Map<Platform, PlatformAdapter> | null = null;
 export function getAdapter(platform: Platform): PlatformAdapter {
   if (!defaultRegistry) defaultRegistry = buildAdapterRegistry();
   const adapter = defaultRegistry.get(platform);
-  if (!adapter) throw new Error(`No platform adapter registered for "${platform}".`);
+  if (!adapter)
+    throw new Error(`No platform adapter registered for "${platform}".`);
   return adapter;
 }

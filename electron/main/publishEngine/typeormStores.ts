@@ -19,7 +19,9 @@ import type {
 export class TypeOrmAccountStore implements AccountStore {
   constructor(private readonly ds: DataSource) {}
   async getById(id: string): Promise<EngineAccount | null> {
-    const row = await this.ds.getRepository(ConnectedAccountModel).findOneBy({ id });
+    const row = await this.ds
+      .getRepository(ConnectedAccountModel)
+      .findOneBy({ id });
     if (!row) return null;
     return {
       id: row.id,
@@ -41,12 +43,24 @@ export class TypeOrmPublishHistoryStore implements PublishHistoryStore {
     attempts: number;
   }): Promise<PublishHistoryRecord> {
     const repo = this.ds.getRepository(PublishHistoryModel);
-    const saved = await repo.save(repo.create({ ...input, externalPostId: '', error: '', publishedAt: null }));
+    const saved = await repo.save(
+      repo.create({
+        ...input,
+        externalPostId: '',
+        error: '',
+        publishedAt: null,
+      }),
+    );
     return saved as unknown as PublishHistoryRecord;
   }
   async update(
     id: string,
-    patch: Partial<Pick<PublishHistoryRecord, 'status' | 'externalPostId' | 'error' | 'publishedAt'>>,
+    patch: Partial<
+      Pick<
+        PublishHistoryRecord,
+        'status' | 'externalPostId' | 'error' | 'publishedAt'
+      >
+    >,
   ): Promise<void> {
     await this.ds.getRepository(PublishHistoryModel).update({ id }, patch);
   }
@@ -65,7 +79,10 @@ export class TypeOrmScheduledPostStore implements ScheduledPostStore {
     const saved = await repo.save(repo.create(input));
     return saved as unknown as ScheduledPostRecord;
   }
-  async update(id: string, patch: Partial<Pick<ScheduledPostRecord, 'status'>>): Promise<void> {
+  async update(
+    id: string,
+    patch: Partial<Pick<ScheduledPostRecord, 'status'>>,
+  ): Promise<void> {
     await this.ds.getRepository(ScheduledPostModel).update({ id }, patch);
   }
 }

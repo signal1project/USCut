@@ -14,7 +14,9 @@ export interface OpenAILike {
         model: string;
         max_tokens?: number;
         messages: Array<{ role: 'system' | 'user'; content: string }>;
-      }): Promise<{ choices: Array<{ message?: { content?: string | null } }> }>;
+      }): Promise<{
+        choices: Array<{ message?: { content?: string | null } }>;
+      }>;
     };
   };
   images: {
@@ -36,7 +38,10 @@ export class OpenAIProvider implements AIProvider {
     private readonly imageModel = 'dall-e-3',
   ) {}
 
-  async generateText(prompt: string, options?: GenerateTextOptions): Promise<string> {
+  async generateText(
+    prompt: string,
+    options?: GenerateTextOptions,
+  ): Promise<string> {
     const res = await this.client.chat.completions.create({
       model: this.textModel,
       max_tokens: resolveMaxTokens(options),
@@ -48,7 +53,10 @@ export class OpenAIProvider implements AIProvider {
     return (res.choices[0]?.message?.content ?? '').trim();
   }
 
-  async generateImage(prompt: string, options?: GenerateImageOptions): Promise<string> {
+  async generateImage(
+    prompt: string,
+    options?: GenerateImageOptions,
+  ): Promise<string> {
     const size = `${options?.width ?? 1024}x${options?.height ?? 1024}`;
     const res = await this.client.images.generate({
       model: this.imageModel,
@@ -57,7 +65,9 @@ export class OpenAIProvider implements AIProvider {
       n: 1,
     });
     const first = res.data[0];
-    const url = first?.url ?? (first?.b64_json ? `data:image/png;base64,${first.b64_json}` : '');
+    const url =
+      first?.url ??
+      (first?.b64_json ? `data:image/png;base64,${first.b64_json}` : '');
     if (!url) throw new Error('OpenAI returned no image.');
     return url;
   }

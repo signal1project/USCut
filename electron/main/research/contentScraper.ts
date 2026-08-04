@@ -15,7 +15,10 @@ const GOOGLE_NEWS_RSS = (keyword: string) =>
   `https://news.google.com/rss/search?q=${encodeURIComponent(keyword)}&hl=en-US&gl=US&ceid=US:en`;
 
 function extractText(xml: string, tag: string): string[] {
-  const re = new RegExp(`<${tag}[^>]*>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?</${tag}>`, 'gi');
+  const re = new RegExp(
+    `<${tag}[^>]*>(?:<!\\[CDATA\\[)?([\\s\\S]*?)(?:\\]\\]>)?</${tag}>`,
+    'gi',
+  );
   return [...xml.matchAll(re)].map((m) => m[1].trim());
 }
 
@@ -25,11 +28,16 @@ function extractLinks(xml: string): string[] {
 }
 
 function extractPubDates(xml: string): string[] {
-  return [...xml.matchAll(/<pubDate>([^<]+)<\/pubDate>/g)].map((m) => m[1].trim());
+  return [...xml.matchAll(/<pubDate>([^<]+)<\/pubDate>/g)].map((m) =>
+    m[1].trim(),
+  );
 }
 
 function stripHtml(html: string): string {
-  return html.replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim();
+  return html
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }
 
 /**

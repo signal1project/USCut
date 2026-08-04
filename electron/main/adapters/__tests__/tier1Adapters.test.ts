@@ -32,7 +32,12 @@ class FakeHttp implements AdapterHttp {
   }
 }
 
-const text: PublishInput = { pubType: PubType.IMAGE_TEXT, body: 'hi', hashtags: ['#x'], mediaUrls: [] };
+const text: PublishInput = {
+  pubType: PubType.IMAGE_TEXT,
+  body: 'hi',
+  hashtags: ['#x'],
+  mediaUrls: [],
+};
 const photo: PublishInput = { ...text, mediaUrls: ['http://i/1.jpg'] };
 
 let http: FakeHttp;
@@ -48,7 +53,10 @@ describe('InstagramAdapter', () => {
     const res = await ig.publish(ctx, photo);
     expect(res.externalPostId).toBe('IG_POST');
     expect(http.calls[0].url).toContain('/IG_USER/media');
-    expect(http.calls[0].data).toMatchObject({ image_url: 'http://i/1.jpg', caption: 'hi\n\n#x' });
+    expect(http.calls[0].data).toMatchObject({
+      image_url: 'http://i/1.jpg',
+      caption: 'hi\n\n#x',
+    });
     expect(http.calls[1].url).toContain('/IG_USER/media_publish');
     expect(http.calls[1].data).toEqual({ creation_id: 'CONTAINER' });
   });
@@ -61,8 +69,16 @@ describe('InstagramAdapter', () => {
         { name: 'total_interactions', values: [{ value: 9 }] },
       ],
     });
-    const m = await new InstagramAdapter(http).fetchMetrics({ accessToken: 'T', externalId: 'X' }, 'P');
-    expect(m).toEqual({ impressions: 50, reach: 40, engagements: 9, clicks: 0 });
+    const m = await new InstagramAdapter(http).fetchMetrics(
+      { accessToken: 'T', externalId: 'X' },
+      'P',
+    );
+    expect(m).toEqual({
+      impressions: 50,
+      reach: 40,
+      engagements: 9,
+      clicks: 0,
+    });
   });
 });
 
@@ -79,22 +95,43 @@ describe('TwitterAdapter', () => {
   it('clamps over-length tweets', async () => {
     http.queueResponses({ data: { id: 'TW2', text: '' } });
     const long = 'a'.repeat(400);
-    await new TwitterAdapter(http).publish(ctx, { ...text, body: long, hashtags: [] });
+    await new TwitterAdapter(http).publish(ctx, {
+      ...text,
+      body: long,
+      hashtags: [],
+    });
     expect(http.calls[0].data.text.length).toBe(280);
     expect(http.calls[0].data.text.endsWith('…')).toBe(true);
   });
 
   it('sums public metrics into engagements', async () => {
     http.queueResponses({
-      data: { public_metrics: { impression_count: 200, like_count: 5, reply_count: 2, retweet_count: 1, quote_count: 1 } },
+      data: {
+        public_metrics: {
+          impression_count: 200,
+          like_count: 5,
+          reply_count: 2,
+          retweet_count: 1,
+          quote_count: 1,
+        },
+      },
     });
     const m = await new TwitterAdapter(http).fetchMetrics(ctx, 'TW1');
-    expect(m).toEqual({ impressions: 200, reach: 200, engagements: 9, clicks: 0 });
+    expect(m).toEqual({
+      impressions: 200,
+      reach: 200,
+      engagements: 9,
+      clicks: 0,
+    });
   });
 
   it('replies with in_reply_to_tweet_id', async () => {
     http.queueResponses({ data: { id: 'R1', text: 'thx' } });
-    const res = await new TwitterAdapter(http).replyToComment(ctx, 'TW1', 'thx');
+    const res = await new TwitterAdapter(http).replyToComment(
+      ctx,
+      'TW1',
+      'thx',
+    );
     expect(res.externalCommentId).toBe('R1');
     expect(http.calls[0].data.reply).toEqual({ in_reply_to_tweet_id: 'TW1' });
   });
@@ -102,12 +139,21 @@ describe('TwitterAdapter', () => {
 
 describe('PinterestAdapter', () => {
   it('requires a boardId', async () => {
-    await expect(new PinterestAdapter(http).publish({ accessToken: 'T', externalId: 'u' }, photo)).rejects.toThrow(/boardId/);
+    await expect(
+      new PinterestAdapter(http).publish(
+        { accessToken: 'T', externalId: 'u' },
+        photo,
+      ),
+    ).rejects.toThrow(/boardId/);
   });
 
   it('publishes a pin with media_source', async () => {
     http.queueResponses({ id: 'PIN1' });
-    const ctx: AdapterContext = { accessToken: 'T', externalId: 'u', meta: { boardId: 'B1' } };
+    const ctx: AdapterContext = {
+      accessToken: 'T',
+      externalId: 'u',
+      meta: { boardId: 'B1' },
+    };
     const res = await new PinterestAdapter(http).publish(ctx, photo);
     expect(res.externalPostId).toBe('PIN1');
     expect(http.calls[0].data).toMatchObject({
@@ -118,13 +164,37 @@ describe('PinterestAdapter', () => {
 
   it('aggregates daily analytics', async () => {
     http.queueResponses({
-      all: { daily_metrics: [
-        { metrics: { IMPRESSION: 10, SAVE: 1, PIN_CLICK: 2, OUTBOUND_CLICK: 3 } },
-        { metrics: { IMPRESSION: 5, SAVE: 1, PIN_CLICK: 0, OUTBOUND_CLICK: 1 } },
-      ] },
+      all: {
+        daily_metrics: [
+          {
+            metrics: {
+              IMPRESSION: 10,
+              SAVE: 1,
+              PIN_CLICK: 2,
+              OUTBOUND_CLICK: 3,
+            },
+          },
+          {
+            metrics: {
+              IMPRESSION: 5,
+              SAVE: 1,
+              PIN_CLICK: 0,
+              OUTBOUND_CLICK: 1,
+            },
+          },
+        ],
+      },
     });
-    const m = await new PinterestAdapter(http).fetchMetrics({ accessToken: 'T', externalId: 'u' }, 'PIN1');
-    expect(m).toEqual({ impressions: 15, reach: 15, engagements: 4, clicks: 4 });
+    const m = await new PinterestAdapter(http).fetchMetrics(
+      { accessToken: 'T', externalId: 'u' },
+      'PIN1',
+    );
+    expect(m).toEqual({
+      impressions: 15,
+      reach: 15,
+      engagements: 4,
+      clicks: 4,
+    });
   });
 
   it('has no comment support', async () => {
@@ -139,28 +209,43 @@ describe('ThreadsAdapter', () => {
     http.queueResponses({ id: 'C' }, { id: 'TH1' });
     const res = await new ThreadsAdapter(http).publish(ctx, text);
     expect(res.externalPostId).toBe('TH1');
-    expect(http.calls[0].data).toMatchObject({ media_type: 'TEXT', text: 'hi\n\n#x' });
+    expect(http.calls[0].data).toMatchObject({
+      media_type: 'TEXT',
+      text: 'hi\n\n#x',
+    });
     expect(http.calls[1].url).toContain('/threads_publish');
   });
 
   it('uses IMAGE media_type when a photo is present', async () => {
     http.queueResponses({ id: 'C' }, { id: 'TH2' });
     await new ThreadsAdapter(http).publish(ctx, photo);
-    expect(http.calls[0].data).toMatchObject({ media_type: 'IMAGE', image_url: 'http://i/1.jpg' });
+    expect(http.calls[0].data).toMatchObject({
+      media_type: 'IMAGE',
+      image_url: 'http://i/1.jpg',
+    });
   });
 
   it('replies via a reply_to_id container', async () => {
     http.queueResponses({ id: 'C' }, { id: 'THR1' });
     const res = await new ThreadsAdapter(http).replyToComment(ctx, 'TH1', 'yo');
     expect(res.externalCommentId).toBe('THR1');
-    expect(http.calls[0].data).toMatchObject({ reply_to_id: 'TH1', media_type: 'TEXT' });
+    expect(http.calls[0].data).toMatchObject({
+      reply_to_id: 'TH1',
+      media_type: 'TEXT',
+    });
   });
 });
 
 describe('adapter registry', () => {
   it('registers all five Tier 1 platforms', () => {
     const reg = buildAdapterRegistry(http);
-    for (const p of ['facebook', 'instagram', 'twitter', 'pinterest', 'threads'] as const) {
+    for (const p of [
+      'facebook',
+      'instagram',
+      'twitter',
+      'pinterest',
+      'threads',
+    ] as const) {
       expect(reg.get(p)?.platform).toBe(p);
     }
   });

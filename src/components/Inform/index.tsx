@@ -6,7 +6,8 @@ import { SendChannelEnum } from '@@/UtilsEnum';
 const Inform: React.FC = () => {
   useEffect(() => {
     const handler = (_e: unknown, args: unknown) => {
-      const label = typeof args === 'string' ? args : 'Automation task triggered';
+      const label =
+        typeof args === 'string' ? args : 'Automation task triggered';
       toast.info(label);
     };
     window.ipcRenderer.on(SendChannelEnum.AutoRun, handler);

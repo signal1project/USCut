@@ -1,4 +1,9 @@
-import { AuditAction, EngagementStatus, type AIProvider, type Platform } from '@mas/types';
+import {
+  AuditAction,
+  EngagementStatus,
+  type AIProvider,
+  type Platform,
+} from '@mas/types';
 import type {
   AccountStore,
   AdapterResolver,
@@ -75,13 +80,20 @@ function replyPrompt(comment: string): string {
 export class EngagementService {
   constructor(private readonly deps: EngagementServiceDeps) {}
 
-  async ingestComments(accountId: string, externalPostId: string): Promise<EngagementItem[]> {
+  async ingestComments(
+    accountId: string,
+    externalPostId: string,
+  ): Promise<EngagementItem[]> {
     const account = await this.deps.accounts.getById(accountId);
     if (!account) throw new Error(`account_not_found: ${accountId}`);
 
     const token = await this.deps.resolveToken(account);
     const adapter = this.deps.resolveAdapter(account.platform);
-    const ctx = { accessToken: token, externalId: account.externalId, meta: account.metadata };
+    const ctx = {
+      accessToken: token,
+      externalId: account.externalId,
+      meta: account.metadata,
+    };
     const comments = await this.deps.queue.run(account.platform, () =>
       adapter.fetchComments(ctx, externalPostId),
     );
@@ -89,7 +101,8 @@ export class EngagementService {
     const provider = this.deps.resolveProvider();
     const created: EngagementItem[] = [];
     for (const c of comments) {
-      if (await this.deps.store.existsByExternalCommentId(c.externalCommentId)) continue;
+      if (await this.deps.store.existsByExternalCommentId(c.externalCommentId))
+        continue;
       const draftReply = await provider.generateText(replyPrompt(c.text), {
         platform: account.platform,
       });
@@ -121,7 +134,10 @@ export class EngagementService {
   }
 
   /** Post the (optionally overridden) reply and mark approved. */
-  async approveAndReply(itemId: string, overrideText?: string): Promise<{ externalCommentId: string }> {
+  async approveAndReply(
+    itemId: string,
+    overrideText?: string,
+  ): Promise<{ externalCommentId: string }> {
     const item = await this.deps.store.getById(itemId);
     if (!item) throw new Error(`engagement_item_not_found: ${itemId}`);
     if (item.status !== EngagementStatus.PENDING) {
@@ -136,17 +152,29 @@ export class EngagementService {
 
     const token = await this.deps.resolveToken(account);
     const adapter = this.deps.resolveAdapter(account.platform);
-    const ctx = { accessToken: token, externalId: account.externalId, meta: account.metadata };
+    const ctx = {
+      accessToken: token,
+      externalId: account.externalId,
+      meta: account.metadata,
+    };
     try {
       const result = await this.deps.queue.run(account.platform, () =>
         adapter.replyToComment(ctx, item.externalCommentId, reply),
       );
-      await this.deps.store.update(itemId, { status: EngagementStatus.APPROVED, draftReply: reply });
-      await this.deps.audit.record(AuditAction.ENGAGE, 'mas_engagement_queue', itemId, {
-        accountId: item.accountId,
-        platform: item.platform,
-        externalCommentId: item.externalCommentId,
+      await this.deps.store.update(itemId, {
+        status: EngagementStatus.APPROVED,
+        draftReply: reply,
       });
+      await this.deps.audit.record(
+        AuditAction.ENGAGE,
+        'mas_engagement_queue',
+        itemId,
+        {
+          accountId: item.accountId,
+          platform: item.platform,
+          externalCommentId: item.externalCommentId,
+        },
+      );
       return result;
     } catch (err) {
       await this.deps.store.update(itemId, { status: EngagementStatus.FAILED });
@@ -157,6 +185,8 @@ export class EngagementService {
   async dismiss(itemId: string): Promise<void> {
     const item = await this.deps.store.getById(itemId);
     if (!item) throw new Error(`engagement_item_not_found: ${itemId}`);
-    await this.deps.store.update(itemId, { status: EngagementStatus.DISMISSED });
+    await this.deps.store.update(itemId, {
+      status: EngagementStatus.DISMISSED,
+    });
   }
 }

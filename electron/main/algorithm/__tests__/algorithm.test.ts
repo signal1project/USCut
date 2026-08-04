@@ -2,25 +2,49 @@ import { describe, it, expect } from 'vitest';
 import { PLATFORMS } from '@mas/types';
 import { PLATFORM_PLAYBOOKS, playbookToPromptHint } from '../platformPlaybooks';
 import { PlatformAlgorithmAgent } from '../algorithmAgent';
-import { extractHashtags, buildAlgorithmAwareBrief } from '../../content/contentService';
+import {
+  extractHashtags,
+  buildAlgorithmAwareBrief,
+} from '../../content/contentService';
 
 // ── PLATFORM_PLAYBOOKS ────────────────────────────────────────────────────────
 
 describe('PLATFORM_PLAYBOOKS', () => {
   it('contains an entry for every supported platform', () => {
     for (const platform of PLATFORMS) {
-      expect(PLATFORM_PLAYBOOKS[platform], `Missing playbook for ${platform}`).toBeDefined();
+      expect(
+        PLATFORM_PLAYBOOKS[platform],
+        `Missing playbook for ${platform}`,
+      ).toBeDefined();
     }
   });
 
   it('every playbook has required fields', () => {
     for (const [name, playbook] of Object.entries(PLATFORM_PLAYBOOKS)) {
-      expect(playbook.algorithmSummary, `${name}: missing algorithmSummary`).toBeTruthy();
-      expect(playbook.bestFormats.length, `${name}: empty bestFormats`).toBeGreaterThan(0);
-      expect(playbook.optimalTimes.length, `${name}: empty optimalTimes`).toBeGreaterThan(0);
-      expect(playbook.hashtagStrategy, `${name}: missing hashtagStrategy`).toBeTruthy();
-      expect(playbook.contentLength, `${name}: missing contentLength`).toBeTruthy();
-      expect(playbook.rewardSignals.length, `${name}: empty rewardSignals`).toBeGreaterThan(0);
+      expect(
+        playbook.algorithmSummary,
+        `${name}: missing algorithmSummary`,
+      ).toBeTruthy();
+      expect(
+        playbook.bestFormats.length,
+        `${name}: empty bestFormats`,
+      ).toBeGreaterThan(0);
+      expect(
+        playbook.optimalTimes.length,
+        `${name}: empty optimalTimes`,
+      ).toBeGreaterThan(0);
+      expect(
+        playbook.hashtagStrategy,
+        `${name}: missing hashtagStrategy`,
+      ).toBeTruthy();
+      expect(
+        playbook.contentLength,
+        `${name}: missing contentLength`,
+      ).toBeTruthy();
+      expect(
+        playbook.rewardSignals.length,
+        `${name}: empty rewardSignals`,
+      ).toBeGreaterThan(0);
       expect(playbook.hookAdvice, `${name}: missing hookAdvice`).toBeTruthy();
     }
   });
@@ -78,9 +102,17 @@ describe('PlatformAlgorithmAgent', () => {
   });
 
   it('getHintsForPlatforms returns one entry per platform', () => {
-    const hints = agent.getHintsForPlatforms(['instagram', 'twitter', 'facebook']);
+    const hints = agent.getHintsForPlatforms([
+      'instagram',
+      'twitter',
+      'facebook',
+    ]);
     expect(hints).toHaveLength(3);
-    expect(hints.map((h) => h.platform)).toEqual(['instagram', 'twitter', 'facebook']);
+    expect(hints.map((h) => h.platform)).toEqual([
+      'instagram',
+      'twitter',
+      'facebook',
+    ]);
   });
 
   it('getPromptHint returns non-empty string for all platforms', () => {
@@ -101,13 +133,17 @@ describe('buildAlgorithmAwareBrief', () => {
     expect(combined).toContain('[INSTAGRAM ALGORITHM GUIDANCE]');
     expect(combined).toContain('home buying tips');
     // Hint comes before the brief.
-    expect(combined.indexOf('[INSTAGRAM')).toBeLessThan(combined.indexOf('home buying'));
+    expect(combined.indexOf('[INSTAGRAM')).toBeLessThan(
+      combined.indexOf('home buying'),
+    );
   });
 });
 
 describe('extractHashtags', () => {
   it('extracts hashtags from body text', () => {
-    const tags = extractHashtags('Check out #RealEstate tips! #HomeOwnership #Investing');
+    const tags = extractHashtags(
+      'Check out #RealEstate tips! #HomeOwnership #Investing',
+    );
     expect(tags).toEqual(['#RealEstate', '#HomeOwnership', '#Investing']);
   });
 

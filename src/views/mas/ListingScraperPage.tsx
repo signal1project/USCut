@@ -15,7 +15,11 @@ import {
   Film,
 } from 'lucide-react';
 import { useMasApi } from './useMasApi';
-import type { PropertyListingSummary, ListingAdResult, ListingVideoResult } from '@mas/ui';
+import type {
+  PropertyListingSummary,
+  ListingAdResult,
+  ListingVideoResult,
+} from '@mas/ui';
 import { Button, Badge, Card, CardContent, Input } from '@/components/ui';
 
 const AD_PLATFORMS = ['facebook', 'instagram', 'linkedin'] as const;
@@ -64,7 +68,10 @@ export default function ListingScraperPage(): React.ReactElement {
     setLoading(true);
     setError(null);
     try {
-      const result = await api.listListings({ city: appliedCity || undefined, limit: 100 });
+      const result = await api.listListings({
+        city: appliedCity || undefined,
+        limit: 100,
+      });
       setListings(result.listings);
       setTotal(result.total);
     } catch (err) {
@@ -104,7 +111,9 @@ export default function ListingScraperPage(): React.ReactElement {
     setGeneratingId(id);
     setError(null);
     try {
-      const result = await api.generateListingAd(id, { platforms: [...AD_PLATFORMS] });
+      const result = await api.generateListingAd(id, {
+        platforms: [...AD_PLATFORMS],
+      });
       setAds((prev) => ({ ...prev, [id]: result }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ad generation failed');
@@ -165,9 +174,9 @@ export default function ListingScraperPage(): React.ReactElement {
           Listing Scraper
         </h2>
         <p className="text-sm text-ink-muted mt-0.5">
-          Property listings captured from Zillow, Realtor.com and Redfin — ready to turn
-          into listing ads. Looking for post topics instead? That&apos;s the Idea Scraper
-          on the Research page.
+          Property listings captured from Zillow, Realtor.com and Redfin — ready
+          to turn into listing ads. Looking for post topics instead? That&apos;s
+          the Idea Scraper on the Research page.
         </p>
       </div>
 
@@ -177,11 +186,13 @@ export default function ListingScraperPage(): React.ReactElement {
           <div className="flex items-start gap-3">
             <Puzzle size={18} className="text-accent shrink-0 mt-0.5" />
             <div className="text-xs text-ink-muted leading-relaxed">
-              <span className="font-medium text-ink-base">How to capture:</span> install the
-              AICut Listing Scraper Chrome extension (run <code>npm run build:ext</code>, then
-              load <code>dist-ext/</code> via chrome://extensions → Load unpacked). Browse any
-              listing on Zillow, Realtor.com or Redfin and click the green “Capture Listing”
-              button — it lands here automatically while AICut is running.
+              <span className="font-medium text-ink-base">How to capture:</span>{' '}
+              install the AICut Listing Scraper Chrome extension (run{' '}
+              <code>npm run build:ext</code>, then load <code>dist-ext/</code>{' '}
+              via chrome://extensions → Load unpacked). Browse any listing on
+              Zillow, Realtor.com or Redfin and click the green “Capture
+              Listing” button — it lands here automatically while AICut is
+              running.
             </div>
           </div>
         </CardContent>
@@ -198,14 +209,21 @@ export default function ListingScraperPage(): React.ReactElement {
               onKeyDown={(e) => e.key === 'Enter' && void captureByUrl()}
               className="flex-1"
             />
-            <Button onClick={() => void captureByUrl()} disabled={!api || !captureUrl.trim() || capturing}>
-              {capturing ? <RefreshCw size={14} className="animate-spin" /> : <Link size={14} />}
+            <Button
+              onClick={() => void captureByUrl()}
+              disabled={!api || !captureUrl.trim() || capturing}
+            >
+              {capturing ? (
+                <RefreshCw size={14} className="animate-spin" />
+              ) : (
+                <Link size={14} />
+              )}
               Capture URL
             </Button>
           </div>
           <p className="text-xs text-ink-muted mt-2">
-            Works on pages with structured listing data (schema.org / OpenGraph). Bot-walled pages
-            still need the extension.
+            Works on pages with structured listing data (schema.org /
+            OpenGraph). Bot-walled pages still need the extension.
           </p>
         </CardContent>
       </Card>
@@ -218,14 +236,24 @@ export default function ListingScraperPage(): React.ReactElement {
               placeholder="Filter by city (e.g. Houston)"
               value={cityFilter}
               onChange={(e) => setCityFilter(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && setAppliedCity(cityFilter.trim())}
+              onKeyDown={(e) =>
+                e.key === 'Enter' && setAppliedCity(cityFilter.trim())
+              }
               className="flex-1"
             />
-            <Button onClick={() => setAppliedCity(cityFilter.trim())} disabled={!api}>
+            <Button
+              onClick={() => setAppliedCity(cityFilter.trim())}
+              disabled={!api}
+            >
               <Search size={14} />
               Filter
             </Button>
-            <Button variant="ghost" onClick={refresh} disabled={!api || loading} title="Refresh">
+            <Button
+              variant="ghost"
+              onClick={refresh}
+              disabled={!api || loading}
+              title="Refresh"
+            >
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             </Button>
           </div>
@@ -265,7 +293,10 @@ export default function ListingScraperPage(): React.ReactElement {
             {total} listing{total === 1 ? '' : 's'} captured
           </p>
           {listings.map((l) => (
-            <Card key={l.id} className="hover:border-border/80 transition-colors">
+            <Card
+              key={l.id}
+              className="hover:border-border/80 transition-colors"
+            >
               <CardContent className="pt-3 pb-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
@@ -273,7 +304,10 @@ export default function ListingScraperPage(): React.ReactElement {
                       <span className="text-sm font-semibold text-ink-strong">
                         {l.address}, {l.city}, {l.state} {l.zip}
                       </span>
-                      <Badge variant={SOURCE_VARIANT[l.source] ?? 'secondary'} className="text-xs">
+                      <Badge
+                        variant={SOURCE_VARIANT[l.source] ?? 'secondary'}
+                        className="text-xs"
+                      >
                         {l.source}
                       </Badge>
                       {l.status !== 'active' && (
@@ -283,8 +317,12 @@ export default function ListingScraperPage(): React.ReactElement {
                       )}
                     </div>
                     <p className="text-xs text-ink-base mt-1">
-                      <span className="font-semibold text-accent">{formatPrice(l.price)}</span>
-                      {specs(l) && <span className="text-ink-muted"> · {specs(l)}</span>}
+                      <span className="font-semibold text-accent">
+                        {formatPrice(l.price)}
+                      </span>
+                      {specs(l) && (
+                        <span className="text-ink-muted"> · {specs(l)}</span>
+                      )}
                     </p>
                     <div className="flex items-center gap-2 mt-1.5">
                       {l.complianceOk ? (
@@ -294,9 +332,12 @@ export default function ListingScraperPage(): React.ReactElement {
                       ) : (
                         <span
                           className="flex items-center gap-1 text-xs text-error"
-                          title={l.complianceFlags.map((f) => `${f.rule}: ${f.detail}`).join('\n')}
+                          title={l.complianceFlags
+                            .map((f) => `${f.rule}: ${f.detail}`)
+                            .join('\n')}
                         >
-                          <ShieldAlert size={12} /> {l.complianceFlags.length} compliance flag
+                          <ShieldAlert size={12} /> {l.complianceFlags.length}{' '}
+                          compliance flag
                           {l.complianceFlags.length === 1 ? '' : 's'}
                         </span>
                       )}
@@ -359,10 +400,13 @@ export default function ListingScraperPage(): React.ReactElement {
                   <div className="mt-3 pt-3 border-t border-border/60">
                     <p className="text-xs text-success flex items-center gap-1.5">
                       <Film size={12} />
-                      Reel ready ({reels[l.id].durationSeconds}s, {reels[l.id].photosUsed} photos
+                      Reel ready ({reels[l.id].durationSeconds}s,{' '}
+                      {reels[l.id].photosUsed} photos
                       {reels[l.id].narrated ? ', narrated' : ''})
                     </p>
-                    <p className="text-xs text-ink-muted mt-1 break-all select-all">{reels[l.id].path}</p>
+                    <p className="text-xs text-ink-muted mt-1 break-all select-all">
+                      {reels[l.id].path}
+                    </p>
                   </div>
                 )}
 
@@ -371,7 +415,9 @@ export default function ListingScraperPage(): React.ReactElement {
                   <div className="mt-3 pt-3 border-t border-border/60 space-y-2">
                     <p className="text-xs text-ink-muted">
                       Generated via{' '}
-                      <span className="font-medium text-ink-base">{ads[l.id].provider}</span>
+                      <span className="font-medium text-ink-base">
+                        {ads[l.id].provider}
+                      </span>
                       {ads[l.id].provider === 'template' &&
                         ' — configure an AI provider in Settings for tailored copy'}
                     </p>
@@ -398,7 +444,8 @@ export default function ListingScraperPage(): React.ReactElement {
                                     .map((f) => `${f.rule}: ${f.detail}`)
                                     .join('\n')}
                                 >
-                                  <ShieldAlert size={11} /> blocked — do not publish
+                                  <ShieldAlert size={11} /> blocked — do not
+                                  publish
                                 </span>
                               )}
                             </div>
@@ -407,7 +454,11 @@ export default function ListingScraperPage(): React.ReactElement {
                               className="flex items-center gap-1 text-xs text-ink-muted hover:text-accent transition-colors"
                               title="Copy ad text"
                             >
-                              {copiedKey === key ? <Check size={12} /> : <Copy size={12} />}
+                              {copiedKey === key ? (
+                                <Check size={12} />
+                              ) : (
+                                <Copy size={12} />
+                              )}
                               {copiedKey === key ? 'Copied' : 'Copy'}
                             </button>
                           </div>

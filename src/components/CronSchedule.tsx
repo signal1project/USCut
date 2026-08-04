@@ -69,9 +69,13 @@ const CronSchedule: React.FC<CronScheduleProps> = ({ onSubmit }) => {
   const max = selectedType === 'day' ? 23 : selectedType === 'week' ? 6 : 31;
 
   return (
-    <div style={{ width: 300, display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div
+      style={{ width: 300, display: 'flex', flexDirection: 'column', gap: 12 }}
+    >
       <div>
-        <label className="text-xs font-medium text-ink-base mb-1 block">Repeat</label>
+        <label className="text-xs font-medium text-ink-base mb-1 block">
+          Repeat
+        </label>
         <select
           value={selectedType}
           onChange={handleTypeChange}
@@ -84,7 +88,9 @@ const CronSchedule: React.FC<CronScheduleProps> = ({ onSubmit }) => {
       </div>
 
       <div>
-        <label className="text-xs font-medium text-ink-base mb-1 block">Value</label>
+        <label className="text-xs font-medium text-ink-base mb-1 block">
+          Value
+        </label>
         <input
           type="number"
           min={min}
@@ -119,10 +125,17 @@ const ParseCronSchedule: React.FC<{ cronExpression: string }> = ({
     const [type, val] = cronExpression.split('-');
     let parsed = '';
     switch (type) {
-      case 'day':   parsed = `Every day at ${val}:00`; break;
-      case 'week':  parsed = `Every week on day ${val}`; break;
-      case 'month': parsed = `Every month on the ${val}`; break;
-      default:      parsed = 'Unknown schedule';
+      case 'day':
+        parsed = `Every day at ${val}:00`;
+        break;
+      case 'week':
+        parsed = `Every week on day ${val}`;
+        break;
+      case 'month':
+        parsed = `Every month on the ${val}`;
+        break;
+      default:
+        parsed = 'Unknown schedule';
     }
     setParsedText(parsed);
   }, [cronExpression]);

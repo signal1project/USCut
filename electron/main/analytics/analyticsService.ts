@@ -1,5 +1,10 @@
 import { type Platform } from '@mas/types';
-import type { AccountStore, AdapterResolver, QueueRunner, TokenResolver } from '../publishEngine/ports';
+import type {
+  AccountStore,
+  AdapterResolver,
+  QueueRunner,
+  TokenResolver,
+} from '../publishEngine/ports';
 
 export interface AnalyticsSnapshotInput {
   accountId: string;
@@ -38,7 +43,10 @@ export interface AnalyticsServiceDeps {
 export class AnalyticsService {
   constructor(private readonly deps: AnalyticsServiceDeps) {}
 
-  async captureSnapshot(accountId: string, externalPostId: string): Promise<AnalyticsSnapshotRecord> {
+  async captureSnapshot(
+    accountId: string,
+    externalPostId: string,
+  ): Promise<AnalyticsSnapshotRecord> {
     const account = await this.deps.accounts.getById(accountId);
     if (!account) throw new Error(`account_not_found: ${accountId}`);
 
@@ -46,7 +54,11 @@ export class AnalyticsService {
     const adapter = this.deps.resolveAdapter(account.platform);
     const metrics = await this.deps.queue.run(account.platform, () =>
       adapter.fetchMetrics(
-        { accessToken: token, externalId: account.externalId, meta: account.metadata },
+        {
+          accessToken: token,
+          externalId: account.externalId,
+          meta: account.metadata,
+        },
         externalPostId,
       ),
     );

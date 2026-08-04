@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { ListingAdService, buildListingBrief, buildListingTemplate } from '../adService';
+import {
+  ListingAdService,
+  buildListingBrief,
+  buildListingTemplate,
+} from '../adService';
 import type { ListingStore } from '../listingStore';
 import type { ContentService } from '../../content';
 import type { PropertyListingSummary } from '../types';
@@ -42,13 +46,18 @@ function storeWith(l: PropertyListingSummary | null): ListingStore {
 }
 
 const noProviderContent = {
-  generate: () => Promise.reject(new Error('No AI provider configured. Set one in Settings.')),
+  generate: () =>
+    Promise.reject(
+      new Error('No AI provider configured. Set one in Settings.'),
+    ),
 } as unknown as ContentService;
 
 describe('ListingAdService', () => {
   it('returns null for an unknown listing', async () => {
     const svc = new ListingAdService(storeWith(null), noProviderContent);
-    expect(await svc.generateAd('nope', { platforms: ['facebook'] })).toBeNull();
+    expect(
+      await svc.generateAd('nope', { platforms: ['facebook'] }),
+    ).toBeNull();
   });
 
   it('falls back to templates when no AI provider is configured', async () => {
@@ -86,7 +95,9 @@ describe('ListingAdService', () => {
     const ad = result!.items[0];
     // "prestigious neighborhood" is a warn (not a block) — copy stays publishable
     expect(ad.complianceOk).toBe(true);
-    expect(ad.complianceFlags.some((f) => f.rule === 'FH-EXCLUSIVITY-WARN')).toBe(true);
+    expect(
+      ad.complianceFlags.some((f) => f.rule === 'FH-EXCLUSIVITY-WARN'),
+    ).toBe(true);
   });
 
   it('marks discriminatory AI output as blocked', async () => {
@@ -95,7 +106,11 @@ describe('ListingAdService', () => {
         Promise.resolve({
           provider: 'openai',
           items: [
-            { platform: 'facebook', body: 'Great condo, adults only building! #JustListed', hashtags: [] },
+            {
+              platform: 'facebook',
+              body: 'Great condo, adults only building! #JustListed',
+              hashtags: [],
+            },
           ],
         }),
     } as unknown as ContentService;
@@ -104,11 +119,18 @@ describe('ListingAdService', () => {
     const result = await svc.generateAd('lst-1', { platforms: ['facebook'] });
     const ad = result!.items[0];
     expect(ad.complianceOk).toBe(false);
-    expect(ad.complianceFlags.some((f) => f.rule === 'FH-FAMILIAL' && f.severity === 'block')).toBe(true);
+    expect(
+      ad.complianceFlags.some(
+        (f) => f.rule === 'FH-FAMILIAL' && f.severity === 'block',
+      ),
+    ).toBe(true);
   });
 
   it('buildListingBrief embeds listing facts and fair-housing constraints', () => {
-    const brief = buildListingBrief(listing, { platforms: ['facebook'], highlight: 'pool' });
+    const brief = buildListingBrief(listing, {
+      platforms: ['facebook'],
+      highlight: 'pool',
+    });
     expect(brief).toContain('123 Main St, Houston, TX 77002');
     expect(brief).toContain('$425,000');
     expect(brief).toContain('Fair Housing Act');
@@ -116,7 +138,11 @@ describe('ListingAdService', () => {
   });
 
   it('buildListingTemplate varies CTA by platform', () => {
-    expect(buildListingTemplate(listing, 'twitter')).toContain('DM for details!');
-    expect(buildListingTemplate(listing, 'facebook')).toContain('Schedule your private showing');
+    expect(buildListingTemplate(listing, 'twitter')).toContain(
+      'DM for details!',
+    );
+    expect(buildListingTemplate(listing, 'facebook')).toContain(
+      'Schedule your private showing',
+    );
   });
 });

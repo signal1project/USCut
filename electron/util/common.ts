@@ -59,7 +59,7 @@ export class CommonUtils {
       try {
         const obj = JSON.parse(str);
         return !!(typeof obj === 'object' && obj);
-      } catch (e) {
+      } catch (_e) {
         return false;
       }
     } else {

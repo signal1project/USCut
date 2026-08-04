@@ -4,7 +4,10 @@ import { PlatformAlgorithmAgent } from '../../algorithm';
 import { ContentService } from '../../content';
 import { CapCutPackageService } from '../../capcut';
 import { MockAgentAdapter } from '../../agent';
-import { InMemoryCampaignPackageStore, SocialEngineWorkflowService } from '../index';
+import {
+  InMemoryCampaignPackageStore,
+  SocialEngineWorkflowService,
+} from '../index';
 
 function makeResearch(signals: any[]) {
   return {
@@ -19,7 +22,8 @@ function makeResearch(signals: any[]) {
 function makeContentService() {
   const provider: AIProvider = {
     name: 'ollama',
-    generateText: async (brief) => `Generated from: ${brief.slice(0, 80)} #FamilyOffice`,
+    generateText: async (brief) =>
+      `Generated from: ${brief.slice(0, 80)} #FamilyOffice`,
     generateImage: async () => 'mock://image',
   };
   return new ContentService({
@@ -35,12 +39,34 @@ describe('SocialEngineWorkflowService', () => {
   it('creates a trend-backed campaign package with Omobono agent notes, content variants, and CapCut output', async () => {
     const service = new SocialEngineWorkflowService({
       research: makeResearch([
-        { id: 't1', source: 'google', keyword: 'small business websites', hashtags: ['#SmallBusiness'], trafficScore: 80, nicheScore: 95, niche: 'web design', fetchedAt: new Date(), expiresAt: new Date() },
-        { id: 't2', source: 'google', keyword: 'lead generation', hashtags: ['#LeadGen'], trafficScore: 70, nicheScore: 80, niche: 'web design', fetchedAt: new Date(), expiresAt: new Date() },
+        {
+          id: 't1',
+          source: 'google',
+          keyword: 'small business websites',
+          hashtags: ['#SmallBusiness'],
+          trafficScore: 80,
+          nicheScore: 95,
+          niche: 'web design',
+          fetchedAt: new Date(),
+          expiresAt: new Date(),
+        },
+        {
+          id: 't2',
+          source: 'google',
+          keyword: 'lead generation',
+          hashtags: ['#LeadGen'],
+          trafficScore: 70,
+          nicheScore: 80,
+          niche: 'web design',
+          fetchedAt: new Date(),
+          expiresAt: new Date(),
+        },
       ]),
       algorithm: new PlatformAlgorithmAgent(),
       content: makeContentService(),
-      capcut: new CapCutPackageService({ now: () => new Date('2026-06-03T12:00:00Z') }),
+      capcut: new CapCutPackageService({
+        now: () => new Date('2026-06-03T12:00:00Z'),
+      }),
       agent: new MockAgentAdapter('omobono'),
       packageStore: new InMemoryCampaignPackageStore(),
     });
@@ -56,23 +82,36 @@ describe('SocialEngineWorkflowService', () => {
     expect(result.workflowId).toMatch(/^workflow_/);
     expect(result.agent.agentId).toBe('omobono');
     expect(result.trendBrief.signals).toHaveLength(2);
-    expect(result.platformPlaybooks.map((p) => p.platform)).toEqual(['instagram', 'youtube']);
+    expect(result.platformPlaybooks.map((p) => p.platform)).toEqual([
+      'instagram',
+      'youtube',
+    ]);
     expect(result.content.items).toHaveLength(2);
     expect(result.capcutPackage.platforms).toEqual(['instagram', 'youtube']);
     expect(result.publishingPlan.status).toBe('needs_approval');
     expect(result.publishingPlan.approvalMode).toBe('dale_required');
     expect(result.persistedPackage?.status).toBe('needs_approval');
-    expect(await service.listCampaignPackages({ status: 'needs_approval' })).toHaveLength(1);
-    const approved = await service.updateCampaignPackageStatus(result.persistedPackage!.id, 'approved');
+    expect(
+      await service.listCampaignPackages({ status: 'needs_approval' }),
+    ).toHaveLength(1);
+    const approved = await service.updateCampaignPackageStatus(
+      result.persistedPackage!.id,
+      'approved',
+    );
     expect(approved.status).toBe('approved');
-    const published = await service.recordPublicationFeedback(result.persistedPackage!.id, {
-      platform: 'instagram',
-      externalPostId: 'ig_123',
-      publishedAt: '2026-06-03T13:00:00.000Z',
-      analyticsStatus: 'pending_capture',
-    });
+    const published = await service.recordPublicationFeedback(
+      result.persistedPackage!.id,
+      {
+        platform: 'instagram',
+        externalPostId: 'ig_123',
+        publishedAt: '2026-06-03T13:00:00.000Z',
+        analyticsStatus: 'pending_capture',
+      },
+    );
     expect(published.status).toBe('published');
-    const persisted = await service.getCampaignPackage(result.persistedPackage!.id);
+    const persisted = await service.getCampaignPackage(
+      result.persistedPackage!.id,
+    );
     expect(persisted?.publishingFeedback?.[0].externalPostId).toBe('ig_123');
   });
 
@@ -93,7 +132,9 @@ describe('SocialEngineWorkflowService', () => {
       research: makeResearch(signals),
       algorithm: new PlatformAlgorithmAgent(),
       content: makeContentService(),
-      capcut: new CapCutPackageService({ now: () => new Date('2026-06-03T12:00:00Z') }),
+      capcut: new CapCutPackageService({
+        now: () => new Date('2026-06-03T12:00:00Z'),
+      }),
       agent: new MockAgentAdapter('omobono'),
       packageStore: new InMemoryCampaignPackageStore(),
     });
@@ -112,8 +153,14 @@ describe('SocialEngineWorkflowService', () => {
     const service = new SocialEngineWorkflowService({
       research: makeResearch([]),
       algorithm: new PlatformAlgorithmAgent(),
-      content: { generate: async () => { throw new Error('No AI provider configured'); } } as any,
-      capcut: new CapCutPackageService({ now: () => new Date('2026-06-03T12:00:00Z') }),
+      content: {
+        generate: async () => {
+          throw new Error('No AI provider configured');
+        },
+      } as any,
+      capcut: new CapCutPackageService({
+        now: () => new Date('2026-06-03T12:00:00Z'),
+      }),
       agent: new MockAgentAdapter('omobono'),
       packageStore: new InMemoryCampaignPackageStore(),
     });

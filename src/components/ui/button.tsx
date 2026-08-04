@@ -12,14 +12,11 @@ const buttonVariants = cva(
           'bg-accent text-bg font-semibold hover:opacity-90 active:scale-[0.98]',
         secondary:
           'bg-surface-3 text-ink-base border border-border hover:bg-surface-4',
-        ghost:
-          'text-ink-muted hover:bg-surface-2 hover:text-ink-base',
+        ghost: 'text-ink-muted hover:bg-surface-2 hover:text-ink-base',
         danger:
           'bg-error/15 text-error border border-error/30 hover:bg-error/25',
-        outline:
-          'border border-border text-ink-base hover:bg-surface-2',
-        link:
-          'text-accent underline-offset-4 hover:underline p-0 h-auto',
+        outline: 'border border-border text-ink-base hover:bg-surface-2',
+        link: 'text-accent underline-offset-4 hover:underline p-0 h-auto',
       },
       size: {
         sm: 'h-8 px-3 text-xs',
@@ -44,7 +41,19 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, loading, children, disabled, ...props }, ref) => {
+  (
+    {
+      className,
+      variant,
+      size,
+      asChild = false,
+      loading,
+      children,
+      disabled,
+      ...props
+    },
+    ref,
+  ) => {
     const Comp = asChild ? Slot : 'button';
     return (
       <Comp
@@ -60,8 +69,19 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             fill="none"
             viewBox="0 0 24 24"
           >
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+            />
           </svg>
         )}
         {children}

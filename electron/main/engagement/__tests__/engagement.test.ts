@@ -1,12 +1,24 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { EngagementStatus, type AIProvider, type Platform } from '@mas/types';
-import { EngagementService, detectHighConversion, type EngagementItem, type EngagementStore } from '../engagementService';
-import type { AccountStore, AuditStore, EngineAccount, QueueRunner } from '../../publishEngine/ports';
+import {
+  EngagementService,
+  detectHighConversion,
+  type EngagementItem,
+  type EngagementStore,
+} from '../engagementService';
+import type {
+  AccountStore,
+  AuditStore,
+  EngineAccount,
+  QueueRunner,
+} from '../../publishEngine/ports';
 import type { PlatformAdapter, PlatformComment } from '../../adapters/types';
 
 class FakeAccounts implements AccountStore {
   map = new Map<string, EngineAccount>();
-  async getById(id: string) { return this.map.get(id) ?? null; }
+  async getById(id: string) {
+    return this.map.get(id) ?? null;
+  }
 }
 
 class FakeStore implements EngagementStore {
@@ -18,8 +30,12 @@ class FakeStore implements EngagementStore {
     this.items.set(id, item);
     return item;
   }
-  async getById(id: string) { return this.items.get(id) ?? null; }
-  async update(id: string, patch: any) { Object.assign(this.items.get(id)!, patch); }
+  async getById(id: string) {
+    return this.items.get(id) ?? null;
+  }
+  async update(id: string, patch: any) {
+    Object.assign(this.items.get(id)!, patch);
+  }
   async existsByExternalCommentId(cid: string) {
     return [...this.items.values()].some((i) => i.externalCommentId === cid);
   }
@@ -43,12 +59,20 @@ const provider: AIProvider = {
   generateImage: async () => 'x',
 };
 
-function makeAdapter(comments: PlatformComment[], replyBehavior: 'ok' | 'throw' = 'ok') {
+function makeAdapter(
+  comments: PlatformComment[],
+  replyBehavior: 'ok' | 'throw' = 'ok',
+) {
   const calls: any[] = [];
   const resolve = (platform: Platform): PlatformAdapter => ({
     platform,
     publish: async () => ({ externalPostId: 'x' }),
-    fetchMetrics: async () => ({ reach: 0, impressions: 0, engagements: 0, clicks: 0 }),
+    fetchMetrics: async () => ({
+      reach: 0,
+      impressions: 0,
+      engagements: 0,
+      clicks: 0,
+    }),
     fetchComments: async () => comments,
     replyToComment: async (_ctx, cid, msg) => {
       calls.push({ cid, msg });
@@ -67,7 +91,12 @@ beforeEach(() => {
   accounts = new FakeAccounts();
   store = new FakeStore();
   audit = new FakeAudit();
-  accounts.map.set('a1', { id: 'a1', platform: 'facebook', externalId: 'PAGE1', credentialRef: 'r' });
+  accounts.map.set('a1', {
+    id: 'a1',
+    platform: 'facebook',
+    externalId: 'PAGE1',
+    credentialRef: 'r',
+  });
 });
 
 describe('detectHighConversion', () => {
@@ -81,11 +110,23 @@ describe('detectHighConversion', () => {
 describe('EngagementService.ingestComments', () => {
   it('drafts replies and flags high-conversion comments', async () => {
     const { resolve } = makeAdapter([
-      { externalCommentId: 'c1', externalPostId: 'P1', authorHandle: 'jane', text: 'love this' },
-      { externalCommentId: 'c2', externalPostId: 'P1', authorHandle: 'joe', text: 'whats the price?' },
+      {
+        externalCommentId: 'c1',
+        externalPostId: 'P1',
+        authorHandle: 'jane',
+        text: 'love this',
+      },
+      {
+        externalCommentId: 'c2',
+        externalPostId: 'P1',
+        authorHandle: 'joe',
+        text: 'whats the price?',
+      },
     ]);
     const svc = new EngagementService({
-      accounts, store, audit,
+      accounts,
+      store,
+      audit,
       resolveToken: async () => 'tok',
       resolveAdapter: resolve,
       resolveProvider: () => provider,
@@ -95,16 +136,31 @@ describe('EngagementService.ingestComments', () => {
     expect(items).toHaveLength(2);
     expect(items[0].draftReply).toContain('Draft reply');
     expect(items[0].status).toBe(EngagementStatus.PENDING);
-    expect(items.find((i) => i.externalCommentId === 'c2')!.highConversion).toBe(true);
-    expect(items.find((i) => i.externalCommentId === 'c1')!.highConversion).toBe(false);
+    expect(
+      items.find((i) => i.externalCommentId === 'c2')!.highConversion,
+    ).toBe(true);
+    expect(
+      items.find((i) => i.externalCommentId === 'c1')!.highConversion,
+    ).toBe(false);
   });
 
   it('skips comments already in the queue (dedupe)', async () => {
     const { resolve } = makeAdapter([
-      { externalCommentId: 'c1', externalPostId: 'P1', authorHandle: 'j', text: 'hi' },
+      {
+        externalCommentId: 'c1',
+        externalPostId: 'P1',
+        authorHandle: 'j',
+        text: 'hi',
+      },
     ]);
     const svc = new EngagementService({
-      accounts, store, audit, resolveToken: async () => 't', resolveAdapter: resolve, resolveProvider: () => provider, queue,
+      accounts,
+      store,
+      audit,
+      resolveToken: async () => 't',
+      resolveAdapter: resolve,
+      resolveProvider: () => provider,
+      queue,
     });
     await svc.ingestComments('a1', 'P1');
     const second = await svc.ingestComments('a1', 'P1');
@@ -115,10 +171,21 @@ describe('EngagementService.ingestComments', () => {
 describe('EngagementService.approveAndReply', () => {
   it('posts the draft, marks approved, and audits', async () => {
     const { resolve, calls } = makeAdapter([
-      { externalCommentId: 'c1', externalPostId: 'P1', authorHandle: 'j', text: 'hi' },
+      {
+        externalCommentId: 'c1',
+        externalPostId: 'P1',
+        authorHandle: 'j',
+        text: 'hi',
+      },
     ]);
     const svc = new EngagementService({
-      accounts, store, audit, resolveToken: async () => 't', resolveAdapter: resolve, resolveProvider: () => provider, queue,
+      accounts,
+      store,
+      audit,
+      resolveToken: async () => 't',
+      resolveAdapter: resolve,
+      resolveProvider: () => provider,
+      queue,
     });
     const [item] = await svc.ingestComments('a1', 'P1');
     const res = await svc.approveAndReply(item.id);
@@ -130,10 +197,21 @@ describe('EngagementService.approveAndReply', () => {
 
   it('uses an override reply when provided', async () => {
     const { resolve, calls } = makeAdapter([
-      { externalCommentId: 'c1', externalPostId: 'P1', authorHandle: 'j', text: 'hi' },
+      {
+        externalCommentId: 'c1',
+        externalPostId: 'P1',
+        authorHandle: 'j',
+        text: 'hi',
+      },
     ]);
     const svc = new EngagementService({
-      accounts, store, audit, resolveToken: async () => 't', resolveAdapter: resolve, resolveProvider: () => provider, queue,
+      accounts,
+      store,
+      audit,
+      resolveToken: async () => 't',
+      resolveAdapter: resolve,
+      resolveProvider: () => provider,
+      queue,
     });
     const [item] = await svc.ingestComments('a1', 'P1');
     await svc.approveAndReply(item.id, 'custom reply');
@@ -141,11 +219,25 @@ describe('EngagementService.approveAndReply', () => {
   });
 
   it('marks FAILED when the reply throws', async () => {
-    const { resolve } = makeAdapter([
-      { externalCommentId: 'c1', externalPostId: 'P1', authorHandle: 'j', text: 'hi' },
-    ], 'throw');
+    const { resolve } = makeAdapter(
+      [
+        {
+          externalCommentId: 'c1',
+          externalPostId: 'P1',
+          authorHandle: 'j',
+          text: 'hi',
+        },
+      ],
+      'throw',
+    );
     const svc = new EngagementService({
-      accounts, store, audit, resolveToken: async () => 't', resolveAdapter: resolve, resolveProvider: () => provider, queue,
+      accounts,
+      store,
+      audit,
+      resolveToken: async () => 't',
+      resolveAdapter: resolve,
+      resolveProvider: () => provider,
+      queue,
     });
     const [item] = await svc.ingestComments('a1', 'P1');
     await expect(svc.approveAndReply(item.id)).rejects.toThrow('reply failed');
@@ -154,10 +246,21 @@ describe('EngagementService.approveAndReply', () => {
 
   it('refuses to re-approve a non-pending item', async () => {
     const { resolve } = makeAdapter([
-      { externalCommentId: 'c1', externalPostId: 'P1', authorHandle: 'j', text: 'hi' },
+      {
+        externalCommentId: 'c1',
+        externalPostId: 'P1',
+        authorHandle: 'j',
+        text: 'hi',
+      },
     ]);
     const svc = new EngagementService({
-      accounts, store, audit, resolveToken: async () => 't', resolveAdapter: resolve, resolveProvider: () => provider, queue,
+      accounts,
+      store,
+      audit,
+      resolveToken: async () => 't',
+      resolveAdapter: resolve,
+      resolveProvider: () => provider,
+      queue,
     });
     const [item] = await svc.ingestComments('a1', 'P1');
     await svc.approveAndReply(item.id);
@@ -168,11 +271,27 @@ describe('EngagementService.approveAndReply', () => {
 describe('EngagementService.dismiss + listPending', () => {
   it('dismisses items and excludes them from pending', async () => {
     const { resolve } = makeAdapter([
-      { externalCommentId: 'c1', externalPostId: 'P1', authorHandle: 'j', text: 'hi' },
-      { externalCommentId: 'c2', externalPostId: 'P1', authorHandle: 'k', text: 'price?' },
+      {
+        externalCommentId: 'c1',
+        externalPostId: 'P1',
+        authorHandle: 'j',
+        text: 'hi',
+      },
+      {
+        externalCommentId: 'c2',
+        externalPostId: 'P1',
+        authorHandle: 'k',
+        text: 'price?',
+      },
     ]);
     const svc = new EngagementService({
-      accounts, store, audit, resolveToken: async () => 't', resolveAdapter: resolve, resolveProvider: () => provider, queue,
+      accounts,
+      store,
+      audit,
+      resolveToken: async () => 't',
+      resolveAdapter: resolve,
+      resolveProvider: () => provider,
+      queue,
     });
     const items = await svc.ingestComments('a1', 'P1');
     await svc.dismiss(items[0].id);

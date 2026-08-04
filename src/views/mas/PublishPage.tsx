@@ -8,11 +8,19 @@ import { useMasApi } from './useMasApi';
 import { ipc, hasIpc } from '@/lib/ipc';
 import {
   Button,
-  Card, CardHeader, CardTitle, CardDescription, CardContent,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
   Input,
   Label,
   Textarea,
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui';
 import ConnectAccounts from '@/views/onboarding/ConnectAccounts';
 
@@ -33,8 +41,14 @@ interface FormValues {
 }
 
 const PLATFORM_COLOR: Partial<Record<Platform, string>> = {
-  facebook: '#1877f2', instagram: '#e1306c', twitter: '#1da1f2', threads: '#cccccc',
-  pinterest: '#e60023', youtube: '#ff0000', tiktok: '#25f4ee', linkedin: '#0a66c2',
+  facebook: '#1877f2',
+  instagram: '#e1306c',
+  twitter: '#1da1f2',
+  threads: '#cccccc',
+  pinterest: '#e60023',
+  youtube: '#ff0000',
+  tiktok: '#25f4ee',
+  linkedin: '#0a66c2',
 };
 
 /** Compose and publish (or schedule) a post to connected social accounts. */
@@ -45,12 +59,28 @@ export default function PublishPage(): React.ReactElement {
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   // Webview session status per platform
-  const [webviewSessions, setWebviewSessions] = useState<Partial<Record<Platform, boolean>>>({});
-  const [selectedWebviewPlatforms, setSelectedWebviewPlatforms] = useState<Platform[]>([]);
+  const [webviewSessions, setWebviewSessions] = useState<
+    Partial<Record<Platform, boolean>>
+  >({});
+  const [selectedWebviewPlatforms, setSelectedWebviewPlatforms] = useState<
+    Platform[]
+  >([]);
   const [showConnectModal, setShowConnectModal] = useState(false);
 
-  const { register, handleSubmit, watch, control, formState: { errors } } = useForm<FormValues>({
-    defaultValues: { pubType: PubType.IMAGE_TEXT, scheduleMode: 'now', hashtags: '', imageUrl: '', scheduledAt: '' },
+  const {
+    register,
+    handleSubmit,
+    watch,
+    control,
+    formState: { errors },
+  } = useForm<FormValues>({
+    defaultValues: {
+      pubType: PubType.IMAGE_TEXT,
+      scheduleMode: 'now',
+      hashtags: '',
+      imageUrl: '',
+      scheduledAt: '',
+    },
   });
 
   const pubType = watch('pubType');
@@ -60,12 +90,16 @@ export default function PublishPage(): React.ReactElement {
     if (!hasIpc()) return;
     setLoadingAccounts(true);
     try {
-      const list = await ipc.invoke('mas:accounts:list') as ConnectedAccount[];
+      const list = (await ipc.invoke(
+        'mas:accounts:list',
+      )) as ConnectedAccount[];
       setAccounts(list);
       if (list.length > 0 && selectedAccountIds.length === 0) {
         setSelectedAccountIds(list.map((a) => a.id));
       }
-    } catch { /* silently skip */ } finally {
+    } catch {
+      /* silently skip */
+    } finally {
       setLoadingAccounts(false);
     }
   };
@@ -76,9 +110,13 @@ export default function PublishPage(): React.ReactElement {
     await Promise.all(
       PLATFORMS.map(async (p) => {
         try {
-          const res = (await ipc.invoke('mas:social:session-status', p)) as { loggedIn: boolean };
+          const res = (await ipc.invoke('mas:social:session-status', p)) as {
+            loggedIn: boolean;
+          };
           results[p] = res.loggedIn;
-        } catch { results[p] = false; }
+        } catch {
+          results[p] = false;
+        }
       }),
     );
     setWebviewSessions(results);
@@ -110,7 +148,9 @@ export default function PublishPage(): React.ReactElement {
   const hasAnySession = connectedPlatforms.length > 0 || accounts.length > 0;
 
   const onSubmit = async (values: FormValues) => {
-    const fullBody = [values.body, values.hashtags?.trim()].filter(Boolean).join('\n\n');
+    const fullBody = [values.body, values.hashtags?.trim()]
+      .filter(Boolean)
+      .join('\n\n');
 
     if (values.scheduleMode === 'later' && !values.scheduledAt) {
       toast.error('Set a date and time to schedule');
@@ -118,7 +158,9 @@ export default function PublishPage(): React.ReactElement {
     }
 
     // ── Webview-session post (primary — no developer app required) ────────────
-    const webviewTargets = selectedWebviewPlatforms.filter((p) => webviewSessions[p]);
+    const webviewTargets = selectedWebviewPlatforms.filter(
+      (p) => webviewSessions[p],
+    );
     if (webviewTargets.length === 0 && selectedAccountIds.length === 0) {
       toast.error('Select at least one account or platform to post to');
       return;
@@ -129,14 +171,21 @@ export default function PublishPage(): React.ReactElement {
 
     if (webviewTargets.length > 0) {
       if (values.scheduleMode === 'later') {
-        toast.info(`Webview posting is instant — scheduling applies only to API-connected accounts.`);
+        toast.info(
+          `Webview posting is instant — scheduling applies only to API-connected accounts.`,
+        );
       }
       for (const platform of webviewTargets) {
         try {
-          await ipc.invoke('mas:social:post-webview', { platform, body: fullBody });
+          await ipc.invoke('mas:social:post-webview', {
+            platform,
+            body: fullBody,
+          });
           toast.success(`Posted to ${PLATFORM_CONFIG[platform].label} ✓`);
         } catch (e) {
-          errors.push(`${PLATFORM_CONFIG[platform].label}: ${(e as Error).message}`);
+          errors.push(
+            `${PLATFORM_CONFIG[platform].label}: ${(e as Error).message}`,
+          );
         }
       }
     }
@@ -159,12 +208,16 @@ export default function PublishPage(): React.ReactElement {
         });
 
         if ('scheduled' in result && result.scheduled) {
-          toast.success(`Scheduled for ${new Date(values.scheduledAt).toLocaleString()}`);
+          toast.success(
+            `Scheduled for ${new Date(values.scheduledAt).toLocaleString()}`,
+          );
         } else {
           toast.success(`API post published ✓`);
         }
       } catch (err) {
-        errors.push(`API: ${err instanceof Error ? err.message : 'Publish failed'}`);
+        errors.push(
+          `API: ${err instanceof Error ? err.message : 'Publish failed'}`,
+        );
       }
     }
 
@@ -177,7 +230,12 @@ export default function PublishPage(): React.ReactElement {
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-4">
       {showConnectModal && (
-        <ConnectAccounts onClose={() => { setShowConnectModal(false); void checkWebviewSessions(); }} />
+        <ConnectAccounts
+          onClose={() => {
+            setShowConnectModal(false);
+            void checkWebviewSessions();
+          }}
+        />
       )}
 
       {/* Platform picker — webview sessions (primary path, no dev app needed) */}
@@ -186,8 +244,18 @@ export default function PublishPage(): React.ReactElement {
           <CardTitle className="text-sm flex items-center justify-between">
             Post to
             <div className="flex items-center gap-2">
-              <button onClick={() => { void checkWebviewSessions(); void loadAccounts(); }} className="text-ink-muted hover:text-ink-base transition-colors" title="Refresh">
-                <RefreshCw size={13} className={loadingAccounts ? 'animate-spin' : ''} />
+              <button
+                onClick={() => {
+                  void checkWebviewSessions();
+                  void loadAccounts();
+                }}
+                className="text-ink-muted hover:text-ink-base transition-colors"
+                title="Refresh"
+              >
+                <RefreshCw
+                  size={13}
+                  className={loadingAccounts ? 'animate-spin' : ''}
+                />
               </button>
               <button
                 onClick={() => setShowConnectModal(true)}
@@ -207,7 +275,9 @@ export default function PublishPage(): React.ReactElement {
           {/* Webview-connected platforms */}
           {connectedPlatforms.length > 0 && (
             <div>
-              <p className="text-[10px] text-ink-muted mb-2">Signed-in platforms (click to toggle):</p>
+              <p className="text-[10px] text-ink-muted mb-2">
+                Signed-in platforms (click to toggle):
+              </p>
               <div className="flex flex-wrap gap-2">
                 {connectedPlatforms.map((p) => {
                   const selected = selectedWebviewPlatforms.includes(p);
@@ -220,7 +290,11 @@ export default function PublishPage(): React.ReactElement {
                           ? 'border-transparent text-white'
                           : 'border-border text-ink-muted hover:border-accent/30'
                       }`}
-                      style={selected ? { background: PLATFORM_COLOR[p] ?? '#4d7cff' } : {}}
+                      style={
+                        selected
+                          ? { background: PLATFORM_COLOR[p] ?? '#4d7cff' }
+                          : {}
+                      }
                     >
                       {selected && <Check size={10} />}
                       {PLATFORM_CONFIG[p].label}
@@ -234,7 +308,9 @@ export default function PublishPage(): React.ReactElement {
           {/* API-connected accounts (developer app OAuth) */}
           {accounts.length > 0 && (
             <div>
-              <p className="text-[10px] text-ink-muted mb-2">API-connected accounts:</p>
+              <p className="text-[10px] text-ink-muted mb-2">
+                API-connected accounts:
+              </p>
               <div className="flex flex-wrap gap-2">
                 {accounts.map((acc) => {
                   const selected = selectedAccountIds.includes(acc.id);
@@ -288,9 +364,13 @@ export default function PublishPage(): React.ReactElement {
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={PubType.IMAGE_TEXT}>Image + Caption</SelectItem>
+                      <SelectItem value={PubType.IMAGE_TEXT}>
+                        Image + Caption
+                      </SelectItem>
                       <SelectItem value={PubType.VIDEO}>Video</SelectItem>
-                      <SelectItem value={PubType.ARTICLE}>Article / Link</SelectItem>
+                      <SelectItem value={PubType.ARTICLE}>
+                        Article / Link
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 )}
@@ -302,7 +382,9 @@ export default function PublishPage(): React.ReactElement {
                 <Label htmlFor="imageUrl" className="flex items-center gap-1.5">
                   <Image size={13} />
                   {pubType === PubType.VIDEO ? 'Video URL' : 'Image URL'}
-                  <span className="font-normal text-ink-subtle text-xs">(publicly accessible)</span>
+                  <span className="font-normal text-ink-subtle text-xs">
+                    (publicly accessible)
+                  </span>
                 </Label>
                 <Input
                   id="imageUrl"
@@ -320,12 +402,18 @@ export default function PublishPage(): React.ReactElement {
                 placeholder="What do you want to say?"
                 {...register('body', { required: 'Required' })}
               />
-              {errors.body && <p className="text-xs text-error">{errors.body.message}</p>}
+              {errors.body && (
+                <p className="text-xs text-error">{errors.body.message}</p>
+              )}
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="hashtags">Hashtags (space-separated)</Label>
-              <Input id="hashtags" placeholder="#realestate #homebuying" {...register('hashtags')} />
+              <Input
+                id="hashtags"
+                placeholder="#realestate #homebuying"
+                {...register('hashtags')}
+              />
             </div>
 
             {/* Publish now vs. schedule */}
@@ -333,7 +421,10 @@ export default function PublishPage(): React.ReactElement {
               <Label>When</Label>
               <div className="flex gap-3">
                 {(['now', 'later'] as const).map((mode) => (
-                  <label key={mode} className="flex items-center gap-2 cursor-pointer">
+                  <label
+                    key={mode}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
                     <input
                       type="radio"
                       value={mode}
@@ -349,7 +440,10 @@ export default function PublishPage(): React.ReactElement {
 
               {scheduleMode === 'later' && (
                 <div className="space-y-1.5">
-                  <Label htmlFor="scheduledAt" className="flex items-center gap-1.5">
+                  <Label
+                    htmlFor="scheduledAt"
+                    className="flex items-center gap-1.5"
+                  >
                     <Clock size={13} />
                     Date &amp; time
                   </Label>

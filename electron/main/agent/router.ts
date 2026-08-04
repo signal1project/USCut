@@ -25,7 +25,9 @@ export function createAgentRouter(registry: AgentAdapterRegistry): Router {
   router.get('/adapters', (_req, res) => {
     res.json({
       defaultAdapterId: registry.getDefault().id,
-      adapters: registry.list().map((a) => ({ id: a.id, label: a.label, kind: a.kind })),
+      adapters: registry
+        .list()
+        .map((a) => ({ id: a.id, label: a.label, kind: a.kind })),
     });
   });
 
@@ -34,7 +36,9 @@ export function createAgentRouter(registry: AgentAdapterRegistry): Router {
     validateBody(taskSchema),
     asyncHandler(async (req, res) => {
       const b = req.body as z.infer<typeof taskSchema>;
-      const adapter = b.adapterId ? registry.get(b.adapterId) : registry.getDefault();
+      const adapter = b.adapterId
+        ? registry.get(b.adapterId)
+        : registry.getDefault();
       const result = await adapter.runTask({
         taskType: b.taskType,
         objective: b.objective,

@@ -1,5 +1,9 @@
 import type { Platform } from '@mas/types';
-import { PLATFORM_PLAYBOOKS, playbookToPromptHint, type PlatformPlaybook } from './platformPlaybooks';
+import {
+  PLATFORM_PLAYBOOKS,
+  playbookToPromptHint,
+  type PlatformPlaybook,
+} from './platformPlaybooks';
 
 export interface AlgorithmHints {
   platform: Platform;

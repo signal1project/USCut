@@ -52,7 +52,10 @@ export function createContentRouter(service: ContentService): Router {
     validateBody(imageSchema),
     asyncHandler(async (req, res) => {
       const b = req.body as z.infer<typeof imageSchema>;
-      const result = await service.generateImage(b.prompt, { width: b.width, height: b.height });
+      const result = await service.generateImage(b.prompt, {
+        width: b.width,
+        height: b.height,
+      });
       res.json(result);
     }),
   );

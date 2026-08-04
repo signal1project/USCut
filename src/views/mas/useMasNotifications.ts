@@ -18,10 +18,15 @@ interface MasNotification {
 export function useMasNotifications(): void {
   useEffect(() => {
     const handler = (_event: unknown, payload: MasNotification) => {
-      const msg = payload.body ? `${payload.title}: ${payload.body}` : payload.title;
+      const msg = payload.body
+        ? `${payload.title}: ${payload.body}`
+        : payload.title;
       toast[payload.level](msg);
     };
-    window.ipcRenderer.on(NOTIFY_CHANNEL, handler as (event: unknown, ...args: unknown[]) => void);
+    window.ipcRenderer.on(
+      NOTIFY_CHANNEL,
+      handler as (event: unknown, ...args: unknown[]) => void,
+    );
     return () => {
       window.ipcRenderer.off(NOTIFY_CHANNEL, handler);
     };

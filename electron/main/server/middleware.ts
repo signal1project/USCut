@@ -36,7 +36,9 @@ export function validateBody<T>(schema: ZodSchema<T>): RequestHandler {
   return (req, res, next) => {
     const result = schema.safeParse(req.body);
     if (!result.success) {
-      res.status(400).json({ error: 'validation_failed', details: result.error.flatten() });
+      res
+        .status(400)
+        .json({ error: 'validation_failed', details: result.error.flatten() });
       return;
     }
     req.body = result.data;
@@ -52,7 +54,9 @@ export function errorHandler(
   _next: NextFunction,
 ): void {
   if (err instanceof ZodError) {
-    res.status(400).json({ error: 'validation_failed', details: err.flatten() });
+    res
+      .status(400)
+      .json({ error: 'validation_failed', details: err.flatten() });
     return;
   }
   const message = err instanceof Error ? err.message : 'internal_error';

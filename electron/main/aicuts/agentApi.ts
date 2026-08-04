@@ -18,10 +18,7 @@ import {
   exportProject,
   type TimelineClip,
 } from './ffmpegOps';
-import {
-  autoEdit,
-  generateCaptionsFromTranscript,
-} from './autoEdit';
+import { autoEdit, generateCaptionsFromTranscript } from './autoEdit';
 
 const clipSchema = z.object({
   id: z.string(),
@@ -59,7 +56,9 @@ export function createAicutAgentRouter(): Router {
   // Generate a thumbnail at a timestamp → { path }
   router.post(
     '/thumbnail',
-    validateBody(z.object({ filePath: z.string(), time: z.number().optional() })),
+    validateBody(
+      z.object({ filePath: z.string(), time: z.number().optional() }),
+    ),
     asyncHandler(async (req, res) => {
       const out = await getThumbnail(req.body.filePath, req.body.time ?? 0);
       res.json({ path: out });
@@ -73,7 +72,12 @@ export function createAicutAgentRouter(): Router {
       z.object({
         prompt: z.string(),
         clips: z.array(
-          z.object({ id: z.string(), name: z.string(), duration: z.number(), src: z.string() }),
+          z.object({
+            id: z.string(),
+            name: z.string(),
+            duration: z.number(),
+            src: z.string(),
+          }),
         ),
       }),
     ),
@@ -85,10 +89,15 @@ export function createAicutAgentRouter(): Router {
   // Generate caption segments from a transcript
   router.post(
     '/captions',
-    validateBody(z.object({ transcript: z.string(), clips: z.array(clipSchema) })),
+    validateBody(
+      z.object({ transcript: z.string(), clips: z.array(clipSchema) }),
+    ),
     asyncHandler(async (req, res) => {
       res.json(
-        await generateCaptionsFromTranscript(req.body.transcript, req.body.clips as TimelineClip[]),
+        await generateCaptionsFromTranscript(
+          req.body.transcript,
+          req.body.clips as TimelineClip[],
+        ),
       );
     }),
   );
@@ -108,8 +117,14 @@ export function createAicutAgentRouter(): Router {
     asyncHandler(async (req, res) => {
       const { clips, resolution, fps, format } = req.body;
       const outputPath =
-        req.body.outputPath ?? path.join(os.tmpdir(), `aicut-export-${Date.now()}.${format}`);
-      await exportProject(clips as TimelineClip[], { resolution, fps, format, outputPath });
+        req.body.outputPath ??
+        path.join(os.tmpdir(), `aicut-export-${Date.now()}.${format}`);
+      await exportProject(clips as TimelineClip[], {
+        resolution,
+        fps,
+        format,
+        outputPath,
+      });
       res.json({ success: true, outputPath });
     }),
   );

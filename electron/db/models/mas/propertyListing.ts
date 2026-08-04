@@ -89,7 +89,12 @@ export class PropertyListingModel {
 
   /** ComplianceFlag[] from the guard (empty when clean). */
   @Column({ type: 'simple-json', default: '[]' })
-  complianceFlags!: Array<{ rule: string; severity: string; matched: string; detail: string }>;
+  complianceFlags!: Array<{
+    rule: string;
+    severity: string;
+    matched: string;
+    detail: string;
+  }>;
 
   @Index()
   @Column({ type: 'datetime' })

@@ -1,11 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { Palette, Save, Globe, ExternalLink, Plus, Trash2, Building2 } from 'lucide-react';
+import {
+  Palette,
+  Save,
+  Globe,
+  ExternalLink,
+  Plus,
+  Trash2,
+  Building2,
+} from 'lucide-react';
 import { useMasApi } from './useMasApi';
 import { ipc, hasIpc } from '@/lib/ipc';
 import {
   Button,
-  Card, CardHeader, CardTitle, CardDescription, CardContent,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
   Input,
   Label,
   Textarea,
@@ -23,8 +35,14 @@ interface BrandKitForm {
 }
 
 const emptyBrand = (): BrandKitForm => ({
-  id: crypto.randomUUID(), name: '', bio: '', voice: '', audience: '',
-  hashtags: '', bannedWords: '', signature: '',
+  id: crypto.randomUUID(),
+  name: '',
+  bio: '',
+  voice: '',
+  audience: '',
+  hashtags: '',
+  bannedWords: '',
+  signature: '',
 });
 
 /**
@@ -44,15 +62,26 @@ export default function BrandPage(): React.ReactElement {
     ipc
       .invoke('mas:brands:list')
       .then((raw) => {
-        const profiles = raw as Array<{ id: string; name: string; bio: string; voice: string; audience: string; hashtags: string[]; bannedWords: string[]; signature: string }>;
+        const profiles = raw as Array<{
+          id: string;
+          name: string;
+          bio: string;
+          voice: string;
+          audience: string;
+          hashtags: string[];
+          bannedWords: string[];
+          signature: string;
+        }>;
         const forms = profiles.map((k) => ({
-            id: k.id, name: k.name, bio: k.bio ?? '',
-            voice: k.voice,
-            audience: k.audience,
-            hashtags: k.hashtags.join(' '),
-            bannedWords: k.bannedWords.join(', '),
-            signature: k.signature,
-          }));
+          id: k.id,
+          name: k.name,
+          bio: k.bio ?? '',
+          voice: k.voice,
+          audience: k.audience,
+          hashtags: k.hashtags.join(' '),
+          bannedWords: k.bannedWords.join(', '),
+          signature: k.signature,
+        }));
         setBrands(forms);
         if (forms[0]) setSelectedId(forms[0].id);
       })
@@ -73,7 +102,10 @@ export default function BrandPage(): React.ReactElement {
         voice: kit.voice.trim(),
         audience: kit.audience.trim(),
         hashtags: kit.hashtags.split(/\s+/).filter(Boolean),
-        bannedWords: kit.bannedWords.split(',').map((w) => w.trim()).filter(Boolean),
+        bannedWords: kit.bannedWords
+          .split(',')
+          .map((w) => w.trim())
+          .filter(Boolean),
         signature: kit.signature.trim(),
       });
       toast.success(`${kit.name.trim()} saved`);
@@ -85,9 +117,11 @@ export default function BrandPage(): React.ReactElement {
   };
 
   const updateKit = (changes: Partial<BrandKitForm>) => {
-    setBrands((current) => current.map((brand) =>
-      brand.id === selectedId ? { ...brand, ...changes } : brand,
-    ));
+    setBrands((current) =>
+      current.map((brand) =>
+        brand.id === selectedId ? { ...brand, ...changes } : brand,
+      ),
+    );
   };
 
   const addBrand = () => {
@@ -151,7 +185,8 @@ export default function BrandPage(): React.ReactElement {
           Brand
         </h2>
         <p className="text-sm text-ink-muted mt-0.5">
-          Save a separate bio, voice, and content rules for every company you manage.
+          Save a separate bio, voice, and content rules for every company you
+          manage.
         </p>
       </div>
 
@@ -172,82 +207,111 @@ export default function BrandPage(): React.ReactElement {
 
       {/* Brand kit */}
       {kit && (
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Company Brand Profile</CardTitle>
-          <CardDescription>
-            These rules are appended to every AI content brief (posts, carousels, listing ads).
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="companyName">Company / brand name</Label>
-            <Input id="companyName" placeholder="Signal 1 Realty" value={kit.name} onChange={(e) => updateKit({ name: e.target.value })} />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="brandBio">Brand bio</Label>
-            <Textarea id="brandBio" rows={5} placeholder="Describe the company, what it does, where it serves, its values, and what makes it different..." value={kit.bio} onChange={(e) => updateKit({ bio: e.target.value })} />
-            <p className="text-[11px] text-ink-muted">Saved with this company so posts and ads can use the correct business context.</p>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="voice">Voice &amp; tone</Label>
-            <Input
-              id="voice"
-              placeholder="confident, warm, zero hype"
-              value={kit.voice}
-              onChange={(e) => updateKit({ voice: e.target.value })}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="audience">Target audience</Label>
-            <Input
-              id="audience"
-              placeholder="first-time homebuyers in Houston"
-              value={kit.audience}
-              onChange={(e) => updateKit({ audience: e.target.value })}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="bhashtags">Preferred hashtags (space-separated)</Label>
-            <Input
-              id="bhashtags"
-              placeholder="#HoustonHomes #YourBrand"
-              value={kit.hashtags}
-              onChange={(e) => updateKit({ hashtags: e.target.value })}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="banned">Banned words (comma-separated)</Label>
-            <Input
-              id="banned"
-              placeholder="cheap, guaranteed, once-in-a-lifetime"
-              value={kit.bannedWords}
-              onChange={(e) => updateKit({ bannedWords: e.target.value })}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="signature">Signature / CTA line</Label>
-            <Input
-              id="signature"
-              placeholder="DM 'HOME' for a free buyer consult"
-              value={kit.signature}
-              onChange={(e) => updateKit({ signature: e.target.value })}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <Button onClick={() => void saveKit()} loading={savingKit} disabled={!hasIpc()}>
-              <Save size={14} /> Save Company
-            </Button>
-            <Button variant="ghost" onClick={() => void deleteBrand()} className="text-danger hover:text-danger">
-              <Trash2 size={14} /> Remove Company
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Company Brand Profile</CardTitle>
+            <CardDescription>
+              These rules are appended to every AI content brief (posts,
+              carousels, listing ads).
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="companyName">Company / brand name</Label>
+              <Input
+                id="companyName"
+                placeholder="Signal 1 Realty"
+                value={kit.name}
+                onChange={(e) => updateKit({ name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="brandBio">Brand bio</Label>
+              <Textarea
+                id="brandBio"
+                rows={5}
+                placeholder="Describe the company, what it does, where it serves, its values, and what makes it different..."
+                value={kit.bio}
+                onChange={(e) => updateKit({ bio: e.target.value })}
+              />
+              <p className="text-[11px] text-ink-muted">
+                Saved with this company so posts and ads can use the correct
+                business context.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="voice">Voice &amp; tone</Label>
+              <Input
+                id="voice"
+                placeholder="confident, warm, zero hype"
+                value={kit.voice}
+                onChange={(e) => updateKit({ voice: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="audience">Target audience</Label>
+              <Input
+                id="audience"
+                placeholder="first-time homebuyers in Houston"
+                value={kit.audience}
+                onChange={(e) => updateKit({ audience: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="bhashtags">
+                Preferred hashtags (space-separated)
+              </Label>
+              <Input
+                id="bhashtags"
+                placeholder="#HoustonHomes #YourBrand"
+                value={kit.hashtags}
+                onChange={(e) => updateKit({ hashtags: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="banned">Banned words (comma-separated)</Label>
+              <Input
+                id="banned"
+                placeholder="cheap, guaranteed, once-in-a-lifetime"
+                value={kit.bannedWords}
+                onChange={(e) => updateKit({ bannedWords: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="signature">Signature / CTA line</Label>
+              <Input
+                id="signature"
+                placeholder="DM 'HOME' for a free buyer consult"
+                value={kit.signature}
+                onChange={(e) => updateKit({ signature: e.target.value })}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Button
+                onClick={() => void saveKit()}
+                loading={savingKit}
+                disabled={!hasIpc()}
+              >
+                <Save size={14} /> Save Company
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => void deleteBrand()}
+                className="text-danger hover:text-danger"
+              >
+                <Trash2 size={14} /> Remove Company
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {!kit && (
-        <Card><CardContent className="py-8 text-center text-sm text-ink-muted">Add your first company to create its brand bio and content rules.</CardContent></Card>
+        <Card>
+          <CardContent className="py-8 text-center text-sm text-ink-muted">
+            Add your first company to create its brand bio and content rules.
+          </CardContent>
+        </Card>
       )}
 
       {/* Bio page generator */}
@@ -258,35 +322,67 @@ export default function BrandPage(): React.ReactElement {
             Link-in-Bio Page
           </CardTitle>
           <CardDescription>
-            Exports a self-contained HTML file — host it on GitHub Pages, S3, or your site and link
-            it from every profile.
+            Exports a self-contained HTML file — host it on GitHub Pages, S3, or
+            your site and link it from every profile.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <Input placeholder="Your name *" value={bioName} onChange={(e) => setBioName(e.target.value)} />
-            <Input placeholder="Tagline" value={bioTagline} onChange={(e) => setBioTagline(e.target.value)} />
-            <Input placeholder="Brokerage" value={bioBrokerage} onChange={(e) => setBioBrokerage(e.target.value)} />
-            <Input placeholder="Phone" value={bioPhone} onChange={(e) => setBioPhone(e.target.value)} />
-            <Input placeholder="Email" value={bioEmail} onChange={(e) => setBioEmail(e.target.value)} className="col-span-2" />
+            <Input
+              placeholder="Your name *"
+              value={bioName}
+              onChange={(e) => setBioName(e.target.value)}
+            />
+            <Input
+              placeholder="Tagline"
+              value={bioTagline}
+              onChange={(e) => setBioTagline(e.target.value)}
+            />
+            <Input
+              placeholder="Brokerage"
+              value={bioBrokerage}
+              onChange={(e) => setBioBrokerage(e.target.value)}
+            />
+            <Input
+              placeholder="Phone"
+              value={bioPhone}
+              onChange={(e) => setBioPhone(e.target.value)}
+            />
+            <Input
+              placeholder="Email"
+              value={bioEmail}
+              onChange={(e) => setBioEmail(e.target.value)}
+              className="col-span-2"
+            />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="biolinks">Links — one per line as: Label | https://url</Label>
+            <Label htmlFor="biolinks">
+              Links — one per line as: Label | https://url
+            </Label>
             <Textarea
               id="biolinks"
               rows={4}
-              placeholder={'Search Homes | https://example.com/search\nFree Home Valuation | https://example.com/value'}
+              placeholder={
+                'Search Homes | https://example.com/search\nFree Home Valuation | https://example.com/value'
+              }
               value={bioLinks}
               onChange={(e) => setBioLinks(e.target.value)}
             />
           </div>
-          <Button onClick={() => void generateBio()} loading={bioBusy} disabled={!api || !bioName.trim()}>
+          <Button
+            onClick={() => void generateBio()}
+            loading={bioBusy}
+            disabled={!api || !bioName.trim()}
+          >
             <ExternalLink size={14} />
             Generate Bio Page
           </Button>
           {bioResult && (
             <p className="text-xs text-success">
-              Generated: <span className="text-ink-muted break-all select-all">{bioResult}</span>
+              Generated:{' '}
+              <span className="text-ink-muted break-all select-all">
+                {bioResult}
+              </span>
             </p>
           )}
         </CardContent>

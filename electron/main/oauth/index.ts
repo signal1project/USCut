@@ -1,10 +1,18 @@
 import axios from 'axios';
 import { getCredentialManager } from '../credentials';
 import type { CredentialManager } from '../credentials/credentialManager';
-import { OAuthService, type HttpPoster, type TokenEndpointResponse } from './oauthService';
+import {
+  OAuthService,
+  type HttpPoster,
+  type TokenEndpointResponse,
+} from './oauthService';
 
 export { OAuthService } from './oauthService';
-export type { OAuthClientConfig, HttpPoster, AuthorizeRequest } from './oauthService';
+export type {
+  OAuthClientConfig,
+  HttpPoster,
+  AuthorizeRequest,
+} from './oauthService';
 export * from './pkce';
 
 export const axiosPoster: HttpPoster = {
@@ -34,6 +42,8 @@ export function getOAuthService(): OAuthService {
 }
 
 /** Build an OAuthService bound to a specific credential manager (composition root). */
-export function createOAuthService(credentials: CredentialManager): OAuthService {
+export function createOAuthService(
+  credentials: CredentialManager,
+): OAuthService {
   return new OAuthService(axiosPoster, credentials);
 }

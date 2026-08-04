@@ -2,16 +2,27 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { Users, Plus, Trash2, TrendingUp } from 'lucide-react';
-import { MetricCard, PlatformBadge, type AnalyticsSnapshot, type CompetitorEntry } from '@mas/ui';
+import {
+  MetricCard,
+  PlatformBadge,
+  type AnalyticsSnapshot,
+  type CompetitorEntry,
+} from '@mas/ui';
 import { useMasApi } from './useMasApi';
 import {
   Button,
-  Card, CardHeader, CardTitle, CardDescription, CardContent,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
   Input,
   Label,
 } from '@/components/ui';
 
-interface FormValues { accountId: string }
+interface FormValues {
+  accountId: string;
+}
 
 /** View captured metric snapshots for an account's posts. */
 export default function AnalyticsPage(): React.ReactElement {
@@ -24,10 +35,14 @@ export default function AnalyticsPage(): React.ReactElement {
     if (!api) return;
     setLoading(true);
     try {
-      const { snapshots: rows } = await api.getAnalyticsByAccount(values.accountId);
+      const { snapshots: rows } = await api.getAnalyticsByAccount(
+        values.accountId,
+      );
       setSnapshots(rows);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to load analytics');
+      toast.error(
+        err instanceof Error ? err.message : 'Failed to load analytics',
+      );
     } finally {
       setLoading(false);
     }
@@ -52,7 +67,9 @@ export default function AnalyticsPage(): React.ReactElement {
         <CardContent>
           <form onSubmit={handleSubmit(load)} className="flex gap-2">
             <div className="flex-1 space-y-1">
-              <Label htmlFor="accountId" className="sr-only">Account ID</Label>
+              <Label htmlFor="accountId" className="sr-only">
+                Account ID
+              </Label>
               <Input
                 id="accountId"
                 placeholder="Account ID"
@@ -83,26 +100,48 @@ export default function AnalyticsPage(): React.ReactElement {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border">
-                      {['Platform', 'Post', 'Reach', 'Impressions', 'Engagements', 'Clicks', 'Captured'].map(
-                        (h) => (
-                          <th key={h} className="px-4 py-3 text-left text-xs font-medium text-ink-muted">
-                            {h}
-                          </th>
-                        ),
-                      )}
+                      {[
+                        'Platform',
+                        'Post',
+                        'Reach',
+                        'Impressions',
+                        'Engagements',
+                        'Clicks',
+                        'Captured',
+                      ].map((h) => (
+                        <th
+                          key={h}
+                          className="px-4 py-3 text-left text-xs font-medium text-ink-muted"
+                        >
+                          {h}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
                     {snapshots.map((s) => (
-                      <tr key={s.id} className="border-b border-border/50 hover:bg-surface-2 transition-colors">
+                      <tr
+                        key={s.id}
+                        className="border-b border-border/50 hover:bg-surface-2 transition-colors"
+                      >
                         <td className="px-4 py-3">
                           <PlatformBadge platform={s.platform} />
                         </td>
-                        <td className="px-4 py-3 text-ink-muted truncate max-w-[180px]">{s.externalPostId}</td>
-                        <td className="px-4 py-3">{s.reach.toLocaleString()}</td>
-                        <td className="px-4 py-3">{s.impressions.toLocaleString()}</td>
-                        <td className="px-4 py-3">{s.engagements.toLocaleString()}</td>
-                        <td className="px-4 py-3">{s.clicks.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-ink-muted truncate max-w-[180px]">
+                          {s.externalPostId}
+                        </td>
+                        <td className="px-4 py-3">
+                          {s.reach.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3">
+                          {s.impressions.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3">
+                          {s.engagements.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3">
+                          {s.clicks.toLocaleString()}
+                        </td>
                         <td className="px-4 py-3 text-ink-muted text-xs">
                           {new Date(s.capturedAt).toLocaleString()}
                         </td>
@@ -134,7 +173,9 @@ function CompetitorTracker(): React.ReactElement {
   const [name, setName] = useState('');
   const [platform, setPlatform] = useState('');
   const [handle, setHandle] = useState('');
-  const [followerInput, setFollowerInput] = useState<Record<string, string>>({});
+  const [followerInput, setFollowerInput] = useState<Record<string, string>>(
+    {},
+  );
 
   const load = useCallback(async () => {
     if (!api) return;
@@ -146,13 +187,21 @@ function CompetitorTracker(): React.ReactElement {
     }
   }, [api]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const add = async () => {
     if (!api || !name.trim() || !platform.trim() || !handle.trim()) return;
     try {
-      await api.addCompetitor({ name: name.trim(), platform: platform.trim(), handle: handle.trim() });
-      setName(''); setPlatform(''); setHandle('');
+      await api.addCompetitor({
+        name: name.trim(),
+        platform: platform.trim(),
+        handle: handle.trim(),
+      });
+      setName('');
+      setPlatform('');
+      setHandle('');
       void load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Add failed');
@@ -162,7 +211,10 @@ function CompetitorTracker(): React.ReactElement {
   const snapshot = async (id: string) => {
     if (!api) return;
     const followers = parseInt(followerInput[id] ?? '', 10);
-    if (!Number.isFinite(followers) || followers < 0) { toast.error('Enter a follower count'); return; }
+    if (!Number.isFinite(followers) || followers < 0) {
+      toast.error('Enter a follower count');
+      return;
+    }
     try {
       await api.addCompetitorSnapshot(id, { followers });
       setFollowerInput((prev) => ({ ...prev, [id]: '' }));
@@ -198,15 +250,34 @@ function CompetitorTracker(): React.ReactElement {
           Competitor Benchmarks
         </CardTitle>
         <CardDescription>
-          Track competitor accounts and log follower counts over time to benchmark your growth.
+          Track competitor accounts and log follower counts over time to
+          benchmark your growth.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex flex-wrap gap-2">
-          <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} className="flex-1 min-w-32" />
-          <Input placeholder="Platform" value={platform} onChange={(e) => setPlatform(e.target.value)} className="w-32" />
-          <Input placeholder="@handle" value={handle} onChange={(e) => setHandle(e.target.value)} className="w-40" />
-          <Button onClick={() => void add()} disabled={!api || !name.trim() || !handle.trim()}>
+          <Input
+            placeholder="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="flex-1 min-w-32"
+          />
+          <Input
+            placeholder="Platform"
+            value={platform}
+            onChange={(e) => setPlatform(e.target.value)}
+            className="w-32"
+          />
+          <Input
+            placeholder="@handle"
+            value={handle}
+            onChange={(e) => setHandle(e.target.value)}
+            className="w-40"
+          />
+          <Button
+            onClick={() => void add()}
+            disabled={!api || !name.trim() || !handle.trim()}
+          >
             <Plus size={14} />
             Track
           </Button>
@@ -220,11 +291,17 @@ function CompetitorTracker(): React.ReactElement {
           const latest = c.snapshots[c.snapshots.length - 1];
           const g = growth(c);
           return (
-            <div key={c.id} className="rounded-md border border-border/60 bg-surface-2 p-3">
+            <div
+              key={c.id}
+              className="rounded-md border border-border/60 bg-surface-2 p-3"
+            >
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-ink-strong">
-                    {c.name} <span className="text-ink-muted font-normal">· {c.platform} · {c.handle}</span>
+                    {c.name}{' '}
+                    <span className="text-ink-muted font-normal">
+                      · {c.platform} · {c.handle}
+                    </span>
                   </p>
                   <p className="text-xs text-ink-muted mt-0.5">
                     {latest
@@ -232,7 +309,8 @@ function CompetitorTracker(): React.ReactElement {
                       : 'No snapshots yet'}
                     {g && (
                       <span className="ml-2 text-success inline-flex items-center gap-0.5">
-                        <TrendingUp size={10} />{g}
+                        <TrendingUp size={10} />
+                        {g}
                       </span>
                     )}
                   </p>
@@ -241,10 +319,21 @@ function CompetitorTracker(): React.ReactElement {
                   <Input
                     placeholder="Followers"
                     value={followerInput[c.id] ?? ''}
-                    onChange={(e) => setFollowerInput((prev) => ({ ...prev, [c.id]: e.target.value }))}
+                    onChange={(e) =>
+                      setFollowerInput((prev) => ({
+                        ...prev,
+                        [c.id]: e.target.value,
+                      }))
+                    }
                     className="w-24 h-8 text-xs"
                   />
-                  <Button size="sm" variant="outline" onClick={() => void snapshot(c.id)}>Log</Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void snapshot(c.id)}
+                  >
+                    Log
+                  </Button>
                   <button
                     onClick={() => void remove(c.id)}
                     className="text-ink-muted hover:text-error transition-colors p-1"

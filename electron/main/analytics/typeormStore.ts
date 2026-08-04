@@ -1,11 +1,17 @@
 import type { DataSource } from 'typeorm';
 import { AnalyticsSnapshotModel } from '../../db/models/mas/analyticsSnapshot';
-import type { AnalyticsSnapshotInput, AnalyticsSnapshotRecord, SnapshotStore } from './analyticsService';
+import type {
+  AnalyticsSnapshotInput,
+  AnalyticsSnapshotRecord,
+  SnapshotStore,
+} from './analyticsService';
 
 export class TypeOrmSnapshotStore implements SnapshotStore {
   constructor(private readonly ds: DataSource) {}
 
-  async create(input: AnalyticsSnapshotInput): Promise<AnalyticsSnapshotRecord> {
+  async create(
+    input: AnalyticsSnapshotInput,
+  ): Promise<AnalyticsSnapshotRecord> {
     const repo = this.ds.getRepository(AnalyticsSnapshotModel);
     const saved = await repo.save(repo.create(input));
     return saved as unknown as AnalyticsSnapshotRecord;

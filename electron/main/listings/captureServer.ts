@@ -59,7 +59,9 @@ export function startListingCaptureServer(
         port,
         url: `http://127.0.0.1:${port}`,
         close: () =>
-          new Promise<void>((res, rej) => server.close((err) => (err ? rej(err) : res()))),
+          new Promise<void>((res, rej) =>
+            server.close((err) => (err ? rej(err) : res())),
+          ),
       });
     });
   });

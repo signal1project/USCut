@@ -26,7 +26,10 @@ export class ClaudeProvider implements AIProvider {
     private readonly model = 'claude-sonnet-4-6',
   ) {}
 
-  async generateText(prompt: string, options?: GenerateTextOptions): Promise<string> {
+  async generateText(
+    prompt: string,
+    options?: GenerateTextOptions,
+  ): Promise<string> {
     const res = await this.client.messages.create({
       model: this.model,
       max_tokens: resolveMaxTokens(options),
@@ -40,7 +43,12 @@ export class ClaudeProvider implements AIProvider {
       .trim();
   }
 
-  async generateImage(_prompt: string, _options?: GenerateImageOptions): Promise<string> {
-    throw new Error('Claude does not support image generation. Use the OpenAI provider for images.');
+  async generateImage(
+    _prompt: string,
+    _options?: GenerateImageOptions,
+  ): Promise<string> {
+    throw new Error(
+      'Claude does not support image generation. Use the OpenAI provider for images.',
+    );
   }
 }

@@ -5,7 +5,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import type { AIProvider } from '@mas/types';
-import { parseSrtOrVtt, toSrt, transcribeViaOpenAI, type TranscriptSegment } from './transcription';
+import {
+  parseSrtOrVtt,
+  toSrt,
+  transcribeViaOpenAI,
+  type TranscriptSegment,
+} from './transcription';
 import { pickHighlights, type HighlightWindow } from './autoClip';
 
 ffmpeg.setFfmpegPath(resolveFfmpegPath());
@@ -24,7 +29,13 @@ export interface AutoClipInput {
 export interface AutoClipResult {
   transcriptSource: 'provided' | 'whisper';
   pickedBy: 'ai' | 'heuristic';
-  clips: Array<{ path: string; start: number; end: number; durationSeconds: number; hook: string }>;
+  clips: Array<{
+    path: string;
+    start: number;
+    end: number;
+    durationSeconds: number;
+    hook: string;
+  }>;
 }
 
 export interface ClipServiceDeps {
@@ -44,7 +55,11 @@ function cutClip(
 ): Promise<void> {
   const vf: string[] = [];
   if (vertical) {
-    vf.push('scale=-2:1920', "crop='min(iw,1080)':1920:(iw-min(iw\\,1080))/2:0", 'pad=1080:1920:(ow-iw)/2:(oh-ih)/2');
+    vf.push(
+      'scale=-2:1920',
+      "crop='min(iw,1080)':1920:(iw-min(iw\\,1080))/2:0",
+      'pad=1080:1920:(ow-iw)/2:(oh-ih)/2',
+    );
   }
   if (srtPath) {
     vf.push(`subtitles='${srtPath.replace(/\\/g, '/').replace(/:/g, '\\:')}'`);
@@ -99,7 +114,11 @@ export class ClipService {
       maxClips: Math.min(Math.max(input.maxClips ?? 3, 1), 8),
       clipSeconds: Math.min(Math.max(input.clipSeconds ?? 30, 10), 90),
     };
-    const { windows, pickedBy } = await pickHighlights(segments, opts, this.deps.resolveProvider());
+    const { windows, pickedBy } = await pickHighlights(
+      segments,
+      opts,
+      this.deps.resolveProvider(),
+    );
     if (windows.length === 0) throw new Error('no_highlights_found');
 
     // 3. Cut
@@ -114,13 +133,18 @@ export class ClipService {
       for (const [i, win] of windows.entries()) {
         let srtPath: string | null = null;
         if (burn) {
-          const winSegs = segments.filter((s) => s.end > win.start && s.start < win.end);
+          const winSegs = segments.filter(
+            (s) => s.end > win.start && s.start < win.end,
+          );
           if (winSegs.length) {
             srtPath = path.join(work, `clip_${i}.srt`);
             fs.writeFileSync(srtPath, toSrt(winSegs, win.start), 'utf8');
           }
         }
-        const outPath = path.join(this.deps.outputDir, `clip-${Date.now()}-${i + 1}.mp4`);
+        const outPath = path.join(
+          this.deps.outputDir,
+          `clip-${Date.now()}-${i + 1}.mp4`,
+        );
         await cutClip(input.videoPath, win, outPath, srtPath, vertical);
         clips.push({
           path: outPath,

@@ -1,6 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { RateLimitedQueues } from '../rateLimitedQueues';
-import { Scheduler, type SchedulerBackend, type CancellableJob } from '../scheduler';
+import {
+  Scheduler,
+  type SchedulerBackend,
+  type CancellableJob,
+} from '../scheduler';
 
 describe('RateLimitedQueues', () => {
   it('runs tasks and propagates results', async () => {
@@ -21,13 +25,23 @@ describe('RateLimitedQueues', () => {
 
   it('propagates task errors to the caller', async () => {
     const q = new RateLimitedQueues();
-    await expect(q.run('threads', async () => { throw new Error('boom'); })).rejects.toThrow('boom');
+    await expect(
+      q.run('threads', async () => {
+        throw new Error('boom');
+      }),
+    ).rejects.toThrow('boom');
   });
 
   it('preserves FIFO order within a single platform', async () => {
     const q = new RateLimitedQueues(1);
     const order: number[] = [];
-    await Promise.all([1, 2, 3].map((n) => q.run('instagram', async () => { order.push(n); })));
+    await Promise.all(
+      [1, 2, 3].map((n) =>
+        q.run('instagram', async () => {
+          order.push(n);
+        }),
+      ),
+    );
     expect(order).toEqual([1, 2, 3]);
     await q.onIdle();
   });
@@ -41,7 +55,11 @@ class FakeBackend implements SchedulerBackend {
     if (!this.allowPast && runAt.getTime() < Date.now()) return null;
     const entry = { runAt, cb, cancelled: false };
     this.jobs.push(entry);
-    return { cancel: () => { entry.cancelled = true; } };
+    return {
+      cancel: () => {
+        entry.cancelled = true;
+      },
+    };
   }
   fireLast() {
     this.jobs[this.jobs.length - 1].cb();
@@ -65,7 +83,9 @@ describe('Scheduler', () => {
   });
 
   it('returns false for a past runAt and does not track', () => {
-    expect(scheduler.schedule('p1', new Date(Date.now() - 1000), () => {})).toBe(false);
+    expect(
+      scheduler.schedule('p1', new Date(Date.now() - 1000), () => {}),
+    ).toBe(false);
     expect(scheduler.has('p1')).toBe(false);
   });
 
@@ -78,7 +98,9 @@ describe('Scheduler', () => {
 
   it('runs the task and forgets the job once fired', async () => {
     let ran = false;
-    scheduler.schedule('p1', future(), () => { ran = true; });
+    scheduler.schedule('p1', future(), () => {
+      ran = true;
+    });
     backend.fireLast();
     expect(ran).toBe(true);
     expect(scheduler.has('p1')).toBe(false);

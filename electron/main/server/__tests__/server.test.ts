@@ -7,25 +7,38 @@ import { asyncHandler, validateBody } from '../middleware';
 // A sample feature router exercising validation, async handlers, and errors.
 function makeTestRouter() {
   const r = express.Router();
-  r.post('/echo', validateBody(z.object({ name: z.string().min(1) })), (req, res) => {
-    res.json({ hello: req.body.name });
-  });
-  r.get('/boom', asyncHandler(async () => {
-    throw new Error('kaboom');
-  }));
+  r.post(
+    '/echo',
+    validateBody(z.object({ name: z.string().min(1) })),
+    (req, res) => {
+      res.json({ hello: req.body.name });
+    },
+  );
+  r.get(
+    '/boom',
+    asyncHandler(async () => {
+      throw new Error('kaboom');
+    }),
+  );
   return r;
 }
 
 let api: RunningApiServer;
 
 beforeAll(async () => {
-  api = await startApiServer({ token: 'secret-token', routes: [{ path: '/test', router: makeTestRouter() }] });
+  api = await startApiServer({
+    token: 'secret-token',
+    routes: [{ path: '/test', router: makeTestRouter() }],
+  });
 });
 afterAll(async () => {
   await api.close();
 });
 
-const auth = { Authorization: 'Bearer secret-token', 'Content-Type': 'application/json' };
+const auth = {
+  Authorization: 'Bearer secret-token',
+  'Content-Type': 'application/json',
+};
 
 describe('embedded API server', () => {
   it('serves /health without auth', async () => {
@@ -46,7 +59,10 @@ describe('embedded API server', () => {
   it('rejects a wrong bearer token', async () => {
     const res = await fetch(`${api.url}/api/test/echo`, {
       method: 'POST',
-      headers: { Authorization: 'Bearer nope', 'Content-Type': 'application/json' },
+      headers: {
+        Authorization: 'Bearer nope',
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ name: 'x' }),
     });
     expect(res.status).toBe(401);
@@ -75,7 +91,10 @@ describe('embedded API server', () => {
   it('maps thrown errors to 500 via the error handler', async () => {
     const res = await fetch(`${api.url}/api/test/boom`, { headers: auth });
     expect(res.status).toBe(500);
-    expect(await res.json()).toMatchObject({ error: 'internal_error', message: 'kaboom' });
+    expect(await res.json()).toMatchObject({
+      error: 'internal_error',
+      message: 'kaboom',
+    });
   });
 
   it('returns 404 for unknown routes', async () => {

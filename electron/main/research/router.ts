@@ -9,7 +9,9 @@ const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).optional(),
 });
 
-export function createResearchRouter(research: TrendingResearchService): Router {
+export function createResearchRouter(
+  research: TrendingResearchService,
+): Router {
   const router = Router();
 
   /**
@@ -26,7 +28,10 @@ export function createResearchRouter(research: TrendingResearchService): Router 
       const q = querySchema.parse(req.query);
       const result = await research.getTrending({
         niche: q.niche,
-        sources: q.sources?.split(',').map((s) => s.trim()).filter(Boolean),
+        sources: q.sources
+          ?.split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
         limit: q.limit,
       });
       res.json(result);
@@ -42,7 +47,10 @@ export function createResearchRouter(research: TrendingResearchService): Router 
   router.get('/scrape', async (req, res, next) => {
     try {
       const keyword = String(req.query.keyword ?? '').trim();
-      if (!keyword) { res.status(400).json({ error: 'keyword required' }); return; }
+      if (!keyword) {
+        res.status(400).json({ error: 'keyword required' });
+        return;
+      }
       const ideas = await scrapeContentIdeas(keyword);
       res.json({ keyword, ideas });
     } catch (err) {

@@ -32,9 +32,17 @@ import {
   TypeOrmScheduledPostStore,
   createPublishRouter,
 } from '../../publishEngine';
-import { AnalyticsService, TypeOrmSnapshotStore, createAnalyticsRouter } from '../../analytics';
+import {
+  AnalyticsService,
+  TypeOrmSnapshotStore,
+  createAnalyticsRouter,
+} from '../../analytics';
 import { ContentService, createContentRouter } from '../../content';
-import { EngagementService, TypeOrmEngagementStore, createEngagementRouter } from '../../engagement';
+import {
+  EngagementService,
+  TypeOrmEngagementStore,
+  createEngagementRouter,
+} from '../../engagement';
 import { Scheduler, type SchedulerBackend } from '../../scheduling/scheduler';
 
 let failures = 0;
@@ -51,12 +59,26 @@ function assert(cond: boolean, label: string) {
 function fakeAdapter(platform: Platform): PlatformAdapter {
   return {
     platform,
-    publish: async (_ctx, input) => ({ externalPostId: `ext-${input.body.slice(0, 5)}` }),
-    fetchMetrics: async () => ({ reach: 50, impressions: 70, engagements: 9, clicks: 3 }),
+    publish: async (_ctx, input) => ({
+      externalPostId: `ext-${input.body.slice(0, 5)}`,
+    }),
+    fetchMetrics: async () => ({
+      reach: 50,
+      impressions: 70,
+      engagements: 9,
+      clicks: 3,
+    }),
     fetchComments: async (_ctx, postId) => [
-      { externalCommentId: `c-${postId}`, externalPostId: postId, authorHandle: 'fan', text: 'what is the price?' },
+      {
+        externalCommentId: `c-${postId}`,
+        externalPostId: postId,
+        authorHandle: 'fan',
+        text: 'what is the price?',
+      },
     ],
-    replyToComment: async (_ctx, cid) => ({ externalCommentId: `reply-${cid}` }),
+    replyToComment: async (_ctx, cid) => ({
+      externalCommentId: `reply-${cid}`,
+    }),
   };
 }
 
@@ -66,7 +88,9 @@ const fakeProvider: AIProvider = {
   generateImage: async () => 'http://img/fake.png',
 };
 
-const noopSchedulerBackend: SchedulerBackend = { schedule: () => ({ cancel() {} }) };
+const noopSchedulerBackend: SchedulerBackend = {
+  schedule: () => ({ cancel() {} }),
+};
 
 async function main() {
   const ds = new DataSource({
@@ -74,8 +98,13 @@ async function main() {
     database: ':memory:',
     synchronize: true,
     entities: [
-      ConnectedAccountModel, ContentAssetModel, PublishHistoryModel, ScheduledPostModel,
-      EngagementQueueItemModel, AnalyticsSnapshotModel, AuditLogModel,
+      ConnectedAccountModel,
+      ContentAssetModel,
+      PublishHistoryModel,
+      ScheduledPostModel,
+      EngagementQueueItemModel,
+      AnalyticsSnapshotModel,
+      AuditLogModel,
     ],
   });
   await ds.initialize();
@@ -97,26 +126,36 @@ async function main() {
 
   const resolveToken = async () => 'fake-token';
   const resolveAdapter = (p: Platform) => fakeAdapter(p);
-  const queue = { run: <T,>(_p: Platform, t: () => Promise<T>) => t() };
+  const queue = { run: <T>(_p: Platform, t: () => Promise<T>) => t() };
 
   const publish = new PublishEngine({
     accounts: new TypeOrmAccountStore(ds),
     history: new TypeOrmPublishHistoryStore(ds),
     scheduled: new TypeOrmScheduledPostStore(ds),
     audit: new TypeOrmAuditStore(ds),
-    resolveToken, resolveAdapter, queue,
+    resolveToken,
+    resolveAdapter,
+    queue,
   });
   const analytics = new AnalyticsService({
     accounts: new TypeOrmAccountStore(ds),
     snapshots: new TypeOrmSnapshotStore(ds),
-    resolveToken, resolveAdapter, queue,
+    resolveToken,
+    resolveAdapter,
+    queue,
   });
-  const content = new ContentService({ resolveProvider: () => fakeProvider, resolveImageProvider: () => fakeProvider });
+  const content = new ContentService({
+    resolveProvider: () => fakeProvider,
+    resolveImageProvider: () => fakeProvider,
+  });
   const engagement = new EngagementService({
     accounts: new TypeOrmAccountStore(ds),
     store: new TypeOrmEngagementStore(ds),
     audit: new TypeOrmAuditStore(ds),
-    resolveToken, resolveAdapter, resolveProvider: () => fakeProvider, queue,
+    resolveToken,
+    resolveAdapter,
+    resolveProvider: () => fakeProvider,
+    queue,
   });
 
   const scheduler = new Scheduler(noopSchedulerBackend);
@@ -130,51 +169,103 @@ async function main() {
     ],
   });
   console.log(`API listening at ${api.url}`);
-  const H = { Authorization: 'Bearer e2e-token', 'Content-Type': 'application/json' };
-  const post = (p: string, b: unknown) => fetch(`${api.url}${p}`, { method: 'POST', headers: H, body: JSON.stringify(b) });
+  const H = {
+    Authorization: 'Bearer e2e-token',
+    'Content-Type': 'application/json',
+  };
+  const post = (p: string, b: unknown) =>
+    fetch(`${api.url}${p}`, {
+      method: 'POST',
+      headers: H,
+      body: JSON.stringify(b),
+    });
   const get = (p: string) => fetch(`${api.url}${p}`, { headers: H });
 
   // 1) Publish → DB row persisted
   console.log('\n[publish]');
-  const pubRes = await post('/api/publish', { accountIds: [account.id], pubType: PubType.IMAGE_TEXT, body: 'hello world' });
+  const pubRes = await post('/api/publish', {
+    accountIds: [account.id],
+    pubType: PubType.IMAGE_TEXT,
+    body: 'hello world',
+  });
   const pubJson = await pubRes.json();
   assert(pubJson.status === PubStatus.PUBLISHED, 'publish returns PUBLISHED');
-  assert(pubJson.results[0].externalPostId === 'ext-hello', 'external post id flows back');
+  assert(
+    pubJson.results[0].externalPostId === 'ext-hello',
+    'external post id flows back',
+  );
   const pubRows = await ds.getRepository(PublishHistoryModel).find();
-  assert(pubRows.length === 1 && pubRows[0].status === PubStatus.PUBLISHED, 'publish_history row persisted as PUBLISHED');
+  assert(
+    pubRows.length === 1 && pubRows[0].status === PubStatus.PUBLISHED,
+    'publish_history row persisted as PUBLISHED',
+  );
   const auditRows = await ds.getRepository(AuditLogModel).find();
-  assert(auditRows.some((a) => a.action === 'publish'), 'audit log records publish');
+  assert(
+    auditRows.some((a) => a.action === 'publish'),
+    'audit log records publish',
+  );
 
   // 2) Content generation
   console.log('\n[content]');
-  const genRes = await post('/api/content/generate', { brief: 'spring sale', platforms: ['facebook', 'instagram'] });
+  const genRes = await post('/api/content/generate', {
+    brief: 'spring sale',
+    platforms: ['facebook', 'instagram'],
+  });
   const genJson = await genRes.json();
   assert(genJson.items.length === 2, 'content generated for 2 platforms');
   assert(genJson.items[0].hashtags.includes('#great'), 'hashtags extracted');
 
   // 3) Analytics capture → DB row, then read back
   console.log('\n[analytics]');
-  const capRes = await post('/api/analytics/capture', { accountId: account.id, externalPostId: 'ext-hello' });
+  const capRes = await post('/api/analytics/capture', {
+    accountId: account.id,
+    externalPostId: 'ext-hello',
+  });
   const capJson = await capRes.json();
-  assert(capJson.impressions === 70 && capJson.reach === 50, 'capture returns normalized metrics');
-  const listJson = await (await get(`/api/analytics?accountId=${account.id}`)).json();
-  assert(listJson.snapshots.length === 1, 'analytics snapshot persisted + listed');
+  assert(
+    capJson.impressions === 70 && capJson.reach === 50,
+    'capture returns normalized metrics',
+  );
+  const listJson = await (
+    await get(`/api/analytics?accountId=${account.id}`)
+  ).json();
+  assert(
+    listJson.snapshots.length === 1,
+    'analytics snapshot persisted + listed',
+  );
 
   // 4) Engagement ingest → approve
   console.log('\n[engagement]');
-  const ingRes = await post('/api/engagement/ingest', { accountId: account.id, externalPostId: 'ext-hello' });
+  const ingRes = await post('/api/engagement/ingest', {
+    accountId: account.id,
+    externalPostId: 'ext-hello',
+  });
   const ingJson = await ingRes.json();
   assert(ingJson.items.length === 1, 'one comment ingested');
-  assert(ingJson.items[0].highConversion === true, 'price comment flagged high-conversion');
-  assert(ingJson.items[0].draftReply.startsWith('AI says:'), 'AI draft reply attached');
+  assert(
+    ingJson.items[0].highConversion === true,
+    'price comment flagged high-conversion',
+  );
+  assert(
+    ingJson.items[0].draftReply.startsWith('AI says:'),
+    'AI draft reply attached',
+  );
   const pendingBefore = await (await get('/api/engagement/pending')).json();
   assert(pendingBefore.items.length === 1, 'item is pending');
   const itemId = ingJson.items[0].id;
   const appRes = await post(`/api/engagement/${itemId}/approve`, {});
   const appJson = await appRes.json();
-  assert(appJson.externalCommentId === `reply-c-ext-hello`, 'approve posts reply');
-  const itemRow = await ds.getRepository(EngagementQueueItemModel).findOneByOrFail({ id: itemId });
-  assert(itemRow.status === EngagementStatus.APPROVED, 'engagement row marked APPROVED');
+  assert(
+    appJson.externalCommentId === `reply-c-ext-hello`,
+    'approve posts reply',
+  );
+  const itemRow = await ds
+    .getRepository(EngagementQueueItemModel)
+    .findOneByOrFail({ id: itemId });
+  assert(
+    itemRow.status === EngagementStatus.APPROVED,
+    'engagement row marked APPROVED',
+  );
 
   await api.close();
   await ds.destroy();

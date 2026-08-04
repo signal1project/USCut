@@ -4,7 +4,10 @@ export class MockAgentAdapter implements AgentAdapter {
   readonly label: string;
   readonly kind = 'mock' as const;
 
-  constructor(readonly id = 'mock', label?: string) {
+  constructor(
+    readonly id = 'mock',
+    label?: string,
+  ) {
     this.label = label ?? `Mock Agent (${id})`;
   }
 

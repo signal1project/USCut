@@ -40,7 +40,12 @@ function decodeEntities(s: string): string {
 }
 
 interface JsonLdCandidate {
-  address?: { streetAddress?: string; addressLocality?: string; addressRegion?: string; postalCode?: string };
+  address?: {
+    streetAddress?: string;
+    addressLocality?: string;
+    addressRegion?: string;
+    postalCode?: string;
+  };
   offers?: { price?: number | string };
   price?: number | string;
   numberOfRooms?: number;
@@ -54,7 +59,8 @@ interface JsonLdCandidate {
 }
 
 function* jsonLdBlocks(html: string): Generator<unknown> {
-  const re = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+  const re =
+    /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
   let m: RegExpExecArray | null;
   while ((m = re.exec(html))) {
     try {
@@ -67,12 +73,18 @@ function* jsonLdBlocks(html: string): Generator<unknown> {
 
 function priceToCents(raw: number | string | undefined): number | undefined {
   if (raw == null) return undefined;
-  const n = typeof raw === 'number' ? raw : parseFloat(String(raw).replace(/[^0-9.]/g, ''));
+  const n =
+    typeof raw === 'number'
+      ? raw
+      : parseFloat(String(raw).replace(/[^0-9.]/g, ''));
   return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : undefined;
 }
 
 /** Parse listing data out of raw page HTML. Exported for tests. */
-export function extractListingFromHtml(html: string, url: string): ListingCapturePayload | null {
+export function extractListingFromHtml(
+  html: string,
+  url: string,
+): ListingCapturePayload | null {
   const source = sourceFromUrl(url);
 
   // ── 1. schema.org JSON-LD (best structured source) ─────────────────────────
@@ -81,7 +93,7 @@ export function extractListingFromHtml(html: string, url: string): ListingCaptur
     const items = Array.isArray(block)
       ? block
       : Array.isArray((block as { '@graph'?: unknown[] })['@graph'])
-        ? ((block as { '@graph': unknown[] })['@graph'])
+        ? (block as { '@graph': unknown[] })['@graph']
         : [block];
     for (const item of items) flat.push(item as JsonLdCandidate);
   }
@@ -89,7 +101,9 @@ export function extractListingFromHtml(html: string, url: string): ListingCaptur
     const t = ([] as string[]).concat((c['@type'] as string | string[]) ?? []);
     return (
       t.some((x) =>
-        /Residence|House|Apartment|Product|Offer|RealEstateListing|Place|Accommodation/i.test(x),
+        /Residence|House|Apartment|Product|Offer|RealEstateListing|Place|Accommodation/i.test(
+          x,
+        ),
       ) && !!c.address?.streetAddress
     );
   });
@@ -107,16 +121,22 @@ export function extractListingFromHtml(html: string, url: string): ListingCaptur
       beds: productish.numberOfBedrooms ?? productish.numberOfRooms,
       baths: productish.numberOfBathroomsTotal,
       sqft: productish.floorSize?.value,
-      description: productish.description ? decodeEntities(productish.description).slice(0, 2000) : undefined,
+      description: productish.description
+        ? decodeEntities(productish.description).slice(0, 2000)
+        : undefined,
       photoUrls: photos,
       listingUrl: url,
     };
   }
 
   // ── 2. OpenGraph fallback: "123 Main St, City, ST 12345" in og:title ───────
-  const title = metaContent(html, 'og:title') ?? html.match(/<title>([^<]*)<\/title>/i)?.[1];
+  const title =
+    metaContent(html, 'og:title') ??
+    html.match(/<title>([^<]*)<\/title>/i)?.[1];
   if (!title) return null;
-  const m = decodeEntities(title).match(/^(.+?),\s*([^,]+?),\s*([A-Z]{2})\b\s*(\d{5})?/);
+  const m = decodeEntities(title).match(
+    /^(.+?),\s*([^,]+?),\s*([A-Z]{2})\b\s*(\d{5})?/,
+  );
   if (!m) return null;
 
   const ogImage = metaContent(html, 'og:image');
@@ -137,7 +157,9 @@ export function extractListingFromHtml(html: string, url: string): ListingCaptur
 }
 
 /** Fetch a listing page and extract capture data. */
-export async function captureFromUrl(url: string): Promise<ListingCapturePayload | null> {
+export async function captureFromUrl(
+  url: string,
+): Promise<ListingCapturePayload | null> {
   const res = await fetch(url, {
     signal: AbortSignal.timeout(15_000),
     headers: {

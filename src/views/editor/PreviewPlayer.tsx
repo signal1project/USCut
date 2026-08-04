@@ -95,6 +95,10 @@ const PreviewPlayer: React.FC = () => {
     }
     const newSrc = toMediaUrl(activeClip.previewSrc ?? activeClip.src);
     if (newSrc !== currentSrc) setCurrentSrc(newSrc);
+    // Intentionally narrow: re-derive src only when the active clip identity changes,
+    // not on every activeClip/currentSrc reference change — see smooth-playback note
+    // above (broader deps here reintroduces per-frame re-render/seek stutter).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeClip?.id]);
 
   // Position the video on scrub/clip-change. While playing, the video element

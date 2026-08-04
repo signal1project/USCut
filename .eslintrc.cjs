@@ -8,7 +8,8 @@ module.exports = {
   plugins: [
     '@typescript-eslint/eslint-plugin',
     'unused-imports',
-    "eslint-plugin-react"
+    "eslint-plugin-react",
+    "react-hooks"
   ],
   extends: [
     'plugin:@typescript-eslint/recommended',
@@ -27,8 +28,10 @@ module.exports = {
     '@typescript-eslint/no-explicit-any': 'off',
     "unused-imports/no-unused-imports": "error",
     "@typescript-eslint/no-empty-object-type": "off",
-    "@typescript-eslint/no-unused-vars": "warn",
+    "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_", "caughtErrorsIgnorePattern": "^_" }],
     "prettier/prettier": ["error", { "endOfLine": "auto" }],
-    "@typescript-eslint/ban-ts-comment": "off"
+    "@typescript-eslint/ban-ts-comment": "off",
+    "react-hooks/rules-of-hooks": "error",
+    "react-hooks/exhaustive-deps": "warn"
   },
 };

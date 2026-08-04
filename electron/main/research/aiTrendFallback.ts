@@ -35,7 +35,10 @@ export function buildTrendPrompt(niche: string): string {
 
 export function parseTrendResponse(raw: string): RawTrendSignal[] {
   const results: RawTrendSignal[] = [];
-  const lines = raw.split('\n').map((l) => l.trim()).filter(Boolean);
+  const lines = raw
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
 
   for (const line of lines) {
     // Strip any markdown code-fence lines.
@@ -52,7 +55,8 @@ export function parseTrendResponse(raw: string): RawTrendSignal[] {
           source: 'ai_generated',
           keyword: obj.keyword.trim(),
           hashtags: Array.isArray(obj.hashtags) ? obj.hashtags.slice(0, 5) : [],
-          trafficScore: typeof obj.trafficScore === 'number' ? obj.trafficScore : undefined,
+          trafficScore:
+            typeof obj.trafficScore === 'number' ? obj.trafficScore : undefined,
         });
       }
     } catch {

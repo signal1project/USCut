@@ -28,12 +28,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      <div className={`${styles.videoModal ?? ''} relative bg-surface-1 rounded-lg shadow-xl w-full max-w-3xl mx-4`}>
+      <div
+        className={`${styles.videoModal ?? ''} relative bg-surface-1 rounded-lg shadow-xl w-full max-w-3xl mx-4`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-          <span className="text-sm font-semibold text-ink-strong">{title || 'Video Player'}</span>
+          <span className="text-sm font-semibold text-ink-strong">
+            {title || 'Video Player'}
+          </span>
           <button
             onClick={onClose}
             className="text-ink-muted hover:text-ink-strong transition-colors"

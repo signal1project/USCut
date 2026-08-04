@@ -12,8 +12,12 @@ const Windowcontrolbuttons = memo(() => {
   useEffect(() => {
     ipc
       .invoke('app:info')
-      .then((res) => setPlatform((res as { platform?: string })?.platform ?? ''))
-      .catch(() => {/* ignore — not critical */});
+      .then((res) =>
+        setPlatform((res as { platform?: string })?.platform ?? ''),
+      )
+      .catch(() => {
+        /* ignore — not critical */
+      });
   }, []);
 
   // Only render on Windows; macOS uses native traffic-light buttons

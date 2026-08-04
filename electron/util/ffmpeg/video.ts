@@ -22,7 +22,7 @@ export class FFmpegVideoUtil {
    * @returns
    */
   static async getVideoCover(videoFilePath: string, time?: string) {
-    return new Promise<string>((resolve, reject) => {
+    return new Promise<string>((resolve, _reject) => {
       try {
         const ffmpeg = new FFmpeg(videoFilePath);
         console.log('------ outputDir', FileUtils.getAppDataPath());

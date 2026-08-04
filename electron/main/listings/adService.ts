@@ -49,7 +49,10 @@ function specLine(l: PropertyListingSummary): string {
  * tone, and algorithm hints). Fair Housing / RESPA constraints are stated
  * in the prompt AND enforced after generation by ComplianceGuard.
  */
-export function buildListingBrief(l: PropertyListingSummary, opts: GenerateListingAdOptions): string {
+export function buildListingBrief(
+  l: PropertyListingSummary,
+  opts: GenerateListingAdOptions,
+): string {
   return `Write a real estate listing ad for this property.
 
 LISTING DETAILS:
@@ -77,7 +80,8 @@ const TEMPLATE_HASHTAGS: Record<Platform, string> = {
   pinterest: '#RealEstate #DreamHome #HomesForSale #HouseGoals',
   youtube: '#RealEstate #JustListed #HomeTour',
   tiktok: '#RealEstate #JustListed #HouseTour #FYP',
-  linkedin: '#RealEstate #JustListed #HomesForSale #PropertyInvestment #Realtor',
+  linkedin:
+    '#RealEstate #JustListed #HomesForSale #PropertyInvestment #Realtor',
 };
 
 /** Deterministic fallback so listing ads work with no AI provider configured. */
@@ -120,7 +124,10 @@ export class ListingAdService {
     private readonly content: ContentService,
   ) {}
 
-  async generateAd(listingId: string, opts: GenerateListingAdOptions): Promise<ListingAdResult | null> {
+  async generateAd(
+    listingId: string,
+    opts: GenerateListingAdOptions,
+  ): Promise<ListingAdResult | null> {
     const listing = await this.store.get(listingId);
     if (!listing) return null;
 

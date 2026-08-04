@@ -2,11 +2,7 @@ import React, { useState } from 'react';
 import { Plus, GripVertical } from 'lucide-react';
 import { PubStatus } from '@mas/types';
 import { StatusTag } from '@mas/ui';
-import {
-  Button,
-  Card, CardHeader, CardTitle, CardContent,
-  Badge,
-} from '@/components/ui';
+import { Button, Badge } from '@/components/ui';
 import { cn } from '@/lib/utils';
 
 interface PipelineItem {
@@ -17,22 +13,83 @@ interface PipelineItem {
   scheduledAt?: string;
 }
 
-type PipelineStage = 'ideas' | 'drafting' | 'approval' | 'scheduled' | 'published';
+type PipelineStage =
+  | 'ideas'
+  | 'drafting'
+  | 'approval'
+  | 'scheduled'
+  | 'published';
 
-const STAGES: { key: PipelineStage; label: string; status: PubStatus | null; color: string }[] = [
-  { key: 'ideas',     label: 'Ideas',          status: null,                   color: 'border-t-ink-subtle/40' },
-  { key: 'drafting',  label: 'Drafting',        status: PubStatus.DRAFT,        color: 'border-t-blue-500/60' },
-  { key: 'approval',  label: 'Needs Approval',  status: PubStatus.QUEUED,       color: 'border-t-warning/60' },
-  { key: 'scheduled', label: 'Scheduled',       status: PubStatus.PUBLISHING,   color: 'border-t-accent/60' },
-  { key: 'published', label: 'Published',       status: PubStatus.PUBLISHED,    color: 'border-t-success/60' },
+const STAGES: {
+  key: PipelineStage;
+  label: string;
+  status: PubStatus | null;
+  color: string;
+}[] = [
+  {
+    key: 'ideas',
+    label: 'Ideas',
+    status: null,
+    color: 'border-t-ink-subtle/40',
+  },
+  {
+    key: 'drafting',
+    label: 'Drafting',
+    status: PubStatus.DRAFT,
+    color: 'border-t-blue-500/60',
+  },
+  {
+    key: 'approval',
+    label: 'Needs Approval',
+    status: PubStatus.QUEUED,
+    color: 'border-t-warning/60',
+  },
+  {
+    key: 'scheduled',
+    label: 'Scheduled',
+    status: PubStatus.PUBLISHING,
+    color: 'border-t-accent/60',
+  },
+  {
+    key: 'published',
+    label: 'Published',
+    status: PubStatus.PUBLISHED,
+    color: 'border-t-success/60',
+  },
 ];
 
 const SEED_ITEMS: PipelineItem[] = [
-  { id: '1', title: 'Q3 product launch teaser',   platform: 'instagram', stage: 'ideas' },
-  { id: '2', title: 'Customer success story #7',  platform: 'linkedin',  stage: 'drafting' },
-  { id: '3', title: 'Weekly tips thread',          platform: 'twitter',   stage: 'approval' },
-  { id: '4', title: 'Behind-the-scenes reel',      platform: 'tiktok',    stage: 'scheduled', scheduledAt: 'Tomorrow 9am' },
-  { id: '5', title: 'May newsletter recap',         platform: 'facebook',  stage: 'published' },
+  {
+    id: '1',
+    title: 'Q3 product launch teaser',
+    platform: 'instagram',
+    stage: 'ideas',
+  },
+  {
+    id: '2',
+    title: 'Customer success story #7',
+    platform: 'linkedin',
+    stage: 'drafting',
+  },
+  {
+    id: '3',
+    title: 'Weekly tips thread',
+    platform: 'twitter',
+    stage: 'approval',
+  },
+  {
+    id: '4',
+    title: 'Behind-the-scenes reel',
+    platform: 'tiktok',
+    stage: 'scheduled',
+    scheduledAt: 'Tomorrow 9am',
+  },
+  {
+    id: '5',
+    title: 'May newsletter recap',
+    platform: 'facebook',
+    stage: 'published',
+  },
 ];
 
 let nextId = 100;
@@ -43,10 +100,13 @@ export default function PipelinePage(): React.ReactElement {
   const [dragging, setDragging] = useState<string | null>(null);
   const [overStage, setOverStage] = useState<PipelineStage | null>(null);
 
-  const byStage = (stage: PipelineStage) => items.filter((i) => i.stage === stage);
+  const byStage = (stage: PipelineStage) =>
+    items.filter((i) => i.stage === stage);
 
   const moveItem = (id: string, to: PipelineStage) => {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, stage: to } : i)));
+    setItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, stage: to } : i)),
+    );
   };
 
   const addIdea = () => {
@@ -77,7 +137,9 @@ export default function PipelinePage(): React.ReactElement {
   return (
     <div className="p-6 h-full flex flex-col gap-4 overflow-hidden">
       <div className="flex items-center justify-between shrink-0">
-        <h2 className="text-lg font-semibold text-ink-strong">Content Pipeline</h2>
+        <h2 className="text-lg font-semibold text-ink-strong">
+          Content Pipeline
+        </h2>
         <Button size="sm" onClick={addIdea}>
           <Plus size={14} />
           Add idea
@@ -104,8 +166,13 @@ export default function PipelinePage(): React.ReactElement {
               {/* Column header */}
               <div className={cn('rounded-t-lg border-t-2 px-3 py-2.5', color)}>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-ink-base">{label}</span>
-                  <Badge variant="secondary" className="text-xs h-5 min-w-[1.25rem] justify-center">
+                  <span className="text-xs font-semibold text-ink-base">
+                    {label}
+                  </span>
+                  <Badge
+                    variant="secondary"
+                    className="text-xs h-5 min-w-[1.25rem] justify-center"
+                  >
                     {stageItems.length}
                   </Badge>
                 </div>
@@ -126,15 +193,24 @@ export default function PipelinePage(): React.ReactElement {
                     )}
                   >
                     <div className="flex items-start gap-1.5">
-                      <GripVertical size={12} className="text-ink-subtle shrink-0 mt-0.5" />
+                      <GripVertical
+                        size={12}
+                        className="text-ink-subtle shrink-0 mt-0.5"
+                      />
                       <div className="min-w-0 flex-1 space-y-1.5">
-                        <p className="text-xs font-medium text-ink-base leading-tight">{item.title}</p>
+                        <p className="text-xs font-medium text-ink-base leading-tight">
+                          {item.title}
+                        </p>
                         <div className="flex items-center flex-wrap gap-1">
-                          <span className="text-xs text-ink-muted capitalize">{item.platform}</span>
+                          <span className="text-xs text-ink-muted capitalize">
+                            {item.platform}
+                          </span>
                           {status && <StatusTag status={status} />}
                         </div>
                         {item.scheduledAt && (
-                          <p className="text-xs text-accent">{item.scheduledAt}</p>
+                          <p className="text-xs text-accent">
+                            {item.scheduledAt}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -159,7 +235,9 @@ export default function PipelinePage(): React.ReactElement {
                 ))}
 
                 {stageItems.length === 0 && (
-                  <p className="text-center text-xs text-ink-subtle py-6">Drop here</p>
+                  <p className="text-center text-xs text-ink-subtle py-6">
+                    Drop here
+                  </p>
                 )}
               </div>
             </div>

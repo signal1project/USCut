@@ -32,7 +32,10 @@ export class NotificationService {
   ) {}
 
   notify(payload: NotificationPayload): void {
-    const enriched: NotificationPayload = { ...payload, at: payload.at ?? Date.now() };
+    const enriched: NotificationPayload = {
+      ...payload,
+      at: payload.at ?? Date.now(),
+    };
     this.broadcaster.send(NOTIFY_CHANNEL, enriched);
     if (payload.level !== 'info' && this.os.isSupported()) {
       this.os.show(payload.title, payload.body);

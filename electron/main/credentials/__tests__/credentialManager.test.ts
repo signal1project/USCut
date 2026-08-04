@@ -8,7 +8,9 @@ import {
 
 // Reversible fake: prefixes a tag so we can assert data was actually "encrypted"
 // (i.e. round-tripped through the encryptor) rather than stored as plaintext.
-function makeFakeEncryptor(available = true): SecureEncryptor & { lastPlain?: string } {
+function makeFakeEncryptor(
+  available = true,
+): SecureEncryptor & { lastPlain?: string } {
   const tag = 'ENC:';
   return {
     isEncryptionAvailable: () => available,
@@ -57,7 +59,9 @@ beforeEach(() => {
 
 describe('CredentialManager', () => {
   it('builds a stable ref from platform + externalId', () => {
-    expect(CredentialManager.refFor('facebook', 'acc-1')).toBe('facebook:acc-1');
+    expect(CredentialManager.refFor('facebook', 'acc-1')).toBe(
+      'facebook:acc-1',
+    );
   });
 
   it('saves encrypted (never plaintext) and round-trips the bundle', () => {
@@ -93,6 +97,8 @@ describe('CredentialManager', () => {
 
   it('throws when OS encryption is unavailable', () => {
     const m = new CredentialManager(makeFakeEncryptor(false), makeMapStore());
-    expect(() => m.save('x:1', bundle)).toThrow(/secure storage is unavailable/);
+    expect(() => m.save('x:1', bundle)).toThrow(
+      /secure storage is unavailable/,
+    );
   });
 });

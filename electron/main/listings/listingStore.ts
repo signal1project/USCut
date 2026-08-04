@@ -14,7 +14,9 @@ export interface ListListingsParams {
 
 export interface ListingStore {
   capture(payload: ListingCapturePayload): Promise<PropertyListingSummary>;
-  list(params?: ListListingsParams): Promise<{ listings: PropertyListingSummary[]; total: number }>;
+  list(
+    params?: ListListingsParams,
+  ): Promise<{ listings: PropertyListingSummary[]; total: number }>;
   get(id: string): Promise<PropertyListingSummary | null>;
   remove(id: string): Promise<boolean>;
 }
@@ -45,7 +47,10 @@ function toSummary(row: PropertyListingModel): PropertyListingSummary {
     listingUrl: row.listingUrl,
     complianceOk: row.complianceOk,
     complianceFlags: row.complianceFlags ?? [],
-    capturedAt: row.capturedAt instanceof Date ? row.capturedAt.toISOString() : String(row.capturedAt),
+    capturedAt:
+      row.capturedAt instanceof Date
+        ? row.capturedAt.toISOString()
+        : String(row.capturedAt),
   };
 }
 
@@ -61,7 +66,9 @@ export class TypeOrmListingStore implements ListingStore {
    * Save a captured listing. Re-capturing the same page (same listingUrl)
    * updates the existing row instead of creating a duplicate.
    */
-  async capture(payload: ListingCapturePayload): Promise<PropertyListingSummary> {
+  async capture(
+    payload: ListingCapturePayload,
+  ): Promise<PropertyListingSummary> {
     const compliance = this.guard.check(payload.description ?? '');
 
     const existing = payload.listingUrl
@@ -97,12 +104,17 @@ export class TypeOrmListingStore implements ListingStore {
     return toSummary(await this.repo.save(row));
   }
 
-  async list(params: ListListingsParams = {}): Promise<{ listings: PropertyListingSummary[]; total: number }> {
+  async list(
+    params: ListListingsParams = {},
+  ): Promise<{ listings: PropertyListingSummary[]; total: number }> {
     const qb = this.repo.createQueryBuilder('l');
-    if (params.source) qb.andWhere('l.source = :source', { source: params.source });
+    if (params.source)
+      qb.andWhere('l.source = :source', { source: params.source });
     if (params.state) qb.andWhere('l.state = :state', { state: params.state });
-    if (params.city) qb.andWhere('l.city LIKE :city', { city: `%${params.city}%` });
-    if (params.status) qb.andWhere('l.status = :status', { status: params.status });
+    if (params.city)
+      qb.andWhere('l.city LIKE :city', { city: `%${params.city}%` });
+    if (params.status)
+      qb.andWhere('l.status = :status', { status: params.status });
 
     const total = await qb.getCount();
     const rows = await qb

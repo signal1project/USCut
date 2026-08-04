@@ -16,7 +16,10 @@ export function createAnalyticsRouter(service: AnalyticsService): Router {
     validateBody(captureSchema),
     asyncHandler(async (req, res) => {
       const b = req.body as z.infer<typeof captureSchema>;
-      const snapshot = await service.captureSnapshot(b.accountId, b.externalPostId);
+      const snapshot = await service.captureSnapshot(
+        b.accountId,
+        b.externalPostId,
+      );
       res.json(snapshot);
     }),
   );

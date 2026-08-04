@@ -14,15 +14,36 @@ beforeEach(() => {
 describe('Settings — company brand profiles', () => {
   it('persists multiple companies and platform assignments', () => {
     settings.setBrandProfiles([
-      { id: 'one', name: 'Company One', bio: 'First bio', voice: 'warm', audience: 'buyers', hashtags: [], bannedWords: [], signature: '' },
-      { id: 'two', name: 'Company Two', bio: 'Second bio', voice: 'direct', audience: 'sellers', hashtags: ['#Two'], bannedWords: [], signature: 'Call us' },
+      {
+        id: 'one',
+        name: 'Company One',
+        bio: 'First bio',
+        voice: 'warm',
+        audience: 'buyers',
+        hashtags: [],
+        bannedWords: [],
+        signature: '',
+      },
+      {
+        id: 'two',
+        name: 'Company Two',
+        bio: 'Second bio',
+        voice: 'direct',
+        audience: 'sellers',
+        hashtags: ['#Two'],
+        bannedWords: [],
+        signature: 'Call us',
+      },
     ]);
     settings.setPlatformBrandAssignment('facebook', 'two');
 
     expect(settings.getBrandProfiles()).toHaveLength(2);
     expect(settings.getBrandProfiles()[1].bio).toBe('Second bio');
     expect(settings.getPlatformBrandAssignments().facebook).toBe('two');
-    expect(settings.getBrandKit()).toMatchObject({ brandName: 'Company One', bio: 'First bio' });
+    expect(settings.getBrandKit()).toMatchObject({
+      brandName: 'Company One',
+      bio: 'First bio',
+    });
   });
 });
 
@@ -32,7 +53,11 @@ describe('Settings — platform OAuth', () => {
   });
 
   it('round-trips an OAuth client config', () => {
-    settings.setPlatformOAuth('facebook', { clientId: 'id', clientSecret: 's', redirectUri: 'http://cb' });
+    settings.setPlatformOAuth('facebook', {
+      clientId: 'id',
+      clientSecret: 's',
+      redirectUri: 'http://cb',
+    });
     expect(settings.getPlatformOAuth('facebook')).toEqual({
       clientId: 'id',
       clientSecret: 's',
@@ -53,13 +78,21 @@ describe('Settings — AI providers', () => {
     expect(settings.getActiveAIProvider()).toBeNull(); // no key yet
     settings.setAIProviderKey('claude', 'sk-123');
     const active = settings.getActiveAIProvider();
-    expect(active).toMatchObject({ name: 'claude', apiKey: 'sk-123', authMethod: 'api_key' });
+    expect(active).toMatchObject({
+      name: 'claude',
+      apiKey: 'sk-123',
+      authMethod: 'api_key',
+    });
   });
 
   it('image provider resolves to OpenAI when its key is set', () => {
     expect(settings.getImageProvider()).toBeNull();
     settings.setAIProviderKey('openai', 'sk-openai');
-    expect(settings.getImageProvider()).toMatchObject({ name: 'openai', apiKey: 'sk-openai', authMethod: 'api_key' });
+    expect(settings.getImageProvider()).toMatchObject({
+      name: 'openai',
+      apiKey: 'sk-openai',
+      authMethod: 'api_key',
+    });
   });
 
   it('auto-activates provider when key is saved and none is active (via setAIProviderKey)', () => {
@@ -71,7 +104,11 @@ describe('Settings — AI providers', () => {
   it('ollama is available without an api key', () => {
     settings.setActiveAIProvider('ollama');
     const active = settings.getActiveAIProvider();
-    expect(active).toMatchObject({ name: 'ollama', authMethod: 'local', apiKey: '' });
+    expect(active).toMatchObject({
+      name: 'ollama',
+      authMethod: 'local',
+      apiKey: '',
+    });
   });
 
   it('getOllamaBaseUrl returns default when not set', () => {
@@ -101,6 +138,8 @@ describe('Settings — AI providers', () => {
     settings.setActiveAIProvider('openrouter');
     settings.setAIProviderKey('openrouter', 'sk-or-v1-test');
     settings.setAIProviderModel('openrouter', 'mistralai/mistral-7b-instruct');
-    expect(settings.getActiveAIProvider()?.model).toBe('mistralai/mistral-7b-instruct');
+    expect(settings.getActiveAIProvider()?.model).toBe(
+      'mistralai/mistral-7b-instruct',
+    );
   });
 });
