@@ -2,6 +2,7 @@ export {
   parseSrtOrVtt,
   toSrt,
   transcribeViaOpenAI,
+  transcribeViaLocalWhisper,
   type TranscriptSegment,
 } from './transcription';
 export {

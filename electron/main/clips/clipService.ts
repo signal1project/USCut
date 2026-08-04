@@ -9,6 +9,7 @@ import {
   parseSrtOrVtt,
   toSrt,
   transcribeViaOpenAI,
+  transcribeViaLocalWhisper,
   type TranscriptSegment,
 } from './transcription';
 import { pickHighlights, type HighlightWindow } from './autoClip';
@@ -27,7 +28,7 @@ export interface AutoClipInput {
 }
 
 export interface AutoClipResult {
-  transcriptSource: 'provided' | 'whisper';
+  transcriptSource: 'provided' | 'whisper' | 'whisper-local';
   pickedBy: 'ai' | 'heuristic';
   clips: Array<{
     path: string;
@@ -99,13 +100,16 @@ export class ClipService {
       transcriptSource = 'provided';
     } else {
       const key = this.deps.resolveOpenAiKey();
-      if (!key) {
-        throw new Error(
-          'transcript_required: paste an SRT/VTT transcript or set an OpenAI key in Settings for Whisper transcription',
-        );
+      if (key) {
+        segments = await transcribeViaOpenAI(input.videoPath, key);
+        transcriptSource = 'whisper';
+      } else {
+        // No key configured — fall back to local whisper.cpp (no upload, no
+        // cost). Its own error message already explains the toolchain
+        // prerequisite and the alternatives, so surface it as-is.
+        segments = await transcribeViaLocalWhisper(input.videoPath);
+        transcriptSource = 'whisper-local';
       }
-      segments = await transcribeViaOpenAI(input.videoPath, key);
-      transcriptSource = 'whisper';
     }
     if (segments.length === 0) throw new Error('transcript_empty');
 

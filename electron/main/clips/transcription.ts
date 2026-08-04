@@ -1,5 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
+import crypto from 'node:crypto';
+import ffmpeg from 'fluent-ffmpeg';
+import { resolveFfmpegPath } from '../../util/ffmpegBinary';
 
 export interface TranscriptSegment {
   /** Seconds. */
@@ -98,4 +102,84 @@ export async function transcribeViaOpenAI(
   if (data.text)
     return [{ start: 0, end: data.duration ?? 60, text: data.text.trim() }];
   return [];
+}
+
+/** Convert to a 16kHz mono WAV via our bundled ffmpeg-static binary. Doing this
+ * ourselves (rather than letting nodejs-whisper shell out to a system `ffmpeg`
+ * on PATH) means local transcription doesn't depend on the user having one
+ * installed — this project deliberately bundles its own for that reason. */
+function toWhisperWav(inputPath: string): Promise<string> {
+  const outPath = path.join(
+    os.tmpdir(),
+    `aicut-whisper-${crypto.randomUUID()}.wav`,
+  );
+  return new Promise((resolve, reject) => {
+    ffmpeg(inputPath)
+      .setFfmpegPath(resolveFfmpegPath())
+      .audioChannels(1)
+      .audioFrequency(16000)
+      .audioCodec('pcm_s16le')
+      .noVideo()
+      .output(outPath)
+      .on('end', () => resolve(outPath))
+      .on('error', reject)
+      .run();
+  });
+}
+
+/**
+ * Transcribe locally with whisper.cpp (via nodejs-whisper) — no API key, no
+ * upload, fully offline. `nodejs-whisper` is an optionalDependency: its
+ * postinstall vendors whisper.cpp source but does NOT compile it, so it never
+ * breaks `npm install`. Compiling whisper-cli + downloading the model both
+ * happen lazily on first real use here, and both require a C++ build
+ * toolchain (CMake + MSVC on Windows) — the same prerequisite already needed
+ * for Mymo's virtual-camera phase. Absent that toolchain, this throws a clear,
+ * actionable error rather than a stack trace.
+ */
+export async function transcribeViaLocalWhisper(
+  filePath: string,
+  modelName = 'base.en',
+): Promise<TranscriptSegment[]> {
+  let nodewhisper: (typeof import('nodejs-whisper'))['nodewhisper'];
+  try {
+    ({ nodewhisper } = await import('nodejs-whisper'));
+  } catch {
+    throw new Error(
+      'local_whisper_not_installed: run `npm install` to pull in the optional nodejs-whisper dependency, or paste an SRT/VTT transcript, or set an OpenAI key in Settings.',
+    );
+  }
+
+  const wavPath = await toWhisperWav(filePath);
+  const srtPath = wavPath.replace(/\.wav$/, '.srt');
+  try {
+    await nodewhisper(wavPath, {
+      modelName,
+      autoDownloadModelName: modelName,
+      removeWavFileAfterTranscription: false,
+      whisperOptions: {
+        outputInSrt: true,
+        outputInText: false,
+        outputInVtt: false,
+        outputInJson: false,
+        outputInJsonFull: false,
+        outputInCsv: false,
+        outputInLrc: false,
+        outputInWords: false,
+      },
+    });
+    if (!fs.existsSync(srtPath)) throw new Error('no_srt_output');
+    return parseSrtOrVtt(fs.readFileSync(srtPath, 'utf8'));
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `local_whisper_failed: ${detail} — first run needs a C++ build toolchain ` +
+        '(CMake + Visual Studio Build Tools on Windows) to compile whisper-cli and ' +
+        'download the model. Paste an SRT/VTT transcript, or set an OpenAI key in ' +
+        'Settings instead.',
+    );
+  } finally {
+    fs.rm(wavPath, () => {});
+    fs.rm(srtPath, () => {});
+  }
 }
