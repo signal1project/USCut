@@ -276,6 +276,58 @@ const ConnectAccounts: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     toast.success('Business page brand assignment saved');
   };
 
+  const [detectingPages, setDetectingPages] = useState(false);
+
+  const detectPages = async () => {
+    setDetectingPages(true);
+    try {
+      const res = (await ipc.invoke('mas:social:detect-pages')) as {
+        found: number;
+        created: number;
+      };
+      const refreshed = await ipc.invoke('mas:accounts:list');
+      setBusinessAccounts(refreshed as typeof businessAccounts);
+      if (res.found === 0) {
+        toast.info(
+          "No Pages found — you may only have a personal profile, or Facebook's page changed since this was built.",
+        );
+      } else {
+        toast.success(
+          `Found ${res.found} Page${res.found === 1 ? '' : 's'} (${res.created} new) — assign each to a company below.`,
+        );
+      }
+    } catch (e) {
+      toast.error(`Page detection failed: ${(e as Error).message}`);
+    } finally {
+      setDetectingPages(false);
+    }
+  };
+
+  // Facebook/Instagram/Threads share one Meta login on the backend now — a
+  // sign-in or logout on any one of them can flip the other two as well.
+  const META_GROUP: Platform[] = ['facebook', 'instagram', 'threads'];
+
+  const refreshMetaSiblings = async (justSignedInto: Platform) => {
+    if (!META_GROUP.includes(justSignedInto)) return;
+    for (const sibling of META_GROUP) {
+      if (sibling === justSignedInto) continue;
+      try {
+        const res = (await ipc.invoke(
+          'mas:social:session-status',
+          sibling,
+        )) as { loggedIn: boolean };
+        if (res.loggedIn && !states[sibling].loggedIn) {
+          patch(sibling, { loggedIn: true });
+          toast.success(
+            `${PLATFORM_CONFIG[sibling].label} connected automatically (same Meta login) ✓`,
+          );
+        }
+      } catch {
+        /* leave sibling status as-is */
+      }
+    }
+  };
+
   const signIn = async (p: Platform) => {
     if (!hasIpc()) {
       toast.error('Requires the desktop app');
@@ -288,9 +340,10 @@ const ConnectAccounts: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         loggedIn: boolean;
       };
       patch(p, { loggedIn: res.loggedIn, signingIn: false });
-      if (res.loggedIn)
+      if (res.loggedIn) {
         toast.success(`Connected to ${PLATFORM_CONFIG[p].label} ✓`);
-      else toast.info('Window closed — try signing in again when ready.');
+        await refreshMetaSiblings(p);
+      } else toast.info('Window closed — try signing in again when ready.');
     } catch (e) {
       patch(p, { signingIn: false });
       toast.error(`Could not open login: ${(e as Error).message}`);
@@ -299,9 +352,16 @@ const ConnectAccounts: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   const logOut = async (p: Platform) => {
     try {
-      await ipc.invoke('mas:social:logout', p);
-      patch(p, { loggedIn: false });
-      toast.success(`Disconnected from ${PLATFORM_CONFIG[p].label}`);
+      const res = (await ipc.invoke('mas:social:logout', p)) as {
+        alsoLoggedOut?: boolean;
+      };
+      if (res.alsoLoggedOut) {
+        META_GROUP.forEach((sibling) => patch(sibling, { loggedIn: false }));
+        toast.success('Disconnected from Facebook, Instagram, and Threads');
+      } else {
+        patch(p, { loggedIn: false });
+        toast.success(`Disconnected from ${PLATFORM_CONFIG[p].label}`);
+      }
     } catch (e) {
       toast.error(`Logout failed: ${(e as Error).message}`);
     }
@@ -421,20 +481,40 @@ const ConnectAccounts: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
         {/* Platform list */}
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
-          {businessAccounts.length > 0 && (
+          {states.facebook.loggedIn && (
             <div className="rounded-xl border border-[#2a3560] bg-[#151927] p-3 mb-3">
-              <div className="flex items-center gap-2 mb-2">
-                <Building2 size={14} className="text-[#7ba0ff]" />
-                <div>
-                  <p className="text-xs font-semibold text-ink-strong">
-                    Connected Business Pages
-                  </p>
-                  <p className="text-[10px] text-ink-muted">
-                    Choose which saved company owns each page or account.
-                  </p>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Building2 size={14} className="text-[#7ba0ff]" />
+                  <div>
+                    <p className="text-xs font-semibold text-ink-strong">
+                      Business Pages
+                    </p>
+                    <p className="text-[10px] text-ink-muted">
+                      One Meta login, many Pages — assign each Page to the
+                      company it belongs to.
+                    </p>
+                  </div>
                 </div>
+                <button
+                  onClick={() => void detectPages()}
+                  disabled={detectingPages}
+                  className="flex items-center gap-1.5 text-[11px] font-medium bg-[#1d2540] hover:bg-[#26306a] disabled:opacity-50 text-[#8aa6ff] rounded-md px-2.5 py-1.5 transition-colors shrink-0"
+                >
+                  {detectingPages ? (
+                    <Loader2 size={11} className="animate-spin" />
+                  ) : (
+                    <Building2 size={11} />
+                  )}
+                  Detect My Pages
+                </button>
               </div>
-              <div className="space-y-2">
+              {businessAccounts.length === 0 && !detectingPages && (
+                <p className="text-[10px] text-ink-muted mt-2">
+                  No Pages detected yet — click Detect My Pages above.
+                </p>
+              )}
+              <div className="space-y-2 mt-2">
                 {businessAccounts.map((account) => (
                   <div
                     key={account.id}
@@ -499,7 +579,9 @@ const ConnectAccounts: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                     </p>
                   </div>
 
-                  {s.loggedIn && (
+                  {/* Facebook/Instagram/Threads: a login isn't one company —
+                      Pages get their own company assignment above instead. */}
+                  {s.loggedIn && !META_GROUP.includes(p) && (
                     <select
                       value={platformBrands[p] ?? ''}
                       onChange={(e) =>

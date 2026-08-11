@@ -273,6 +273,211 @@ export async function attachMediaViaCdp(
   }
 }
 
+// ── Shared Meta identity ─────────────────────────────────────────────────────
+// Facebook, Instagram, and Threads are all the same Meta account in real life
+// (BLK INK Lead Machine got this for free by running in the user's real
+// browser, which shares one cookie jar across meta.com properties). AICut's
+// webview windows don't share cookies by default, so we deliberately route
+// all three through ONE Electron session partition instead of three isolated
+// ones — signing into Facebook puts the same identity cookies in front of
+// instagram.com and threads.net too.
+
+const META_GROUP = new Set(['facebook', 'instagram', 'threads']);
+const META_PARTITION = 'persist:social-meta';
+
+function partitionFor(platform: string): string {
+  return META_GROUP.has(platform)
+    ? META_PARTITION
+    : `persist:social-${platform}`;
+}
+
+/**
+ * Threads has no login of its own — it rides entirely on the Instagram
+ * identity. Confirmed against a real live session (2026-08-11): threads.net
+ * only ever sets `ig_did` (a device-ID cookie), never a sessionid, even
+ * while genuinely signed in. So "is Threads logged in" is really "is
+ * Instagram logged in" — check Instagram's cookie instead of looking for
+ * something that structurally doesn't exist on threads.net.
+ */
+const AUTH_CHECK_PLATFORM: Record<string, string> = { threads: 'instagram' };
+
+async function isLoggedIn(platform: string): Promise<boolean> {
+  const checkPlatform = AUTH_CHECK_PLATFORM[platform] ?? platform;
+  const meta = WEBVIEW_PLATFORMS[checkPlatform];
+  if (!meta) return false;
+  const ses = session.fromPartition(partitionFor(platform), { cache: true });
+  const cookies = await ses.cookies.get({ domain: meta.sessionDomain });
+  const loggedIn = meta.authCookieHints.some((hint) =>
+    cookies.some((c) => c.name === hint && c.value.length > 0),
+  );
+  // Diagnostic: when a platform we expect to be logged in still reads as
+  // logged out, dump every cookie NAME present for its domain (never
+  // values) so a mismatched authCookieHint is visible in the log instead
+  // of guessing blind. Cheap enough to always run.
+  if (!loggedIn && cookies.length > 0) {
+    logger.log(
+      '[AICut] isLoggedIn(false) but cookies present for',
+      platform,
+      meta.sessionDomain,
+      '— names:',
+      [...new Set(cookies.map((c) => c.name))],
+    );
+  }
+  return loggedIn;
+}
+
+/**
+ * Best-effort click on a Meta cross-app identity prompt — "Continue as
+ * [name]", "Log in with Instagram", an account-chip row, etc. Threads in
+ * particular bridges off the Instagram identity rather than Facebook's, so
+ * this needs to catch Instagram-flavored prompts too, not just Facebook's.
+ */
+const CONTINUE_AS_SCRIPT = `(() => {
+  const patterns = [
+    /continue as/i,
+    /log ?in with instagram/i,
+    /use instagram to log ?in/i,
+    /switch to profile/i,
+  ];
+  const candidates = [
+    ...document.querySelectorAll('button, div[role="button"], a, [role="link"]'),
+  ];
+  for (const re of patterns) {
+    const btn = candidates.find((el) => re.test(el.textContent || ''));
+    if (btn) { btn.click(); return { clicked: true, matched: re.source }; }
+  }
+  return { clicked: false, sample: document.title };
+})();`;
+
+/**
+ * After a successful sign-in to one Meta property, visit the sibling
+ * properties in the SAME shared session — VISIBLE (not hidden), because
+ * Meta's SSO/bot-detection can behave differently for invisible automated
+ * windows, and because a real page needs to actually paint for its
+ * lazy-hydrated "Continue as" prompt to appear at all. Meta's own cross-app
+ * identity bridge (Accounts Center) will often complete the login with zero
+ * clicks, or show a one-click prompt this auto-clicks. Best-effort: a
+ * property that truly needs its own separate password is left for the user
+ * to sign into normally via its own Sign In button — nothing here can force
+ * that, and each attempt is logged so mismatches are diagnosable.
+ */
+async function attemptMetaCrossLogin(
+  mainWindow: BrowserWindow,
+  signedInPlatform: string,
+): Promise<void> {
+  if (!META_GROUP.has(signedInPlatform)) return;
+  const ses = session.fromPartition(META_PARTITION, { cache: true });
+
+  for (const platform of META_GROUP) {
+    if (platform === signedInPlatform) continue;
+    if (await isLoggedIn(platform)) continue;
+    const meta = WEBVIEW_PLATFORMS[platform];
+    const win = new BrowserWindow({
+      width: 480,
+      height: 640,
+      show: true,
+      title: `Connecting ${meta.label} via your Meta login…`,
+      parent: mainWindow,
+      webPreferences: {
+        session: ses,
+        nodeIntegration: false,
+        contextIsolation: true,
+      },
+    });
+    win.setMenuBarVisibility(false);
+    try {
+      await win.loadURL(meta.loginUrl);
+      await new Promise((r) => setTimeout(r, 2800));
+      if (!win.isDestroyed()) {
+        const result = await win.webContents
+          .executeJavaScript(CONTINUE_AS_SCRIPT)
+          .catch((err) => {
+            logger.log('[AICut] Meta cross-login script failed', platform, err);
+            return null;
+          });
+        logger.log('[AICut] Meta cross-login attempt', platform, result);
+        await new Promise((r) => setTimeout(r, 2200));
+      }
+      const success = await isLoggedIn(platform);
+      logger.log('[AICut] Meta cross-login result', platform, { success });
+    } catch (err) {
+      logger.log('[AICut] Meta cross-login attempt failed', platform, err);
+    } finally {
+      if (!win.isDestroyed()) win.destroy();
+    }
+  }
+}
+
+// ── Facebook Page detection ──────────────────────────────────────────────────
+// Auto-detect which Pages the signed-in Meta identity manages, so business
+// profiles can be built without Dale typing Page IDs by hand. Best-effort DOM
+// scraping — same posture as the compose PRE/FILL scripts above: Facebook's
+// Pages-list markup shifts over time, so this needs iterating against
+// whatever's live when it starts missing pages.
+
+export interface DetectedPage {
+  id: string;
+  name: string;
+  url: string;
+}
+
+const DETECT_PAGES_SCRIPT = `(() => {
+  const IGNORE = new Set(['pages','settings','help','bookmarks','groups','watch','marketplace','gaming','friends','notifications','messages','events','saved','memories','ads','business']);
+  const seen = new Map();
+  for (const a of document.querySelectorAll('a[href]')) {
+    const href = a.getAttribute('href') || '';
+    const m = href.match(/^(?:https:\\/\\/www\\.facebook\\.com)?\\/(profile\\.php\\?id=(\\d+)|([A-Za-z0-9.\\-]{2,}))\\/?(?:[?#].*)?$/);
+    if (!m) continue;
+    const id = m[2] || m[3];
+    if (!id || IGNORE.has(id.toLowerCase())) continue;
+    const container = a.closest('div[role="listitem"], li, div[data-visualcompletion]') || a.parentElement;
+    const img = container ? container.querySelector('img') : null;
+    const nameEl = container ? container.querySelector('span, strong') : null;
+    const name = (nameEl && nameEl.textContent && nameEl.textContent.trim())
+      || (img && img.getAttribute('alt'))
+      || (a.textContent && a.textContent.trim());
+    if (!name || name.length < 2) continue;
+    if (!seen.has(id)) seen.set(id, { id, name, url: 'https://www.facebook.com/' + id });
+  }
+  return [...seen.values()];
+})();`;
+
+/** Opens a scan window against Facebook's Pages list in the shared Meta session. */
+export async function detectFacebookPages(
+  mainWindow: BrowserWindow,
+): Promise<DetectedPage[]> {
+  if (!(await isLoggedIn('facebook'))) {
+    throw new Error('Sign in to Facebook first.');
+  }
+  const ses = session.fromPartition(META_PARTITION, { cache: true });
+  const win = new BrowserWindow({
+    width: 480,
+    height: 640,
+    title: 'Detecting your Facebook Pages…',
+    parent: mainWindow,
+    webPreferences: {
+      session: ses,
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+  win.setMenuBarVisibility(false);
+  try {
+    await win.loadURL('https://www.facebook.com/pages/?category=your_pages');
+    await new Promise((r) => setTimeout(r, 3000));
+    if (win.isDestroyed()) return [];
+    const pages = (await win.webContents
+      .executeJavaScript(DETECT_PAGES_SCRIPT)
+      .catch((err) => {
+        logger.log('[AICut] Facebook Pages scan failed', err);
+        return [];
+      })) as DetectedPage[];
+    return pages;
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
+  }
+}
+
 // ── IPC handlers ──────────────────────────────────────────────────────────────
 
 export function registerWebviewBridge(mainWindow: BrowserWindow): void {
@@ -281,7 +486,7 @@ export function registerWebviewBridge(mainWindow: BrowserWindow): void {
     const meta = WEBVIEW_PLATFORMS[platform];
     if (!meta) throw new Error(`Unknown platform: ${platform}`);
 
-    const ses = session.fromPartition(`persist:social-${platform}`, {
+    const ses = session.fromPartition(partitionFor(platform), {
       cache: true,
     });
     const win = new BrowserWindow({
@@ -300,47 +505,42 @@ export function registerWebviewBridge(mainWindow: BrowserWindow): void {
     await win.loadURL(meta.loginUrl);
 
     return new Promise<{ loggedIn: boolean }>((resolve) => {
-      win.on('closed', () => resolve({ loggedIn: true }));
+      win.on('closed', () => {
+        void (async () => {
+          if (await isLoggedIn(platform)) {
+            await attemptMetaCrossLogin(mainWindow, platform);
+          }
+        })().finally(() => resolve({ loggedIn: true }));
+      });
     });
   });
 
   /** Check if platform has an active persisted session. */
   ipcMain.handle('mas:social:session-status', async (_e, platform: string) => {
-    const meta = WEBVIEW_PLATFORMS[platform];
-    if (!meta) return { loggedIn: false };
-
-    const ses = session.fromPartition(`persist:social-${platform}`, {
-      cache: true,
-    });
-    const cookies = await ses.cookies.get({ domain: meta.sessionDomain });
-    const loggedIn = meta.authCookieHints.some((hint) =>
-      cookies.some((c) => c.name === hint && c.value.length > 0),
-    );
-    return { loggedIn };
+    if (!WEBVIEW_PLATFORMS[platform]) return { loggedIn: false };
+    return { loggedIn: await isLoggedIn(platform) };
   });
 
   /** Session status for every webview platform at once (Share dialog). */
   ipcMain.handle('mas:social:session-status-all', async () => {
     const out: Record<string, boolean> = {};
-    for (const [platform, meta] of Object.entries(WEBVIEW_PLATFORMS)) {
-      const ses = session.fromPartition(`persist:social-${platform}`, {
-        cache: true,
-      });
-      const cookies = await ses.cookies.get({ domain: meta.sessionDomain });
-      out[platform] = meta.authCookieHints.some((hint) =>
-        cookies.some((c) => c.name === hint && c.value.length > 0),
-      );
+    for (const platform of Object.keys(WEBVIEW_PLATFORMS)) {
+      out[platform] = await isLoggedIn(platform);
     }
     return out;
   });
 
-  /** Clear a platform's session (log out). */
+  /**
+   * Clear a platform's session (log out). Facebook/Instagram/Threads share
+   * one identity, so logging out of any one of them logs out of all three —
+   * matches the fact that they were never separate sessions to begin with.
+   */
   ipcMain.handle('mas:social:logout', async (_e, platform: string) => {
-    const ses = session.fromPartition(`persist:social-${platform}`, {
+    const ses = session.fromPartition(partitionFor(platform), {
       cache: true,
     });
     await ses.clearStorageData();
-    return { ok: true };
+    return { ok: true, alsoLoggedOut: META_GROUP.has(platform) };
   });
 
   /**
@@ -356,7 +556,15 @@ export function registerWebviewBridge(mainWindow: BrowserWindow): void {
         platform,
         body,
         mediaPath,
-      }: { platform: string; body: string; mediaPath?: string },
+        pageId,
+      }: {
+        platform: string;
+        body: string;
+        mediaPath?: string;
+        /** Facebook Page ID — post to that Page's own timeline (as the Page)
+         * instead of the generic feed (as the personal profile). */
+        pageId?: string;
+      },
     ) => {
       const meta = WEBVIEW_PLATFORMS[platform];
       if (!meta) throw new Error(`Unknown platform: ${platform}`);
@@ -364,13 +572,20 @@ export function registerWebviewBridge(mainWindow: BrowserWindow): void {
       // Caption always lands on the clipboard as a safety net.
       if (body) clipboard.writeText(body);
 
-      const ses = session.fromPartition(`persist:social-${platform}`, {
+      const ses = session.fromPartition(partitionFor(platform), {
         cache: true,
       });
+      const composeUrl =
+        platform === 'facebook' && pageId
+          ? `https://www.facebook.com/${pageId}`
+          : meta.composeUrl;
       const win = new BrowserWindow({
         width: 720,
         height: 860,
-        title: `Post to ${meta.label}`,
+        title:
+          platform === 'facebook' && pageId
+            ? `Post to ${meta.label} Page`
+            : `Post to ${meta.label}`,
         parent: mainWindow,
         webPreferences: {
           session: ses,
@@ -380,7 +595,7 @@ export function registerWebviewBridge(mainWindow: BrowserWindow): void {
       });
 
       win.setMenuBarVisibility(false);
-      await win.loadURL(meta.composeUrl);
+      await win.loadURL(composeUrl);
       await new Promise((r) => setTimeout(r, 1200));
 
       const pre = PRE_SCRIPTS[platform];

@@ -52,7 +52,13 @@ const ShareDialog: React.FC<Props> = ({ onClose }) => {
       .catch(() => {});
     void ipc
       .invoke('mas:accounts:list')
-      .then((r) => setAccounts((r as ConnectedAccountSummary[]) ?? []))
+      .then((r) => {
+        // Webview-detected Facebook Pages have no OAuth token — they can't
+        // go through this API publish path. Post them from the Publish
+        // page's dedicated Facebook Pages picker instead.
+        const list = (r as ConnectedAccountSummary[]) ?? [];
+        setAccounts(list.filter((a) => a.source !== 'webview'));
+      })
       .catch(() => {});
   }, []);
 

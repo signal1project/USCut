@@ -20,6 +20,7 @@ import {
 } from '../ai/openRouterOAuth';
 import { runChatGPTSignIn } from '../ai/chatgptAuth';
 import { realOllamaDiscoverer } from '../ai/ollamaProvider';
+import { detectFacebookPages } from '../adapters/webviewBridge';
 
 export interface MasIpcDeps {
   dataSource: DataSource;
@@ -267,6 +268,11 @@ export function registerMasIpc(deps: MasIpcDeps): void {
       status: a.status,
       brandId:
         typeof a.metadata?.brandId === 'string' ? a.metadata.brandId : null,
+      // 'webview' = detected via the signed-in browser session, no OAuth
+      // token — must post through mas:social:post-webview (pageId), never
+      // through the API publish engine, which needs a real access token.
+      source:
+        typeof a.metadata?.source === 'string' ? a.metadata.source : 'oauth',
     }));
   });
 
@@ -281,6 +287,48 @@ export function registerMasIpc(deps: MasIpcDeps): void {
       return { ok: true };
     },
   );
+
+  /**
+   * Scan the signed-in Facebook session for Pages the user manages and save
+   * them as connected accounts (webview-based — no OAuth token). Lets each
+   * Page get its own business-profile assignment instead of one company per
+   * login session.
+   */
+  ipcMain.handle('mas:social:detect-pages', async (event) => {
+    const senderWin = BrowserWindow.fromWebContents(event.sender);
+    if (!senderWin) throw new Error('Could not find the parent BrowserWindow.');
+
+    const pages = await detectFacebookPages(senderWin);
+    const repo = dataSource.getRepository(ConnectedAccountModel);
+    let created = 0;
+    for (const page of pages) {
+      const existing = await repo.findOne({
+        where: { platform: 'facebook' as Platform, externalId: page.id },
+      });
+      if (existing) {
+        existing.accountName = page.name;
+        existing.status = AccountStatus.CONNECTED;
+        existing.metadata = {
+          ...existing.metadata,
+          source: 'webview',
+          pageUrl: page.url,
+        };
+        await repo.save(existing);
+      } else {
+        created += 1;
+        const account = repo.create({
+          platform: 'facebook' as Platform,
+          accountName: page.name,
+          externalId: page.id,
+          status: AccountStatus.CONNECTED,
+          credentialRef: 'webview-session',
+          metadata: { source: 'webview', pageUrl: page.url },
+        });
+        await repo.save(account);
+      }
+    }
+    return { found: pages.length, created };
+  });
 
   ipcMain.handle(
     'mas:oauth:complete',

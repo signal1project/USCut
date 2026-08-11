@@ -29,6 +29,10 @@ interface ConnectedAccount {
   platform: Platform;
   accountName: string;
   externalId: string;
+  /** 'webview' = detected via the signed-in browser session (no OAuth
+   * token — must post through the webview composer, not the API engine).
+   * Anything else = a real OAuth-connected account. */
+  source?: string;
 }
 
 interface FormValues {
@@ -57,6 +61,7 @@ export default function PublishPage(): React.ReactElement {
   const [submitting, setSubmitting] = useState(false);
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+  const [selectedPageIds, setSelectedPageIds] = useState<string[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   // Webview session status per platform
   const [webviewSessions, setWebviewSessions] = useState<
@@ -94,8 +99,11 @@ export default function PublishPage(): React.ReactElement {
         'mas:accounts:list',
       )) as ConnectedAccount[];
       setAccounts(list);
-      if (list.length > 0 && selectedAccountIds.length === 0) {
-        setSelectedAccountIds(list.map((a) => a.id));
+      // Only auto-select real OAuth-connected accounts — webview-detected
+      // Facebook Pages have no API token and must be explicitly chosen.
+      const apiOnly = list.filter((a) => a.source !== 'webview');
+      if (apiOnly.length > 0 && selectedAccountIds.length === 0) {
+        setSelectedAccountIds(apiOnly.map((a) => a.id));
       }
     } catch {
       /* silently skip */
@@ -138,6 +146,12 @@ export default function PublishPage(): React.ReactElement {
     );
   };
 
+  const togglePage = (id: string) => {
+    setSelectedPageIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
   const toggleWebviewPlatform = (p: Platform) => {
     setSelectedWebviewPlatforms((prev) =>
       prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p],
@@ -145,7 +159,17 @@ export default function PublishPage(): React.ReactElement {
   };
 
   const connectedPlatforms = PLATFORMS.filter((p) => webviewSessions[p]);
-  const hasAnySession = connectedPlatforms.length > 0 || accounts.length > 0;
+  // Real OAuth-connected accounts vs. Pages detected from the Facebook
+  // webview session — the latter has no token and posts through the
+  // webview composer (pageId), never through the API publish engine.
+  const apiAccounts = accounts.filter((a) => a.source !== 'webview');
+  const facebookPages = accounts.filter(
+    (a) => a.platform === 'facebook' && a.source === 'webview',
+  );
+  const hasAnySession =
+    connectedPlatforms.length > 0 ||
+    apiAccounts.length > 0 ||
+    facebookPages.length > 0;
 
   const onSubmit = async (values: FormValues) => {
     const fullBody = [values.body, values.hashtags?.trim()]
@@ -161,7 +185,11 @@ export default function PublishPage(): React.ReactElement {
     const webviewTargets = selectedWebviewPlatforms.filter(
       (p) => webviewSessions[p],
     );
-    if (webviewTargets.length === 0 && selectedAccountIds.length === 0) {
+    if (
+      webviewTargets.length === 0 &&
+      selectedAccountIds.length === 0 &&
+      selectedPageIds.length === 0
+    ) {
       toast.error('Select at least one account or platform to post to');
       return;
     }
@@ -186,6 +214,24 @@ export default function PublishPage(): React.ReactElement {
           errors.push(
             `${PLATFORM_CONFIG[platform].label}: ${(e as Error).message}`,
           );
+        }
+      }
+    }
+
+    // ── Facebook Pages (webview session, posts AS the Page) ───────────────────
+    if (selectedPageIds.length > 0) {
+      for (const pageId of selectedPageIds) {
+        const page = facebookPages.find((a) => a.id === pageId);
+        if (!page) continue;
+        try {
+          await ipc.invoke('mas:social:post-webview', {
+            platform: 'facebook',
+            body: fullBody,
+            pageId: page.externalId,
+          });
+          toast.success(`Posted to ${page.accountName} ✓`);
+        } catch (e) {
+          errors.push(`${page.accountName}: ${(e as Error).message}`);
         }
       }
     }
@@ -305,14 +351,43 @@ export default function PublishPage(): React.ReactElement {
             </div>
           )}
 
+          {/* Facebook Pages detected from the webview session — posts as the Page */}
+          {facebookPages.length > 0 && (
+            <div>
+              <p className="text-[10px] text-ink-muted mb-2">
+                Facebook Pages (posts as the Page, same Meta login):
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {facebookPages.map((page) => {
+                  const selected = selectedPageIds.includes(page.id);
+                  return (
+                    <button
+                      key={page.id}
+                      onClick={() => togglePage(page.id)}
+                      className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                        selected
+                          ? 'bg-accent/20 text-accent border-accent/40'
+                          : 'border-border text-ink-muted hover:border-accent/30'
+                      }`}
+                    >
+                      <PlatformBadge platform={page.platform} />
+                      <span>{page.accountName}</span>
+                      {selected && <span>✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* API-connected accounts (developer app OAuth) */}
-          {accounts.length > 0 && (
+          {apiAccounts.length > 0 && (
             <div>
               <p className="text-[10px] text-ink-muted mb-2">
                 API-connected accounts:
               </p>
               <div className="flex flex-wrap gap-2">
-                {accounts.map((acc) => {
+                {apiAccounts.map((acc) => {
                   const selected = selectedAccountIds.includes(acc.id);
                   return (
                     <button

@@ -255,6 +255,9 @@ export interface ConnectedAccountSummary {
   accountName: string;
   externalId: string;
   status: string;
+  /** 'webview' = detected via the signed-in browser session, no OAuth token
+   * — must post through the webview composer, never the API publish engine. */
+  source?: string;
 }
 
 // ── Research ──────────────────────────────────────────────────────────────────
