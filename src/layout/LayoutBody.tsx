@@ -62,7 +62,7 @@ export const LayoutBody = () => {
             ✂
           </span>
           <span className="text-[13px] font-semibold text-ink-strong tracking-tight">
-            AICut
+            USCut
           </span>
           {inEditor && (
             <>

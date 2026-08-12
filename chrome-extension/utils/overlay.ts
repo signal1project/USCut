@@ -93,11 +93,11 @@ export function injectCaptureButton(extractor: () => ListingData | null) {
         body:    JSON.stringify(listing),
       });
       if (!res.ok) throw new Error(`Server responded ${res.status}`);
-      showToast('✓ Listing captured! Open AICut to view it.', 'success');
+      showToast('✓ Listing captured! Open USCut to view it.', 'success');
       btn.innerHTML = '✓ Captured';
       btn.style.background = '#22c55e';
     } catch {
-      showToast('AICut must be running. Please open the app.', 'error');
+      showToast('USCut must be running. Please open the app.', 'error');
       resetButton();
     }
   });

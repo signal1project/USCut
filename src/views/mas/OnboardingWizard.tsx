@@ -105,7 +105,7 @@ function Step0({ onDone }: { onDone: () => void }) {
     setChatgptCode(null);
     try {
       await invoke('mas:ai:chatgpt-oauth');
-      toast.success('ChatGPT connected — your OpenAI account powers AICut now');
+      toast.success('ChatGPT connected — your OpenAI account powers USCut now');
       onDone();
     } catch (e) {
       toast.error(`ChatGPT sign-in failed: ${(e as Error).message}`);
@@ -143,7 +143,7 @@ function Step0({ onDone }: { onDone: () => void }) {
   return (
     <div className="space-y-3">
       <p className="text-sm text-ink-muted">
-        AICut uses AI to generate captions and auto-edit content. Choose how to
+        USCut uses AI to generate captions and auto-edit content. Choose how to
         connect — no API key required.
       </p>
 
@@ -310,7 +310,7 @@ function Step1({ onDone }: { onDone: () => void }) {
         </p>
         <p>3. Copy your Client ID (and optionally Client Secret)</p>
         <p>
-          4. Paste into AICut → click "Get authorize link" → approve in browser
+          4. Paste into USCut → click "Get authorize link" → approve in browser
         </p>
       </div>
       <p className="text-xs text-ink-muted">
@@ -335,7 +335,7 @@ export default function OnboardingWizard(): React.ReactElement {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Rocket size={18} className="text-accent" />
-            Welcome to AICut Social Hub
+            Welcome to USCut Social Hub
           </CardTitle>
           <CardDescription>
             Set up your AI provider and connect your first social account —

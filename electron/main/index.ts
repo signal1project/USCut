@@ -57,7 +57,7 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 // Disable GPU Acceleration for Windows 7
 if (os.release().startsWith('6.1')) app.disableHardwareAcceleration();
 
-if (process.platform === 'win32') app.setAppUserModelId('AICut');
+if (process.platform === 'win32') app.setAppUserModelId('USCut');
 
 let win: BrowserWindow | null = null;
 let splashWindow: SplashWindow | null = null;
@@ -75,7 +75,7 @@ async function createWindow() {
   await new Promise((resolve) => setTimeout(resolve, 500));
 
   win = new BrowserWindow({
-    title: 'AICut',
+    title: 'USCut',
     icon: path.join(getAssetPath('favicon.ico')),
     width: 2350,
     height: 1280,

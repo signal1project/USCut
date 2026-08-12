@@ -99,7 +99,7 @@ export function buildBioPageHtml(input: BioPageInput): string {
     }
     ${links ? `<div class="links">\n      ${links}\n    </div>` : ''}
     ${listings ? `<h2>Featured Listings</h2>\n      ${listings}` : ''}
-    <footer>Built with AICut</footer>
+    <footer>Built with USCut</footer>
   </div>
 </body>
 </html>

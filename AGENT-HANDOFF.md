@@ -1,4 +1,4 @@
-# AICut — Agent Handoff
+# USCut — Agent Handoff
 
 **Updated:** 2026-08-04 (Mick / ClaudeClaw) — v1.0 stabilization + roadmap items 1-3b
 **Status:** ✅ 287/297 tests pass (10 skipped, Electron-ABI) · tsc clean · eslint clean
@@ -90,7 +90,7 @@ Flagged to Dale rather than shipped; needs a direction decision (see Open Items)
 
 ---
 
-## What AICut Is
+## What USCut Is
 
 AI-powered desktop video editor + social media automation suite (CapCut competitor with a
 Buffer/Opus-Clip feature set bolted on), leaning real-estate. Fully local-first: FFmpeg,
@@ -99,24 +99,24 @@ most features degrade gracefully without them.
 
 - **Stack:** Electron 33 + React 18 + Vite + TypeScript + Zustand + Tailwind + TypeORM
   (better-sqlite3) + fluent-ffmpeg + express (embedded APIs) + vitest.
-- **Repo:** `C:\home\dalebrown138\projects\Social-Engine-AICut` (Windows-native shared
-  folder — NOT WSL `~/`). GitHub: `signal1project/AIcut`, branch `main`.
+- **Repo:** `C:\home\dalebrown138\projects\Social-Engine-USCut` (Windows-native shared
+  folder — NOT WSL `~/`). GitHub: `signal1project/USCut`, branch `main`.
 - **Local branch quirk:** work happens on `push-v4-2`; push with
   `git push origin push-v4-2:main` (fast-forward).
-- **MCP wrapper repo (Hermes team's):** `Social-Engine-AICut-Hermes` (sibling folder).
-- **Naming rule (Dale, 2026-07-07):** "AICut" = this repo ONLY. The archived
+- **MCP wrapper repo (Hermes team's):** `Social-Engine-AICut-Hermes` (sibling folder, not yet renamed).
+- **Naming rule (Dale, 2026-07-07):** "USCut" = this repo ONLY. The archived
   `_archive\BLK-INK-Scraper` is reference-only; never build there.
 
 ## How to Run / Verify
 
 ```powershell
-cd C:\home\dalebrown138\projects\Social-Engine-AICut
+cd C:\home\dalebrown138\projects\Social-Engine-USCut
 npm run dev          # dev app (use `dev`, NOT dev:mac — has chcp 65001 fix)
 npm test             # vitest — 235 pass, 10 skip (Electron-ABI, see below)
 npx tsc --noEmit     # typecheck
 npx vite build       # renderer + main + preload bundles
 npm run build:ext    # Chrome extension → dist-ext/
-npm run package:win  # → release\AICut-win32-x64\AICut.exe
+npm run package:win  # → release\USCut-win32-x64\USCut.exe
 ```
 
 **Gotchas**

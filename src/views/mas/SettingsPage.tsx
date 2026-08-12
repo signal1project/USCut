@@ -432,7 +432,7 @@ function BackgroundPrefsCard(): React.ReactElement {
           <Rocket size={16} className="text-[#22c55e]" /> App Behavior
         </CardTitle>
         <CardDescription>
-          Scheduled posts only publish while AICut is running — keep it in the
+          Scheduled posts only publish while USCut is running — keep it in the
           tray so nothing gets missed.
         </CardDescription>
       </CardHeader>
@@ -453,10 +453,10 @@ function BackgroundPrefsCard(): React.ReactElement {
             onChange={(e) => void update({ launchAtLogin: e.target.checked })}
             className="accent-[#4d7cff]"
           />
-          Start AICut when Windows starts (hidden, in the tray)
+          Start USCut when Windows starts (hidden, in the tray)
         </label>
         <p className="text-[11px] text-ink-muted">
-          Posts that came due while AICut was closed are caught up automatically
+          Posts that came due while USCut was closed are caught up automatically
           at the next launch, with a desktop notification per result.
         </p>
       </CardContent>

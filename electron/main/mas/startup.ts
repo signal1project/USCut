@@ -41,8 +41,8 @@ export async function startMas(
     try {
       new Notification({
         title: ok
-          ? `AICut — posted to ${platform}`
-          : `AICut — ${platform} post failed`,
+          ? `USCut — posted to ${platform}`
+          : `USCut — ${platform} post failed`,
         body: detail,
       }).show();
     } catch {

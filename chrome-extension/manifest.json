@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "AICut Listing Scraper",
+  "name": "USCut Listing Scraper",
   "version": "1.0.0",
-  "description": "Capture real estate listings from Zillow, Realtor.com, and Redfin directly into AICut.",
+  "description": "Capture real estate listings from Zillow, Realtor.com, and Redfin directly into USCut.",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": [
     "https://www.zillow.com/*",
@@ -42,7 +42,7 @@
   ],
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "AICut Listing Scraper"
+    "default_title": "USCut Listing Scraper"
   },
   "icons": {
     "16":  "icons/icon16.png",

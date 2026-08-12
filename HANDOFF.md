@@ -1,19 +1,19 @@
-# AICut — Agent Handoff File
+# USCut — Agent Handoff File
 _Last updated: 2026-06-26_
 
 ## Project Identity
-- **App name:** AICut
+- **App name:** USCut
 - **Purpose:** CapCut-style desktop video editor with AI features and direct social publishing
 - **Stack:** Electron 33 + React 18 + Vite + Zustand + Tailwind 4 + fluent-ffmpeg + better-sqlite3
-- **Local path:** `C:\home\dalebrown138\projects\Social-Engine-AICut`
-- **GitHub:** https://github.com/signal1project/AIcut (`main` branch)
+- **Local path:** `C:\home\dalebrown138\projects\Social-Engine-USCut`
+- **GitHub:** https://github.com/signal1project/USCut (`main` branch)
 - **Latest commit:** `1fa88cf` (orphan push — old git objects were corrupted from WSL→Windows rsync; no history loss, clean working tree)
 
 ## Run Commands
 ```
 npm run dev          # Dev server (Electron + Vite HMR)
 npm run rebuild      # Rebuild native modules after npm install (better-sqlite3 + Electron ABI)
-npm run package:win  # Build AICut.exe → release\AICut-win32-x64\AICut.exe
+npm run package:win  # Build USCut.exe → release\USCut-win32-x64\USCut.exe
 ```
 
 ## Architecture Overview
@@ -42,8 +42,8 @@ npm run package:win  # Build AICut.exe → release\AICut-win32-x64\AICut.exe
 ### Agent Bridge (port 4255)
 - REST API on `127.0.0.1:4255` — bearer auth
 - Discovery file: `%APPDATA%\aicuts\aicut-bridge.json` (url + token + pid)
-- Used by Hermes/Omobono to drive AICut programmatically
-- MCP wrapper: `Social-Engine-AICut-Hermes` (6 tools, tested end-to-end)
+- Used by Hermes/Omobono to drive USCut programmatically
+- MCP wrapper: `Social-Engine-AICut-Hermes` (6 tools, tested end-to-end; sibling repo not yet renamed)
 
 ### Social Onboarding
 - OAuth-ONLY — no API keys (hard rule for all Dale's agents)
@@ -60,7 +60,7 @@ npm run package:win  # Build AICut.exe → release\AICut-win32-x64\AICut.exe
 4. **AI panel** — Auto-Captions (working: transcript → Claude → caption clips), AI Auto-Edit, Remove BG stub, Voice Studio stub
 5. **Effects panel** — Fade explainer + upcoming feature stubs (replaced dead "Coming soon")
 
-### AICut Advantages Over CapCut
+### USCut Advantages Over CapCut
 - Local FFmpeg processing (no upload)
 - Claude auto-edit
 - Direct 8-platform social publishing
@@ -70,8 +70,8 @@ npm run package:win  # Build AICut.exe → release\AICut-win32-x64\AICut.exe
 ## Open Items
 
 ### Blocked on Dale's Decision
-- **Omobono bridge (WSL → Windows):** WSL NAT can't reach AICut's bridge via localhost. Three options:
-  1. *(Recommended)* WSL HTTP-MCP proxy on `:4256` + rebind AICut bridge to `0.0.0.0`
+- **Omobono bridge (WSL → Windows):** WSL NAT can't reach USCut's bridge via localhost. Three options:
+  1. *(Recommended)* WSL HTTP-MCP proxy on `:4256` + rebind USCut bridge to `0.0.0.0`
   2. WSL mirrored networking — affects other spheres, Dale must approve
   3. Defer
   Dale has not chosen yet.
@@ -90,7 +90,7 @@ npm run package:win  # Build AICut.exe → release\AICut-win32-x64\AICut.exe
 
 ## Sphere & Port Rules (CRITICAL)
 This project belongs to the **ClaudeClaw / Mick** sphere.
-- AICut agent bridge: `127.0.0.1:4255` — AICut's port, do not move without checking sphere rules
+- USCut agent bridge: `127.0.0.1:4255` — USCut's port, do not move without checking sphere rules
 - Do NOT touch `C:\Users\Dale\.openclaw\`, OpenClaw port `18789`, Mission Control port `3587`, HermesClaw `~/.hermes/` port `9119`, or 9router port `20128`
 - OAuth only — never suggest API keys for any auth flow
 - Read other spheres' configs to diagnose; never write without Dale's explicit per-task approval

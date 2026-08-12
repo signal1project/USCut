@@ -64,7 +64,7 @@ function reelCaption(l: PropertyListingSummary): string {
 }
 
 /**
- * Listing Scraper page: browse property listings captured by the AICut
+ * Listing Scraper page: browse property listings captured by the USCut
  * Listing Scraper Chrome extension (Zillow / Realtor.com / Redfin).
  * Not to be confused with the Idea Scraper on the Research page, which
  * scrapes news topics — this one captures structured property data.
@@ -217,11 +217,11 @@ export default function ListingScraperPage(): React.ReactElement {
             <Puzzle size={18} className="text-accent shrink-0 mt-0.5" />
             <div className="text-xs text-ink-muted leading-relaxed">
               <span className="font-medium text-ink-base">How to capture:</span>{' '}
-              install the AICut Listing Scraper Chrome extension (run{' '}
+              install the USCut Listing Scraper Chrome extension (run{' '}
               <code>npm run build:ext</code>, then load <code>dist-ext/</code>{' '}
               via chrome://extensions → Load unpacked). Browse any listing on
               Zillow, Realtor.com or Redfin and click the green “Capture
-              Listing” button — it lands here automatically while AICut is
+              Listing” button — it lands here automatically while USCut is
               running.
             </div>
           </div>

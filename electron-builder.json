@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "com.familyoffice.aicut",
-  "productName": "AICut",
+  "appId": "com.familyoffice.uscut",
+  "productName": "USCut",
   "asar": true,
   "asarUnpack": ["**/node_modules/sharp/**/*", "**/node_modules/@img/**/*"],
   "directories": {
@@ -38,7 +38,7 @@
     "deleteAppDataOnUninstall": false,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
-    "shortcutName": "AICut"
+    "shortcutName": "USCut"
   },
   "publish": {
     "provider": "github",

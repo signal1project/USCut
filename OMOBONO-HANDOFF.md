@@ -1,11 +1,11 @@
-# AICut → Omobono Agent Handoff
+# USCut → Omobono Agent Handoff
 _Date: 2026-06-26 | Author: Mick (ClaudeClaw) | For: Omobono (HermesClaw)_
 
 ---
 
-## What AICut Is
+## What USCut Is
 
-AICut is Dale's desktop AI video editor + social media publishing engine. It runs on Windows as an Electron app. Think CapCut, but:
+USCut is Dale's desktop AI video editor + social media publishing engine. It runs on Windows as an Electron app. Think CapCut, but:
 
 - Runs 100% locally — no cloud uploads
 - Claude AI drives auto-edit and caption generation
@@ -14,9 +14,9 @@ AICut is Dale's desktop AI video editor + social media publishing engine. It run
 
 **Stack:** Electron 33 + React 18 + Vite + Zustand + Tailwind + fluent-ffmpeg + better-sqlite3
 
-**Location on disk:** `C:\home\dalebrown138\projects\Social-Engine-AICut\`
+**Location on disk:** `C:\home\dalebrown138\projects\Social-Engine-USCut\`
 
-**GitHub:** https://github.com/signal1project/AIcut
+**GitHub:** https://github.com/signal1project/USCut
 
 ---
 
@@ -24,7 +24,7 @@ AICut is Dale's desktop AI video editor + social media publishing engine. It run
 
 ### 1. Agent Bridge — REST API on port 4255
 
-When AICut is running, it exposes a loopback HTTP server on `127.0.0.1:4255` with the following routes (all require Bearer auth):
+When USCut is running, it exposes a loopback HTTP server on `127.0.0.1:4255` with the following routes (all require Bearer auth):
 
 | Method | Route | What it does |
 |--------|-------|--------------|
@@ -47,7 +47,7 @@ There is also a full **Social Hub API** (separate server, random loopback port):
 
 ### 2. Discovery File
 
-When AICut boots, it writes two discovery files:
+When USCut boots, it writes two discovery files:
 
 **Agent bridge info:**
 ```
@@ -83,16 +83,16 @@ Read these files to get the current URL and token before making requests.
 
 An MCP tool wrapper was scaffolded at:
 ```
-C:\home\dalebrown138\projects\Social-Engine-AICut\scripts\omobono-electron-smoke.cjs
+C:\home\dalebrown138\projects\Social-Engine-USCut\scripts\omobono-electron-smoke.cjs
 ```
 
-This exposes AICut's bridge as MCP tools so Omobono can call them natively.
+This exposes USCut's bridge as MCP tools so Omobono can call them natively.
 
 ---
 
 ## The Networking Problem You Need to Solve
 
-**AICut runs on Windows. You (Omobono/HermesClaw) run in WSL Ubuntu.**
+**USCut runs on Windows. You (Omobono/HermesClaw) run in WSL Ubuntu.**
 
 `127.0.0.1:4255` from inside WSL does NOT reach Windows localhost by default — WSL uses a NAT that creates a separate network namespace.
 
@@ -106,7 +106,7 @@ Run a tiny proxy inside WSL on port 4256 that forwards requests to the Windows b
    # Usually something like 172.28.xxx.xxx
    ```
 
-2. Rebind AICut's bridge to `0.0.0.0` instead of `127.0.0.1` so it's reachable from WSL.
+2. Rebind USCut's bridge to `0.0.0.0` instead of `127.0.0.1` so it's reachable from WSL.
    - Edit `electron/main/aicuts/agentApi.ts` → the `startApiServer` call in `index.ts`
    - Or set env var `AICUT_BRIDGE_HOST=0.0.0.0` if supported
    - **Ask Dale to approve this change first** — it changes the bridge bind address
@@ -135,7 +135,7 @@ Then restart WSL. After that, `127.0.0.1:4255` from WSL reaches Windows directly
 
 ### Option C — Defer
 
-Use AICut only from the Windows side (ClaudeClaw / Mick) for now. Omobono integration pending Dale's networking decision.
+Use USCut only from the Windows side (ClaudeClaw / Mick) for now. Omobono integration pending Dale's networking decision.
 
 ---
 
@@ -222,15 +222,15 @@ Accounts are connected via webview sessions (user logs in once in the app, cooki
 %APPDATA%\aicuts\  ← Electron userData directory
 ```
 
-No developer OAuth app is required for basic posting — AICut uses browser session cookies.
+No developer OAuth app is required for basic posting — USCut uses browser session cookies.
 
 ---
 
 ## Sphere Boundary Note
 
-AICut is Dale's sphere. Do not modify:
-- Any files under `C:\home\dalebrown138\projects\Social-Engine-AICut\` without explicit per-task approval
-- The bridge port (4255) is AICut's assigned port — do not bind to it from other agents
+USCut is Dale's sphere. Do not modify:
+- Any files under `C:\home\dalebrown138\projects\Social-Engine-USCut\` without explicit per-task approval
+- The bridge port (4255) is USCut's assigned port — do not bind to it from other agents
 - The Social Hub loopback port (random, check api-port.json) — same rule
 
 Reading files and hitting the API is fine. Writing/killing/restarting requires approval.
