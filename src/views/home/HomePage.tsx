@@ -25,6 +25,7 @@ import {
   deleteProject,
   type ProjectMeta,
 } from '@/lib/projectPersistence';
+import CompanySwitcher from '@/components/CompanySwitcher';
 
 const FEATURES = [
   {
@@ -179,6 +180,11 @@ const HomePage: React.FC = () => {
           <Plus size={18} strokeWidth={2.5} />
           New Project
         </button>
+      </div>
+
+      {/* Company scope switcher */}
+      <div className="px-8 pb-8">
+        <CompanySwitcher />
       </div>
 
       {/* Recent projects */}
@@ -339,7 +345,7 @@ const HomePage: React.FC = () => {
       {/* Advantages vs CapCut */}
       <div className="px-8 pb-12">
         <p className="text-[11px] text-[#5a5a66] uppercase tracking-widest font-medium mb-3">
-          Why AICut beats CapCut
+          Why USCut beats CapCut
         </p>
         <div className="space-y-2">
           {ADVANTAGES.map((a) => {

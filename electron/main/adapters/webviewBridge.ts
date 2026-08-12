@@ -478,6 +478,114 @@ export async function detectFacebookPages(
   }
 }
 
+// ── Instagram multi-account detection + switching ────────────────────────────
+// Instagram (unlike Facebook Pages) has no separate per-account timeline URL —
+// one login can have several linked accounts, but only one is "active" in the
+// session at a time, switched via a menu on instagram.com itself. So this is
+// two pieces: (1) detect which accounts exist by opening the switcher and
+// reading its rows, (2) before posting as a specific account, drive the same
+// switcher to select it first. Same best-effort posture as Facebook Pages
+// detection above and the PRE/FILL scripts below it — Instagram's DOM shifts
+// over time, so this needs iterating against whatever's live when it starts
+// missing accounts. Diagnostic logging included so a failure is debuggable
+// from the log file instead of guessing blind (same pattern used for the
+// Threads cookie root-cause, 2026-08-11).
+
+export interface DetectedInstagramAccount {
+  username: string;
+  name: string;
+}
+
+/** Open the account-switcher menu. Best-effort across Instagram's few known
+ * entry points (avatar in the nav, "Profile" link) — text-pattern matching
+ * rather than exact selectors so minor markup changes don't break it outright. */
+const OPEN_ACCOUNT_SWITCHER_SCRIPT = `(async () => {
+  const findByText = (re) => [...document.querySelectorAll('button, div[role="button"], a, span')]
+    .find(el => re.test((el.textContent || '').trim()));
+  const avatar = document.querySelector('img[alt*="profile picture" i]');
+  if (avatar) avatar.closest('a,button,div[role="button"]')?.click();
+  else findByText(/^profile$/i)?.click();
+  await new Promise(r => setTimeout(r, 900));
+  const switcher = findByText(/switch accounts?/i);
+  if (switcher) { switcher.click(); await new Promise(r => setTimeout(r, 900)); }
+  return { switcherFound: !!switcher };
+})();`;
+
+const DETECT_INSTAGRAM_ACCOUNTS_SCRIPT = `(() => {
+  const seen = new Map();
+  for (const img of document.querySelectorAll('img[alt*="profile picture" i]')) {
+    const alt = img.getAttribute('alt') || '';
+    const m = alt.match(/^(.+?)'s profile picture/i);
+    const username = m ? m[1].trim() : null;
+    if (!username || username.length < 2) continue;
+    if (!seen.has(username)) seen.set(username, { username, name: username });
+  }
+  return [...seen.values()];
+})();`;
+
+function switchInstagramAccountScript(username: string): string {
+  return `(async () => {
+    const target = ${JSON.stringify(username.toLowerCase())};
+    for (const img of document.querySelectorAll('img[alt*="profile picture" i]')) {
+      const alt = (img.getAttribute('alt') || '').toLowerCase();
+      if (alt.startsWith(target)) {
+        img.closest('a,button,div[role="button"]')?.click();
+        return true;
+      }
+    }
+    return false;
+  })();`;
+}
+
+/** Opens the account switcher in the shared Meta session and reads its rows. */
+export async function detectInstagramAccounts(
+  mainWindow: BrowserWindow,
+): Promise<DetectedInstagramAccount[]> {
+  if (!(await isLoggedIn('instagram'))) {
+    throw new Error('Sign in to Instagram first.');
+  }
+  const ses = session.fromPartition(META_PARTITION, { cache: true });
+  const win = new BrowserWindow({
+    width: 480,
+    height: 640,
+    title: 'Detecting your Instagram accounts…',
+    parent: mainWindow,
+    webPreferences: {
+      session: ses,
+      nodeIntegration: false,
+      contextIsolation: true,
+    },
+  });
+  win.setMenuBarVisibility(false);
+  try {
+    await win.loadURL('https://www.instagram.com/');
+    await new Promise((r) => setTimeout(r, 2000));
+    if (win.isDestroyed()) return [];
+    const opened = await win.webContents
+      .executeJavaScript(OPEN_ACCOUNT_SWITCHER_SCRIPT)
+      .catch((err) => {
+        logger.log('[AICut] Instagram switcher open failed', err);
+        return { switcherFound: false };
+      });
+    logger.log('[AICut] Instagram account-switcher opened', opened);
+    if (win.isDestroyed()) return [];
+    const accounts = (await win.webContents
+      .executeJavaScript(DETECT_INSTAGRAM_ACCOUNTS_SCRIPT)
+      .catch((err) => {
+        logger.log('[AICut] Instagram accounts scan failed', err);
+        return [];
+      })) as DetectedInstagramAccount[];
+    if (accounts.length === 0) {
+      logger.log(
+        '[AICut] Instagram account scan found nothing — likely a single-account login (expected) or the switcher/avatar selectors need updating.',
+      );
+    }
+    return accounts;
+  } finally {
+    if (!win.isDestroyed()) win.destroy();
+  }
+}
+
 // ── IPC handlers ──────────────────────────────────────────────────────────────
 
 export function registerWebviewBridge(mainWindow: BrowserWindow): void {
@@ -557,6 +665,7 @@ export function registerWebviewBridge(mainWindow: BrowserWindow): void {
         body,
         mediaPath,
         pageId,
+        accountId,
       }: {
         platform: string;
         body: string;
@@ -564,6 +673,9 @@ export function registerWebviewBridge(mainWindow: BrowserWindow): void {
         /** Facebook Page ID — post to that Page's own timeline (as the Page)
          * instead of the generic feed (as the personal profile). */
         pageId?: string;
+        /** Instagram username — switch the session's active account to this
+         * one before posting (see detectInstagramAccounts above). */
+        accountId?: string;
       },
     ) => {
       const meta = WEBVIEW_PLATFORMS[platform];
@@ -585,7 +697,9 @@ export function registerWebviewBridge(mainWindow: BrowserWindow): void {
         title:
           platform === 'facebook' && pageId
             ? `Post to ${meta.label} Page`
-            : `Post to ${meta.label}`,
+            : platform === 'instagram' && accountId
+              ? `Post to Instagram @${accountId}`
+              : `Post to ${meta.label}`,
         parent: mainWindow,
         webPreferences: {
           session: ses,
@@ -597,6 +711,24 @@ export function registerWebviewBridge(mainWindow: BrowserWindow): void {
       win.setMenuBarVisibility(false);
       await win.loadURL(composeUrl);
       await new Promise((r) => setTimeout(r, 1200));
+
+      if (platform === 'instagram' && accountId && !win.isDestroyed()) {
+        const opened = await win.webContents
+          .executeJavaScript(OPEN_ACCOUNT_SWITCHER_SCRIPT)
+          .catch(() => ({ switcherFound: false }));
+        if (!win.isDestroyed() && opened) {
+          const switched = await win.webContents
+            .executeJavaScript(switchInstagramAccountScript(accountId))
+            .catch(() => false);
+          logger.log('[AICut] Instagram account switch before posting', {
+            accountId,
+            switched,
+          });
+          // Switching accounts reloads the feed — give it a moment to settle
+          // before running the "New post" PRE script below.
+          await new Promise((r) => setTimeout(r, 1800));
+        }
+      }
 
       const pre = PRE_SCRIPTS[platform];
       if (pre && !win.isDestroyed()) {

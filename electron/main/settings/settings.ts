@@ -40,6 +40,7 @@ const K = {
   elevenLabsVoiceId: 'mas.settings.tts.elevenlabs.voiceId',
   brandKit: 'mas.settings.brand.kit',
   brandProfiles: 'mas.settings.brand.profiles',
+  activeBrand: 'mas.settings.brand.active',
   platformBrands: 'mas.settings.brand.platformAssignments',
   competitors: 'mas.settings.competitors',
 };
@@ -279,6 +280,38 @@ export class Settings {
       const { id: _id, name, bio, ...rules } = profiles[0];
       this.setBrandKit({ ...rules, brandName: name, bio });
     }
+    // A deleted/renamed-away company can't stay the active scope.
+    const activeId = this.store.get(K.activeBrand) as string | undefined;
+    if (activeId && !profiles.some((p) => p.id === activeId)) {
+      this.store.set(K.activeBrand, null);
+    }
+  }
+
+  // ── Active company (whole-app scope switcher) ─────────────────────────────
+  // Which BrandProfile the UI is currently "working as" — filters which
+  // connected accounts/Pages are shown for posting and which brand voice gets
+  // injected into AI content briefs. null/unset = "All companies" (no filter,
+  // original single-company behavior).
+
+  getActiveBrandId(): string | null {
+    const id = this.store.get(K.activeBrand) as string | undefined;
+    if (!id) return null;
+    // Guard against a stale id from before a company was deleted.
+    const exists = this.getBrandProfiles().some((p) => p.id === id);
+    return exists ? id : null;
+  }
+
+  setActiveBrandId(id: string | null): void {
+    this.store.set(K.activeBrand, id);
+  }
+
+  /** Resolve the brand kit for AI content briefs: active company if one is
+   * chosen, otherwise the first company (matches the pre-switcher default). */
+  getActiveBrandKit(): BrandKit | null {
+    const profiles = this.getBrandProfiles();
+    if (profiles.length === 0) return null;
+    const activeId = this.getActiveBrandId();
+    return profiles.find((p) => p.id === activeId) ?? profiles[0];
   }
 
   getPlatformBrandAssignments(): Partial<Record<Platform, string>> {

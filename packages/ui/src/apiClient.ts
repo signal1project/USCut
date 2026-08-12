@@ -258,6 +258,9 @@ export interface ConnectedAccountSummary {
   /** 'webview' = detected via the signed-in browser session, no OAuth token
    * — must post through the webview composer, never the API publish engine. */
   source?: string;
+  /** Company (BrandProfile id) this account/Page is assigned to, or null if
+   * unassigned. Used to filter the account list to the active company. */
+  brandId?: string | null;
 }
 
 // ── Research ──────────────────────────────────────────────────────────────────

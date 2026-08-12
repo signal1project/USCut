@@ -47,6 +47,56 @@ describe('Settings — company brand profiles', () => {
   });
 });
 
+describe('Settings — active company scope', () => {
+  const profiles = [
+    {
+      id: 'one',
+      name: 'Company One',
+      bio: 'First bio',
+      voice: 'warm',
+      audience: 'buyers',
+      hashtags: [],
+      bannedWords: [],
+      signature: '',
+    },
+    {
+      id: 'two',
+      name: 'Company Two',
+      bio: 'Second bio',
+      voice: 'direct',
+      audience: 'sellers',
+      hashtags: ['#Two'],
+      bannedWords: [],
+      signature: 'Call us',
+    },
+  ];
+
+  it('defaults to null ("All companies") and falls back to the first profile for AI briefs', () => {
+    settings.setBrandProfiles(profiles);
+    expect(settings.getActiveBrandId()).toBeNull();
+    expect(settings.getActiveBrandKit()).toMatchObject({ name: 'Company One' });
+  });
+
+  it('persists an explicit active company and resolves its kit', () => {
+    settings.setBrandProfiles(profiles);
+    settings.setActiveBrandId('two');
+    expect(settings.getActiveBrandId()).toBe('two');
+    expect(settings.getActiveBrandKit()).toMatchObject({ name: 'Company Two' });
+  });
+
+  it('clears a stale active id once that company is deleted', () => {
+    settings.setBrandProfiles(profiles);
+    settings.setActiveBrandId('two');
+    settings.setBrandProfiles(profiles.filter((p) => p.id !== 'two'));
+    expect(settings.getActiveBrandId()).toBeNull();
+    expect(settings.getActiveBrandKit()).toMatchObject({ name: 'Company One' });
+  });
+
+  it('returns null from getActiveBrandKit when there are no companies at all', () => {
+    expect(settings.getActiveBrandKit()).toBeNull();
+  });
+});
+
 describe('Settings — platform OAuth', () => {
   it('returns null until configured', () => {
     expect(settings.getPlatformOAuth('facebook')).toBeNull();

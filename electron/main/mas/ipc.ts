@@ -20,7 +20,10 @@ import {
 } from '../ai/openRouterOAuth';
 import { runChatGPTSignIn } from '../ai/chatgptAuth';
 import { realOllamaDiscoverer } from '../ai/ollamaProvider';
-import { detectFacebookPages } from '../adapters/webviewBridge';
+import {
+  detectFacebookPages,
+  detectInstagramAccounts,
+} from '../adapters/webviewBridge';
 
 export interface MasIpcDeps {
   dataSource: DataSource;
@@ -100,6 +103,13 @@ export function registerMasIpc(deps: MasIpcDeps): void {
   ipcMain.handle('mas:brands:platform-assignments', () =>
     settings.getPlatformBrandAssignments(),
   );
+
+  ipcMain.handle('mas:brands:get-active', () => settings.getActiveBrandId());
+
+  ipcMain.handle('mas:brands:set-active', (_e, brandId: string | null) => {
+    settings.setActiveBrandId(brandId);
+    return { ok: true };
+  });
 
   ipcMain.handle(
     'mas:brands:assign-platform',
@@ -328,6 +338,44 @@ export function registerMasIpc(deps: MasIpcDeps): void {
       }
     }
     return { found: pages.length, created };
+  });
+
+  /**
+   * Scan the signed-in Instagram identity's account switcher for linked
+   * accounts and save them as connected accounts (webview-based — no OAuth
+   * token). Same pattern as detect-pages: each account gets its own
+   * business-profile assignment instead of one company per login session.
+   */
+  ipcMain.handle('mas:social:detect-instagram-accounts', async (event) => {
+    const senderWin = BrowserWindow.fromWebContents(event.sender);
+    if (!senderWin) throw new Error('Could not find the parent BrowserWindow.');
+
+    const found = await detectInstagramAccounts(senderWin);
+    const repo = dataSource.getRepository(ConnectedAccountModel);
+    let created = 0;
+    for (const acc of found) {
+      const existing = await repo.findOne({
+        where: { platform: 'instagram' as Platform, externalId: acc.username },
+      });
+      if (existing) {
+        existing.accountName = acc.name;
+        existing.status = AccountStatus.CONNECTED;
+        existing.metadata = { ...existing.metadata, source: 'webview' };
+        await repo.save(existing);
+      } else {
+        created += 1;
+        const account = repo.create({
+          platform: 'instagram' as Platform,
+          accountName: acc.name,
+          externalId: acc.username,
+          status: AccountStatus.CONNECTED,
+          credentialRef: 'webview-session',
+          metadata: { source: 'webview' },
+        });
+        await repo.save(account);
+      }
+    }
+    return { found: found.length, created };
   });
 
   ipcMain.handle(

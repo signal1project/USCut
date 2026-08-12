@@ -25,6 +25,7 @@ import {
   LogIn,
   LogOut,
   Building2,
+  Users,
 } from 'lucide-react';
 import { PLATFORMS, PLATFORM_CONFIG, type Platform } from '@mas/types';
 import { ipc, hasIpc } from '@/lib/ipc';
@@ -215,15 +216,26 @@ const ConnectAccounts: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [platformBrands, setPlatformBrands] = useState<Record<string, string>>(
     {},
   );
-  const [businessAccounts, setBusinessAccounts] = useState<
+  // Webview-detected accounts (Facebook Pages + Instagram accounts) — no
+  // OAuth token, each gets its own business-profile assignment instead of
+  // one company per login session. Filtered to source === 'webview' so a
+  // future OAuth-connected account never lands in this list by mistake.
+  const [webviewAccounts, setWebviewAccounts] = useState<
     Array<{
       id: string;
       platform: Platform;
       accountName: string;
       externalId: string;
       brandId: string | null;
+      source?: string;
     }>
   >([]);
+  const facebookPages = webviewAccounts.filter(
+    (a) => a.platform === 'facebook',
+  );
+  const instagramAccounts = webviewAccounts.filter(
+    (a) => a.platform === 'instagram',
+  );
 
   const patch = (p: Platform, d: Partial<PlatformState>) =>
     setStates((s) => ({ ...s, [p]: { ...s[p], ...d } }));
@@ -251,7 +263,11 @@ const ConnectAccounts: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       .then(([brandList, assignments, accounts]) => {
         setBrands(brandList as Array<{ id: string; name: string }>);
         setPlatformBrands((assignments ?? {}) as Record<string, string>);
-        setBusinessAccounts(accounts as typeof businessAccounts);
+        setWebviewAccounts(
+          (accounts as typeof webviewAccounts).filter(
+            (a) => a.source === 'webview',
+          ),
+        );
       })
       .catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -265,7 +281,7 @@ const ConnectAccounts: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
 
   const assignAccountBrand = async (accountId: string, brandId: string) => {
-    setBusinessAccounts((current) =>
+    setWebviewAccounts((current) =>
       current.map((account) =>
         account.id === accountId
           ? { ...account, brandId: brandId || null }
@@ -273,7 +289,14 @@ const ConnectAccounts: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       ),
     );
     await ipc.invoke('mas:accounts:assign-brand', accountId, brandId || null);
-    toast.success('Business page brand assignment saved');
+    toast.success('Account brand assignment saved');
+  };
+
+  const refreshWebviewAccounts = async () => {
+    const refreshed = (await ipc.invoke(
+      'mas:accounts:list',
+    )) as typeof webviewAccounts;
+    setWebviewAccounts(refreshed.filter((a) => a.source === 'webview'));
   };
 
   const [detectingPages, setDetectingPages] = useState(false);
@@ -285,8 +308,7 @@ const ConnectAccounts: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         found: number;
         created: number;
       };
-      const refreshed = await ipc.invoke('mas:accounts:list');
-      setBusinessAccounts(refreshed as typeof businessAccounts);
+      await refreshWebviewAccounts();
       if (res.found === 0) {
         toast.info(
           "No Pages found — you may only have a personal profile, or Facebook's page changed since this was built.",
@@ -300,6 +322,36 @@ const ConnectAccounts: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       toast.error(`Page detection failed: ${(e as Error).message}`);
     } finally {
       setDetectingPages(false);
+    }
+  };
+
+  const [detectingInstagram, setDetectingInstagram] = useState(false);
+
+  const detectInstagram = async () => {
+    setDetectingInstagram(true);
+    try {
+      const res = (await ipc.invoke(
+        'mas:social:detect-instagram-accounts',
+      )) as {
+        found: number;
+        created: number;
+      };
+      await refreshWebviewAccounts();
+      if (res.found === 0) {
+        toast.info(
+          'No additional Instagram accounts found — you may only have one account linked to this login, or Instagram changed since this was built.',
+        );
+      } else {
+        toast.success(
+          `Found ${res.found} Instagram account${res.found === 1 ? '' : 's'} (${res.created} new) — assign each to a company below.`,
+        );
+      }
+    } catch (e) {
+      toast.error(
+        `Instagram account detection failed: ${(e as Error).message}`,
+      );
+    } finally {
+      setDetectingInstagram(false);
     }
   };
 
@@ -418,8 +470,7 @@ const ConnectAccounts: React.FC<{ onClose: () => void }> = ({ onClose }) => {
         externalId: s.externalId,
         brandId: platformBrands[p] || null,
       });
-      const refreshed = await ipc.invoke('mas:accounts:list');
-      setBusinessAccounts(refreshed as typeof businessAccounts);
+      await refreshWebviewAccounts();
       patch(p, {
         oauthBusy: false,
         loggedIn: true,
@@ -509,13 +560,13 @@ const ConnectAccounts: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                   Detect My Pages
                 </button>
               </div>
-              {businessAccounts.length === 0 && !detectingPages && (
+              {facebookPages.length === 0 && !detectingPages && (
                 <p className="text-[10px] text-ink-muted mt-2">
                   No Pages detected yet — click Detect My Pages above.
                 </p>
               )}
               <div className="space-y-2 mt-2">
-                {businessAccounts.map((account) => (
+                {facebookPages.map((account) => (
                   <div
                     key={account.id}
                     className="flex items-center gap-3 rounded-md bg-[#0f111b] px-3 py-2"
@@ -547,6 +598,73 @@ const ConnectAccounts: React.FC<{ onClose: () => void }> = ({ onClose }) => {
               </div>
             </div>
           )}
+
+          {states.instagram.loggedIn && (
+            <div className="rounded-xl border border-[#3a2a52] bg-[#1c1527] p-3 mb-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Users size={14} className="text-[#c78aff]" />
+                  <div>
+                    <p className="text-xs font-semibold text-ink-strong">
+                      Instagram Accounts
+                    </p>
+                    <p className="text-[10px] text-ink-muted">
+                      One Instagram login, multiple linked accounts — assign
+                      each to the company it belongs to.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => void detectInstagram()}
+                  disabled={detectingInstagram}
+                  className="flex items-center gap-1.5 text-[11px] font-medium bg-[#2a1d40] hover:bg-[#382656] disabled:opacity-50 text-[#c78aff] rounded-md px-2.5 py-1.5 transition-colors shrink-0"
+                >
+                  {detectingInstagram ? (
+                    <Loader2 size={11} className="animate-spin" />
+                  ) : (
+                    <Users size={11} />
+                  )}
+                  Detect My Accounts
+                </button>
+              </div>
+              {instagramAccounts.length === 0 && !detectingInstagram && (
+                <p className="text-[10px] text-ink-muted mt-2">
+                  No additional accounts detected yet — click Detect My Accounts
+                  above. If you only have one Instagram account, that's expected
+                  — nothing to switch between.
+                </p>
+              )}
+              <div className="space-y-2 mt-2">
+                {instagramAccounts.map((account) => (
+                  <div
+                    key={account.id}
+                    className="flex items-center gap-3 rounded-md bg-[#0f0a17] px-3 py-2"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-ink-strong truncate">
+                        @{account.accountName}
+                      </p>
+                    </div>
+                    <select
+                      value={account.brandId ?? ''}
+                      onChange={(e) =>
+                        void assignAccountBrand(account.id, e.target.value)
+                      }
+                      className="w-44 bg-[#171923] border border-[#303443] rounded-md px-2 py-1.5 text-[11px] text-ink-strong focus:outline-none focus:border-[#4d7cff]"
+                    >
+                      <option value="">Choose company…</option>
+                      {brands.map((brand) => (
+                        <option key={brand.id} value={brand.id}>
+                          {brand.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {PLATFORMS.map((p) => {
             const cfg = PLATFORM_CONFIG[p];
             const guide = GUIDES[p];

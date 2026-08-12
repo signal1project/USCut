@@ -6,6 +6,7 @@ import { PubType, PLATFORMS, PLATFORM_CONFIG, type Platform } from '@mas/types';
 import { PlatformBadge } from '@mas/ui';
 import { useMasApi } from './useMasApi';
 import { ipc, hasIpc } from '@/lib/ipc';
+import { useActiveBrandStore } from '@/store/activeBrandStore';
 import {
   Button,
   Card,
@@ -33,6 +34,9 @@ interface ConnectedAccount {
    * token — must post through the webview composer, not the API engine).
    * Anything else = a real OAuth-connected account. */
   source?: string;
+  /** Company (BrandProfile id) this account is assigned to, or null/undefined
+   * if unassigned. */
+  brandId?: string | null;
 }
 
 interface FormValues {
@@ -58,14 +62,26 @@ const PLATFORM_COLOR: Partial<Record<Platform, string>> = {
 /** Compose and publish (or schedule) a post to connected social accounts. */
 export default function PublishPage(): React.ReactElement {
   const api = useMasApi();
+  const {
+    activeBrandId,
+    brands: activeBrands,
+    loaded: brandsLoaded,
+    load: loadActiveBrand,
+  } = useActiveBrandStore();
   const [submitting, setSubmitting] = useState(false);
   const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [selectedPageIds, setSelectedPageIds] = useState<string[]>([]);
+  const [selectedInstagramIds, setSelectedInstagramIds] = useState<string[]>(
+    [],
+  );
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   // Webview session status per platform
   const [webviewSessions, setWebviewSessions] = useState<
     Partial<Record<Platform, boolean>>
+  >({});
+  const [platformBrands, setPlatformBrands] = useState<
+    Partial<Record<Platform, string>>
   >({});
   const [selectedWebviewPlatforms, setSelectedWebviewPlatforms] = useState<
     Platform[]
@@ -138,6 +154,15 @@ export default function PublishPage(): React.ReactElement {
   useEffect(() => {
     void loadAccounts();
     void checkWebviewSessions();
+    if (!brandsLoaded) void loadActiveBrand();
+    if (hasIpc()) {
+      ipc
+        .invoke('mas:brands:platform-assignments')
+        .then((r) =>
+          setPlatformBrands((r as Partial<Record<Platform, string>>) ?? {}),
+        )
+        .catch(() => {});
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleAccount = (id: string) => {
@@ -152,24 +177,57 @@ export default function PublishPage(): React.ReactElement {
     );
   };
 
+  const toggleInstagramAccount = (id: string) => {
+    setSelectedInstagramIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
+
   const toggleWebviewPlatform = (p: Platform) => {
     setSelectedWebviewPlatforms((prev) =>
       prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p],
     );
   };
 
-  const connectedPlatforms = PLATFORMS.filter((p) => webviewSessions[p]);
+  // Facebook/Instagram/Threads share one login (posts as *you*, not a
+  // company) — Pages are the company-scoped mechanism for Meta, so those
+  // three stay unfiltered here. Everything else has a per-platform company
+  // dropdown in Connect Accounts, so it can be scoped directly.
+  const META_GROUP: Platform[] = ['facebook', 'instagram', 'threads'];
+  const connectedPlatforms = PLATFORMS.filter((p) => webviewSessions[p]).filter(
+    (p) =>
+      !activeBrandId ||
+      META_GROUP.includes(p) ||
+      platformBrands[p] === activeBrandId,
+  );
   // Real OAuth-connected accounts vs. Pages detected from the Facebook
   // webview session — the latter has no token and posts through the
   // webview composer (pageId), never through the API publish engine.
-  const apiAccounts = accounts.filter((a) => a.source !== 'webview');
-  const facebookPages = accounts.filter(
-    (a) => a.platform === 'facebook' && a.source === 'webview',
-  );
+  // When a company is active (not "All companies"), scope both lists to
+  // accounts assigned to it — unassigned accounts stay hidden rather than
+  // risking a post going out under the wrong business.
+  const byActiveBrand = (a: ConnectedAccount) =>
+    !activeBrandId || a.brandId === activeBrandId;
+  const apiAccounts = accounts
+    .filter((a) => a.source !== 'webview')
+    .filter(byActiveBrand);
+  const facebookPages = accounts
+    .filter((a) => a.platform === 'facebook' && a.source === 'webview')
+    .filter(byActiveBrand);
+  // Linked Instagram accounts detected from the account switcher — posting
+  // as a specific one switches the session's active account first (see
+  // webviewBridge.ts's post-webview handler).
+  const instagramAccounts = accounts
+    .filter((a) => a.platform === 'instagram' && a.source === 'webview')
+    .filter(byActiveBrand);
+  const activeBrandName = activeBrandId
+    ? (activeBrands.find((b) => b.id === activeBrandId)?.name ?? null)
+    : null;
   const hasAnySession =
     connectedPlatforms.length > 0 ||
     apiAccounts.length > 0 ||
-    facebookPages.length > 0;
+    facebookPages.length > 0 ||
+    instagramAccounts.length > 0;
 
   const onSubmit = async (values: FormValues) => {
     const fullBody = [values.body, values.hashtags?.trim()]
@@ -188,7 +246,8 @@ export default function PublishPage(): React.ReactElement {
     if (
       webviewTargets.length === 0 &&
       selectedAccountIds.length === 0 &&
-      selectedPageIds.length === 0
+      selectedPageIds.length === 0 &&
+      selectedInstagramIds.length === 0
     ) {
       toast.error('Select at least one account or platform to post to');
       return;
@@ -232,6 +291,28 @@ export default function PublishPage(): React.ReactElement {
           toast.success(`Posted to ${page.accountName} ✓`);
         } catch (e) {
           errors.push(`${page.accountName}: ${(e as Error).message}`);
+        }
+      }
+    }
+
+    // ── Instagram accounts (webview session, switches active account first) ──
+    // This composer has no local-file picker (imageUrl above is a public URL
+    // for the API-publish path, not usable for the CDP file attach Instagram
+    // needs) — the window opens on the right account with the caption ready
+    // on the clipboard, and the user attaches media + posts manually.
+    if (selectedInstagramIds.length > 0) {
+      for (const accountId of selectedInstagramIds) {
+        const account = instagramAccounts.find((a) => a.id === accountId);
+        if (!account) continue;
+        try {
+          await ipc.invoke('mas:social:post-webview', {
+            platform: 'instagram',
+            body: fullBody,
+            accountId: account.externalId,
+          });
+          toast.success(`Opened composer for @${account.accountName} ✓`);
+        } catch (e) {
+          errors.push(`@${account.accountName}: ${(e as Error).message}`);
         }
       }
     }
@@ -314,7 +395,9 @@ export default function PublishPage(): React.ReactElement {
           <CardDescription>
             {!hasAnySession
               ? 'No accounts connected — click "Connect accounts" to sign in to your social platforms.'
-              : 'Select which platforms to post to.'}
+              : activeBrandName
+                ? `Showing accounts for ${activeBrandName} — switch companies from Home.`
+                : 'Select which platforms to post to.'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -372,6 +455,37 @@ export default function PublishPage(): React.ReactElement {
                     >
                       <PlatformBadge platform={page.platform} />
                       <span>{page.accountName}</span>
+                      {selected && <span>✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Instagram accounts detected from the account switcher — posting
+              switches the session's active account to this one first */}
+          {instagramAccounts.length > 0 && (
+            <div>
+              <p className="text-[10px] text-ink-muted mb-2">
+                Instagram accounts (switches to this account, opens window to
+                finish):
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {instagramAccounts.map((account) => {
+                  const selected = selectedInstagramIds.includes(account.id);
+                  return (
+                    <button
+                      key={account.id}
+                      onClick={() => toggleInstagramAccount(account.id)}
+                      className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                        selected
+                          ? 'bg-accent/20 text-accent border-accent/40'
+                          : 'border-border text-ink-muted hover:border-accent/30'
+                      }`}
+                    >
+                      <PlatformBadge platform={account.platform} />
+                      <span>@{account.accountName}</span>
                       {selected && <span>✓</span>}
                     </button>
                   );

@@ -155,7 +155,7 @@ export function buildMasRuntime(deps: MasRuntimeDeps): MasRuntime {
     resolveProvider,
     resolveImageProvider,
     algorithmAgent: algorithm,
-    resolveBrandKit: () => settings.getBrandKit(),
+    resolveBrandKit: () => settings.getActiveBrandKit(),
   });
 
   const analytics = new AnalyticsService({

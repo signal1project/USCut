@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Calendar,
@@ -19,6 +25,7 @@ import {
 } from '@mas/ui';
 import { useMasApi } from './useMasApi';
 import { ipc, hasIpc } from '@/lib/ipc';
+import { useActiveBrandStore } from '@/store/activeBrandStore';
 import {
   Button,
   Card,
@@ -42,6 +49,7 @@ interface ConnectedAccount {
   platform: Platform;
   accountName: string;
   externalId: string;
+  brandId?: string | null;
 }
 
 /** Prefill payload other pages (e.g. the Listing Video Generator) can hand to the
@@ -57,7 +65,13 @@ export default function SchedulerPage(): React.ReactElement {
   const api = useMasApi();
   const location = useLocation();
   const navigate = useNavigate();
-  const [accounts, setAccounts] = useState<ConnectedAccount[]>([]);
+  const {
+    activeBrandId,
+    brands: activeBrands,
+    loaded: brandsLoaded,
+    load: loadActiveBrand,
+  } = useActiveBrandStore();
+  const [accountsRaw, setAccountsRaw] = useState<ConnectedAccount[]>([]);
   const [loadingAccounts, setLoadingAccounts] = useState(false);
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
   const [pubType, setPubType] = useState<PubType>(PubType.IMAGE_TEXT);
@@ -200,7 +214,7 @@ export default function SchedulerPage(): React.ReactElement {
       const list = (await ipc.invoke(
         'mas:accounts:list',
       )) as ConnectedAccount[];
-      setAccounts(list);
+      setAccountsRaw(list);
     } catch {
       toast.error('Could not load connected accounts');
     } finally {
@@ -210,7 +224,17 @@ export default function SchedulerPage(): React.ReactElement {
 
   useEffect(() => {
     void loadAccounts();
+    if (!brandsLoaded) void loadActiveBrand();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const accounts = useMemo(
+    () =>
+      activeBrandId
+        ? accountsRaw.filter((a) => a.brandId === activeBrandId)
+        : accountsRaw,
+    [accountsRaw, activeBrandId],
+  );
 
   const toggleAccount = (id: string) => {
     setSelectedAccountIds((prev) =>
@@ -274,7 +298,7 @@ export default function SchedulerPage(): React.ReactElement {
           Schedule a Post
         </h2>
         <p className="text-sm text-ink-muted mt-0.5">
-          Compose a post and pick a future date/time — AICut will publish it
+          Compose a post and pick a future date/time — USCut will publish it
           automatically.
         </p>
       </div>
@@ -304,7 +328,9 @@ export default function SchedulerPage(): React.ReactElement {
           <CardDescription>
             {accounts.length === 0
               ? 'No connected accounts — go to Accounts in the editor to connect.'
-              : 'Click to toggle accounts for this post.'}
+              : activeBrandId
+                ? `Showing accounts for ${activeBrands.find((b) => b.id === activeBrandId)?.name ?? 'the active company'} — switch companies from Home.`
+                : 'Click to toggle accounts for this post.'}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
