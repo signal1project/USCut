@@ -4,7 +4,7 @@ import type {
   GenerateImageOptions,
   GenerateTextOptions,
 } from '@mas/types';
-import { resolveMaxTokens, systemPrompt } from './prompt';
+import { systemPrompt } from './prompt';
 import { CHATGPT_CODEX_BASE_URL } from './chatgptAuth';
 
 /**
@@ -107,7 +107,6 @@ export class ChatGPTProvider implements AIProvider {
         store: false,
         stream: true,
         include: [],
-        max_output_tokens: resolveMaxTokens(options),
       }),
     });
 
