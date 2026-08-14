@@ -417,7 +417,7 @@ function BackgroundPrefsCard(): React.ReactElement {
 
   const update = async (patch: Partial<NonNullable<typeof prefs>>) => {
     const next = {
-      ...(prefs ?? { keepInTray: true, launchAtLogin: false }),
+      ...(prefs ?? { keepInTray: false, launchAtLogin: false }),
       ...patch,
     };
     setPrefs(next);
@@ -440,11 +440,12 @@ function BackgroundPrefsCard(): React.ReactElement {
         <label className="flex items-center gap-2.5 text-sm text-ink-base cursor-pointer">
           <input
             type="checkbox"
-            checked={prefs?.keepInTray ?? true}
+            checked={prefs?.keepInTray ?? false}
             onChange={(e) => void update({ keepInTray: e.target.checked })}
             className="accent-[#4d7cff]"
           />
-          Keep running in the tray when the window is closed
+          Keep running in the tray when the window is closed (off by
+          default — minimize always sends to tray regardless of this)
         </label>
         <label className="flex items-center gap-2.5 text-sm text-ink-base cursor-pointer">
           <input

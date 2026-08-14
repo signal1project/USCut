@@ -35,8 +35,12 @@ export function views(win: Electron.BrowserWindow) {
     name: app.getName(),
   }));
 
+  // Minimize is the dedicated "send to tray" action (Dale's call,
+  // 2026-08-14) — the X button quits for real by default now, so this is
+  // the explicit alternate path to background/tray behavior instead of a
+  // plain OS taskbar-minimize.
   ipcMain.handle('window-minimize', function () {
-    win.minimize();
+    win.hide();
   });
 
   ipcMain.handle('window-maximize', function () {

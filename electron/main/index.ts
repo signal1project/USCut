@@ -144,10 +144,13 @@ async function createWindow() {
 
   win.setMenu(null);
 
-  // Close-to-tray: the scheduler must survive the window closing, or
-  // scheduled posts silently die with it. Quit explicitly via tray menu.
+  // Close-to-tray is opt-in (Settings -> App Behavior), not the default: the
+  // X button quits the app for real. Minimize is the dedicated "send to
+  // tray" action instead (see window-minimize in views.ts) — Dale's call,
+  // 2026-08-14, after tray-interception of relaunches during dev caused a
+  // stack of orphaned processes fighting over the same fixed ports.
   win.on('close', (e) => {
-    const keepInTray = store.get('app.keepInTray') ?? true;
+    const keepInTray = store.get('app.keepInTray') ?? false;
     if (keepInTray && !isQuitting) {
       e.preventDefault();
       win?.hide();
@@ -251,7 +254,11 @@ app.on('window-all-closed', () => {
 
 app.on('second-instance', () => {
   if (win) {
+    // isMinimized() only covers the OS taskbar-minimize case — minimize now
+    // hides to tray instead (see views.ts), which isMinimized() doesn't
+    // detect. focus() on a hidden window is a no-op, so check both.
     if (win.isMinimized()) win.restore();
+    if (!win.isVisible()) win.show();
     win.focus();
   }
 });
@@ -267,7 +274,7 @@ app.on('activate', () => {
 
 // Background behavior preferences (Settings → App)
 ipcMain.handle('app:get-background-prefs', () => ({
-  keepInTray: (store.get('app.keepInTray') as boolean | undefined) ?? true,
+  keepInTray: (store.get('app.keepInTray') as boolean | undefined) ?? false,
   launchAtLogin: app.getLoginItemSettings().openAtLogin,
 }));
 
