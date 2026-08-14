@@ -8,6 +8,7 @@ import { startApiServer, type RunningApiServer } from '../server';
 import { startListingCaptureServer, type CaptureServer } from '../listings';
 import { buildMasRuntime, type MasRuntime } from './runtime';
 import { registerMasIpc } from './ipc';
+import { registerExtensionInstallIpc } from '../listings/extensionInstall';
 import {
   rehydrateScheduledPosts,
   type PublishNotifier,
@@ -75,6 +76,7 @@ export async function startMas(
     token: api.token,
   }));
   registerMasIpc({ dataSource, settings, credentials });
+  registerExtensionInstallIpc();
 
   // Write discovery file so local agents (Hermes_Social, Omobono) can find us.
   // Includes the bearer token — same loopback trust model as aicut-bridge.json.

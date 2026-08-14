@@ -51,6 +51,11 @@
       "from": "public/assets",
       "to": "assets",
       "filter": ["**/*"]
+    },
+    {
+      "from": "dist-ext",
+      "to": "dist-ext",
+      "filter": ["**/*"]
     }
   ]
 }

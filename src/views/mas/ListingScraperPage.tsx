@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   Building2,
   RefreshCw,
@@ -16,6 +17,8 @@ import {
   Film,
   Send,
   Share2,
+  Hammer,
+  FolderOpen,
 } from 'lucide-react';
 import { PubType } from '@mas/types';
 import { useMasApi } from './useMasApi';
@@ -26,14 +29,20 @@ import type {
 } from '@mas/ui';
 import { Button, Badge, Card, CardContent, Input } from '@/components/ui';
 import type { ComposerPrefill } from './composerPrefill';
+import { ipc, hasIpc } from '@/lib/ipc';
 
 const AD_PLATFORMS = ['facebook', 'instagram', 'linkedin'] as const;
 
 const SOURCE_VARIANT: Record<string, 'default' | 'info' | 'secondary'> = {
   zillow: 'info',
-  realtor: 'default',
-  redfin: 'secondary',
+  manual: 'secondary',
 };
+
+interface ExtensionInfo {
+  path: string;
+  built: boolean;
+  canRebuild: boolean;
+}
 
 function formatPrice(cents: number | null): string {
   if (!cents) return 'Price N/A';
@@ -65,10 +74,10 @@ function reelCaption(l: PropertyListingSummary): string {
 }
 
 /**
- * Listing Scraper page: browse property listings captured by the USCut
- * Listing Scraper Chrome extension (Zillow / Realtor.com / Redfin).
- * Not to be confused with the Idea Scraper on the Research page, which
- * scrapes news topics — this one captures structured property data.
+ * Zillow Scraper page: browse property listings captured by the USCut
+ * Zillow Scraper Chrome extension. Not to be confused with the Idea Scraper
+ * on the Research page, which scrapes news topics — this one captures
+ * structured property data.
  */
 export default function ListingScraperPage(): React.ReactElement {
   const api = useMasApi();
@@ -211,6 +220,62 @@ export default function ListingScraperPage(): React.ReactElement {
     });
   };
 
+  // ── Chrome extension install walkthrough ───────────────────────────────────
+  const [extInfo, setExtInfo] = useState<ExtensionInfo | null>(null);
+  const [building, setBuilding] = useState(false);
+
+  const loadExtInfo = useCallback(async () => {
+    if (!hasIpc()) return;
+    try {
+      const info = (await ipc.invoke(
+        'listings:extension-info',
+      )) as ExtensionInfo;
+      setExtInfo(info);
+    } catch {
+      setExtInfo(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadExtInfo();
+  }, [loadExtInfo]);
+
+  const buildExtension = async () => {
+    setBuilding(true);
+    try {
+      await ipc.invoke('listings:build-extension');
+      toast.success('Extension built — next, load it into Chrome below.');
+      await loadExtInfo();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Build failed');
+    } finally {
+      setBuilding(false);
+    }
+  };
+
+  const openChromeExtensions = async () => {
+    const result = (await ipc.invoke('listings:open-chrome-extensions')) as {
+      opened: boolean;
+    };
+    if (!result.opened) {
+      toast.info(
+        'Couldn’t find Chrome automatically — open it yourself and go to chrome://extensions',
+      );
+    }
+  };
+
+  const revealExtensionFolder = () => {
+    void ipc.invoke('listings:reveal-extension-folder');
+  };
+
+  const [pathCopied, setPathCopied] = useState(false);
+  const copyExtensionPath = async () => {
+    if (!extInfo) return;
+    await navigator.clipboard.writeText(extInfo.path);
+    setPathCopied(true);
+    setTimeout(() => setPathCopied(false), 1500);
+  };
+
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-4">
       <div>
@@ -225,20 +290,67 @@ export default function ListingScraperPage(): React.ReactElement {
         </p>
       </div>
 
-      {/* Extension hint */}
+      {/* Extension install walkthrough */}
       <Card>
-        <CardContent className="pt-4 pb-4">
+        <CardContent className="pt-4 pb-4 space-y-3">
           <div className="flex items-start gap-3">
             <Puzzle size={18} className="text-accent shrink-0 mt-0.5" />
             <div className="text-xs text-ink-muted leading-relaxed">
-              <span className="font-medium text-ink-base">How to capture:</span>{' '}
-              install the USCut Zillow Scraper Chrome extension (run{' '}
-              <code>npm run build:ext</code>, then load <code>dist-ext/</code>{' '}
-              via chrome://extensions → Load unpacked). Browse any Zillow
-              listing and click the green “Capture Listing” button — it lands
-              here automatically while USCut is running.
+              <span className="font-medium text-ink-base">
+                Install the USCut Zillow Scraper extension
+              </span>{' '}
+              — three steps, once. After that, browse any Zillow listing and
+              click the green “Capture Listing” button — it lands here
+              automatically while USCut is running.
             </div>
           </div>
+
+          <div className="flex flex-wrap items-center gap-2 pl-[30px]">
+            {extInfo?.canRebuild && (
+              <Button
+                size="sm"
+                variant={extInfo.built ? 'outline' : 'default'}
+                onClick={() => void buildExtension()}
+                disabled={building}
+              >
+                {building ? (
+                  <RefreshCw size={13} className="animate-spin" />
+                ) : (
+                  <Hammer size={13} />
+                )}
+                {extInfo.built ? '1. Rebuild extension' : '1. Build extension'}
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void openChromeExtensions()}
+            >
+              <ExternalLink size={13} />
+              {extInfo?.canRebuild ? '2. ' : ''}Open chrome://extensions
+            </Button>
+            <Button size="sm" variant="outline" onClick={revealExtensionFolder}>
+              <FolderOpen size={13} />
+              {extInfo?.canRebuild ? '3. ' : ''}Show extension folder
+            </Button>
+            {extInfo && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => void copyExtensionPath()}
+                title={extInfo.path}
+              >
+                {pathCopied ? <Check size={13} /> : <Copy size={13} />}
+                Copy folder path
+              </Button>
+            )}
+          </div>
+
+          <p className="text-xs text-ink-muted pl-[30px]">
+            In the extensions page: turn on <strong>Developer mode</strong>{' '}
+            (top right), click <strong>Load unpacked</strong>, then pick the
+            folder above.
+          </p>
         </CardContent>
       </Card>
 
