@@ -255,11 +255,20 @@ export default function ListingScraperPage(): React.ReactElement {
 
   const openChromeExtensions = async () => {
     const result = (await ipc.invoke('listings:open-chrome-extensions')) as {
-      opened: boolean;
+      launched: boolean;
+      copied: boolean;
     };
-    if (!result.opened) {
+    // Chrome blocks internal chrome:// URLs from a command-line launch when
+    // it's already running — that only reliably works on a cold start, so
+    // don't claim success either way. The clipboard copy is the one part
+    // that always works; tell the user to paste it themselves.
+    if (result.launched) {
       toast.info(
-        'Couldn’t find Chrome automatically — open it yourself and go to chrome://extensions',
+        'Chrome opened — if it didn’t land on the extensions page, paste chrome://extensions (already copied) into a new tab.',
+      );
+    } else {
+      toast.info(
+        'Couldn’t find Chrome automatically — chrome://extensions is copied, paste it into a new tab.',
       );
     }
   };
@@ -327,7 +336,8 @@ export default function ListingScraperPage(): React.ReactElement {
               onClick={() => void openChromeExtensions()}
             >
               <ExternalLink size={13} />
-              {extInfo?.canRebuild ? '2. ' : ''}Open chrome://extensions
+              {extInfo?.canRebuild ? '2. ' : ''}Open Chrome (copies the
+              extensions URL)
             </Button>
             <Button size="sm" variant="outline" onClick={revealExtensionFolder}>
               <FolderOpen size={13} />
@@ -347,9 +357,11 @@ export default function ListingScraperPage(): React.ReactElement {
           </div>
 
           <p className="text-xs text-ink-muted pl-[30px]">
-            In the extensions page: turn on <strong>Developer mode</strong>{' '}
-            (top right), click <strong>Load unpacked</strong>, then pick the
-            folder above.
+            If Chrome doesn’t land on the extensions page by itself, open a
+            new tab and paste (<strong>chrome://extensions</strong> is
+            already copied to your clipboard). Then: turn on{' '}
+            <strong>Developer mode</strong> (top right), click{' '}
+            <strong>Load unpacked</strong>, and pick the folder above.
           </p>
         </CardContent>
       </Card>

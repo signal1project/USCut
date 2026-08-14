@@ -1,4 +1,4 @@
-import { ipcMain, app, shell } from 'electron';
+import { ipcMain, app, shell, clipboard } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import { spawn } from 'node:child_process';
@@ -86,19 +86,29 @@ export function registerExtensionInstallIpc(): void {
   });
 
   ipcMain.handle('listings:open-chrome-extensions', async () => {
+    // Chrome blocks internal chrome:// URLs from being forwarded to an
+    // ALREADY-RUNNING instance via command-line launch (a deliberate
+    // Chromium security boundary — stops other programs from forcing an
+    // open browser to an internal page). Verified live: launching chrome.exe
+    // with chrome://extensions/ as an arg only actually navigates there on a
+    // cold start with no existing Chrome process; with Chrome already open
+    // it just focuses the window and drops the URL. There's no supported way
+    // to force navigation from outside the browser in that case, so the
+    // reliable fallback is the clipboard — always copy the URL so the user
+    // can paste it themselves regardless of which case they're in.
+    clipboard.writeText('chrome://extensions/');
+
     const chromePath = findChromeExe();
     if (chromePath) {
       spawn(chromePath, ['chrome://extensions/'], { detached: true }).unref();
-      return { opened: true, method: 'chrome' as const };
+      return { launched: true, copied: true };
     }
-    // Chrome not found at a known location — best effort, may open the
-    // wrong browser or no-op depending on the OS default handler.
     try {
       await shell.openExternal('chrome://extensions/');
     } catch (err) {
       logger.error('[USCut] Could not open chrome://extensions', err);
     }
-    return { opened: false, method: 'fallback' as const };
+    return { launched: false, copied: true };
   });
 
   ipcMain.handle('listings:reveal-extension-folder', () => {
