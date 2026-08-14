@@ -1,7 +1,10 @@
-import Anthropic from '@anthropic-ai/sdk';
+import type { AIProvider, Platform } from '@mas/types';
 import type { TimelineClip } from './ffmpegOps';
-
-const client = new Anthropic();
+import type { TranscriptSegment } from '../clips/transcription';
+import {
+  PLATFORM_PLAYBOOKS,
+  playbookToPromptHint,
+} from '../algorithm/platformPlaybooks';
 
 export interface AutoEditInput {
   clips: Array<{
@@ -12,6 +15,14 @@ export interface AutoEditInput {
   }>;
   prompt: string;
   targetDuration?: number;
+  /** What's actually said in each clip (Whisper), keyed by clip id. Optional —
+   * grounds edit decisions in real content instead of just names/durations. */
+  transcripts?: Record<string, TranscriptSegment[]>;
+  /** Detected/explicit target platform — pulls in that platform's reach/algorithm
+   * playbook (best formats, hook advice, reward signals) as editing guidance. */
+  platform?: Platform;
+  /** Current trending topics/keywords, most relevant first. Optional. */
+  trending?: string[];
 }
 
 export interface EditDecision {
@@ -27,24 +38,74 @@ export interface AutoEditResult {
   summary: string;
 }
 
-const SYSTEM = `You are AICut's AI editor. You receive a list of video clips and a user instruction.
+const SYSTEM = `You are USCut's AI editor, optimizing for organic reach — not just fitting a
+duration. You receive video clips (with transcripts when available), a user instruction, and
+platform algorithm + trending-topic context. Your job is to find and keep the strongest,
+most scroll-stopping moments — the hook, the payoff, the concrete/specific line — and cut
+everything that doesn't earn its place, not to mechanically shrink the video to some default
+short-form length.
+
+If a transcript is provided, use it: identify the single best hook line (specific, surprising,
+or emotionally sharp — generic warmup/rambling should be trimmed even if it comes first) and
+open on it. Favor moments that match the platform's reward signals and hook advice below.
+Reference trending topics only if the content genuinely connects — never force an unrelated
+trend in.
+
 Return a JSON object with:
-- decisions: array of edit decisions, each with clipId, trimStart (seconds), trimEnd (seconds), startTime (position on timeline), and reason
-- summary: one sentence describing what you did
+- decisions: array of edit decisions, each with clipId, trimStart (seconds), trimEnd (seconds), startTime (position on timeline), and reason (why THIS moment earns its place)
+- summary: 1-2 sentences — what you kept, why it's the strongest hook, and what you cut
 
 Rules:
 - trimStart and trimEnd must be >= 0 and their sum < clip duration
 - startTime positions clips sequentially on the timeline (no gaps unless intentional)
-- If the user wants a target duration, trim clips to fit
+- If the user wants a target duration, trim to fit — but the cut must be the strongest
+  moment, not just "the first N seconds"
 - You may exclude clips by not including them in decisions
+- Without a transcript, say so in summary and make best-effort decisions from clip names/instruction
 - Respond ONLY with valid JSON, no markdown fences`;
 
-export async function autoEdit(input: AutoEditInput): Promise<AutoEditResult> {
+/** Best-effort platform guess from free-text instructions like "make this a facebook reel". */
+export function detectPlatform(prompt: string): Platform | undefined {
+  const p = prompt.toLowerCase();
+  const hits: Array<[RegExp, Platform]> = [
+    [/\btiktok\b/, 'tiktok'],
+    [/\b(instagram|insta|ig)\b/, 'instagram'],
+    [/\bfacebook\b/, 'facebook'],
+    [/\b(youtube|shorts)\b/, 'youtube'],
+    [/\b(linkedin)\b/, 'linkedin'],
+    [/\b(twitter|tweet|\bx\b)\b/, 'twitter'],
+    [/\bpinterest\b/, 'pinterest'],
+    [/\bthreads\b/, 'threads'],
+  ];
+  for (const [re, platform] of hits) if (re.test(p)) return platform;
+  return undefined;
+}
+
+export async function autoEdit(
+  input: AutoEditInput,
+  provider: AIProvider,
+): Promise<AutoEditResult> {
   const clipsInfo = input.clips.map((c) => ({
     id: c.id,
     name: c.name,
     durationSeconds: Math.round(c.duration * 10) / 10,
   }));
+
+  const platform = input.platform ?? detectPlatform(input.prompt);
+
+  const transcriptBlock = input.transcripts
+    ? Object.entries(input.transcripts)
+        .map(([clipId, segs]) => {
+          if (segs.length === 0) return `Clip ${clipId}: (no speech detected)`;
+          const lines = segs
+            .map(
+              (s) => `  [${s.start.toFixed(1)}-${s.end.toFixed(1)}] ${s.text}`,
+            )
+            .join('\n');
+          return `Clip ${clipId} transcript:\n${lines}`;
+        })
+        .join('\n\n')
+    : null;
 
   const userMessage = [
     `Clips: ${JSON.stringify(clipsInfo)}`,
@@ -52,19 +113,20 @@ export async function autoEdit(input: AutoEditInput): Promise<AutoEditResult> {
     input.targetDuration
       ? `Target duration: ${input.targetDuration} seconds`
       : '',
+    platform ? playbookToPromptHint(PLATFORM_PLAYBOOKS[platform]) : '',
+    input.trending?.length
+      ? `Currently trending topics (use only if genuinely relevant): ${input.trending.slice(0, 10).join(', ')}`
+      : '',
+    transcriptBlock
+      ? `\n${transcriptBlock}`
+      : 'No transcript available — edit from clip names/instruction only, and say so in summary.',
   ]
     .filter(Boolean)
     .join('\n');
 
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 1024,
-    system: SYSTEM,
-    messages: [{ role: 'user', content: userMessage }],
+  const text = await provider.generateText(`${SYSTEM}\n\n${userMessage}`, {
+    maxTokens: 1536,
   });
-
-  const text =
-    response.content[0].type === 'text' ? response.content[0].text : '{}';
 
   try {
     return JSON.parse(text) as AutoEditResult;
@@ -92,23 +154,16 @@ export async function autoEdit(input: AutoEditInput): Promise<AutoEditResult> {
 export async function generateCaptionsFromTranscript(
   transcript: string,
   clips: TimelineClip[],
+  provider: AIProvider,
 ): Promise<Array<{ startTime: number; endTime: number; text: string }>> {
-  const response = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 2048,
-    system: `You are a caption generator. Given a transcript and video clip timeline, return a JSON array of caption segments.
+  const system = `You are a caption generator. Given a transcript and video clip timeline, return a JSON array of caption segments.
 Each segment: { startTime: number, endTime: number, text: string }
-Times are in seconds. Keep each segment under 10 words. Respond ONLY with valid JSON array.`,
-    messages: [
-      {
-        role: 'user',
-        content: `Transcript: ${transcript}\n\nTotal duration: ${clips.reduce((max, c) => Math.max(max, c.startTime + c.duration - c.trimStart - c.trimEnd), 0).toFixed(1)}s`,
-      },
-    ],
-  });
+Times are in seconds. Keep each segment under 10 words. Respond ONLY with valid JSON array.`;
+  const userMessage = `Transcript: ${transcript}\n\nTotal duration: ${clips.reduce((max, c) => Math.max(max, c.startTime + c.duration - c.trimStart - c.trimEnd), 0).toFixed(1)}s`;
 
-  const text =
-    response.content[0].type === 'text' ? response.content[0].text : '[]';
+  const text = await provider.generateText(`${system}\n\n${userMessage}`, {
+    maxTokens: 2048,
+  });
   try {
     return JSON.parse(text);
   } catch {

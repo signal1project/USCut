@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   Film,
   Wand2,
@@ -133,12 +134,12 @@ const HomePage: React.FC = () => {
   const handleOpen = async (id: string) => {
     const result = await openProject(id);
     if (!result.ok) {
-      alert(result.error ?? 'Could not open project');
+      toast.error(result.error ?? 'Could not open project');
       return;
     }
     if (result.missing.length > 0) {
-      alert(
-        `Heads up — ${result.missing.length} media file(s) were moved or deleted since this project was saved:\n\n${result.missing.join('\n')}`,
+      toast.warning(
+        `${result.missing.length} media file(s) were moved or deleted since this project was saved: ${result.missing.join(', ')}`,
       );
     }
     navigate('/editor');

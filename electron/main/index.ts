@@ -34,6 +34,8 @@ import { initSqlite3Db, AppDataSource } from '../db';
 import { store } from '../global/store';
 import { startMas } from './mas/startup';
 import { registerWebviewBridge } from './adapters/webviewBridge';
+import { Settings } from './settings/settings';
+import { createProviderResolver } from './ai';
 
 const platform = process.platform;
 dotenv.config();
@@ -49,6 +51,13 @@ export const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 dialog.showErrorBox = (title, content) => {
   console.error(`Error: ${title}\n${content}`);
 };
+
+// app.getName() otherwise falls back to package.json's "name" ("aicuts" —
+// deliberately kept as the internal npm/IPC identifier, see decisions-log
+// 2026-08-11) which then leaks into user-visible surfaces: native alert()
+// dialog titles, notification sender name, macOS menu bar. This overrides
+// only the display name; every internal identifier stays untouched.
+app.setName('USCut');
 
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   ? path.join(process.env.APP_ROOT, 'public')
@@ -167,10 +176,13 @@ async function startAgentBridge() {
   try {
     const port = Number(process.env.AICUT_BRIDGE_PORT) || 4255;
     const token = process.env.AICUT_BRIDGE_TOKEN;
+    const resolveProvider = createProviderResolver(new Settings(store));
     const api = await startApiServer({
       port,
       token,
-      routes: [{ path: '/aicut', router: createAicutAgentRouter() }],
+      routes: [
+        { path: '/aicut', router: createAicutAgentRouter(resolveProvider) },
+      ],
     });
     const info = {
       url: api.url,

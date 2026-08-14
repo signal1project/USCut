@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from 'sonner';
 import {
   Play,
   Pause,
@@ -179,9 +180,9 @@ const Toolbar: React.FC = () => {
     setExportProgress(null);
     setShowExport(false);
     if (result?.success) {
-      alert(`Exported to: ${result.outputPath}`);
+      toast.success(`Exported to: ${result.outputPath}`);
     } else if (result?.error) {
-      alert(`Export failed: ${result.error}`);
+      toast.error(`Export failed: ${result.error}`);
     }
   };
 
@@ -221,9 +222,11 @@ const Toolbar: React.FC = () => {
           startTime: d.startTime,
         });
       }
-      alert(`Auto-edit complete: ${result.summary}`);
+      toast.success(`Auto-edit complete: ${result.summary}`, {
+        duration: 15000,
+      });
     } else if (result?.error) {
-      alert(`Auto-edit failed: ${result.error}`);
+      toast.error(`Auto-edit failed: ${result.error}`, { duration: 15000 });
     }
     setShowAutoEdit(false);
     setAutoEditPrompt('');

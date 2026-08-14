@@ -11,6 +11,7 @@ import { Router } from 'express';
 import path from 'node:path';
 import os from 'node:os';
 import { z } from 'zod';
+import type { AIProvider } from '@mas/types';
 import { asyncHandler, validateBody } from '../server/middleware';
 import {
   probeVideo,
@@ -32,7 +33,9 @@ const clipSchema = z.object({
   volume: z.number().optional(),
 });
 
-export function createAicutAgentRouter(): Router {
+export function createAicutAgentRouter(
+  resolveProvider: () => AIProvider,
+): Router {
   const router = Router();
 
   // Liveness / capability descriptor for agents
@@ -82,7 +85,7 @@ export function createAicutAgentRouter(): Router {
       }),
     ),
     asyncHandler(async (req, res) => {
-      res.json(await autoEdit(req.body));
+      res.json(await autoEdit(req.body, resolveProvider()));
     }),
   );
 
@@ -97,6 +100,7 @@ export function createAicutAgentRouter(): Router {
         await generateCaptionsFromTranscript(
           req.body.transcript,
           req.body.clips as TimelineClip[],
+          resolveProvider(),
         ),
       );
     }),

@@ -16,34 +16,46 @@ import {
   audioPeaks,
 } from './audioTools';
 import {
+  transcribeViaLocalWhisper,
+  type TranscriptSegment,
+} from '../clips/transcription';
+import {
   autoEdit,
   generateCaptionsFromTranscript,
+  detectPlatform,
   type AutoEditInput,
 } from './autoEdit';
 import { Settings } from '../settings/settings';
 import { store } from '../../global/store';
 import { logger } from '../../global/log';
+import { createProviderResolver } from '../ai';
+import { GoogleTrendsFetcher } from '../research/googleTrendsFetcher';
+
+/** Cap how many clips we pay to transcribe in one Auto-Edit call — enough for
+ * a typical short project without runaway Whisper cost/latency on long timelines. */
+const AUTO_EDIT_MAX_TRANSCRIBED_CLIPS = 6;
 
 export function registerAiCutHandlers(win: Electron.BrowserWindow) {
   registerProjectHandlers();
 
   const settings = new Settings(store);
+
+  // Same provider-resolution the rest of the app uses (Settings → AI Providers)
+  // — auto-edit and one-click captions must never talk to a hardcoded SDK.
+  const resolveProvider = createProviderResolver(settings);
   const proxyCacheDir = path.join(app.getPath('userData'), 'preview-proxies');
   const thumbsDir = path.join(app.getPath('userData'), 'thumbs');
   const voiceoverDir = path.join(app.getPath('userData'), 'voiceovers');
   const waveformCacheDir = path.join(app.getPath('userData'), 'waveforms');
 
-  // One-click captions: extract audio → Whisper (needs OpenAI key in Settings)
+  // One-click captions: extract audio → Whisper (OpenAI key if set, otherwise
+  // free local whisper.cpp — same fallback chain as Auto-Clip).
   ipcMain.handle('aicuts:transcribe-video', async (_, videoPath: string) => {
     try {
       const key = settings.getProviderSettings('openai')?.apiKey;
-      if (!key) {
-        return {
-          error:
-            'Auto-captions from audio need an OpenAI API key (Settings → AI Providers → OpenAI) for Whisper. You can also paste a transcript instead.',
-        };
-      }
-      const segments = await transcribeVideoAudio(videoPath, key);
+      const segments = key
+        ? await transcribeVideoAudio(videoPath, key)
+        : await transcribeViaLocalWhisper(videoPath);
       return { segments };
     } catch (err) {
       return {
@@ -248,10 +260,57 @@ export function registerAiCutHandlers(win: Electron.BrowserWindow) {
     },
   );
 
-  // Auto-edit via Claude
+  // Auto-edit via the user's configured AI provider. Grounds decisions in
+  // real content (Whisper transcript, when an OpenAI key is set), platform
+  // reach/algorithm guidance, and current trending topics — not just clip
+  // names and a duration guess.
   ipcMain.handle('aicuts:auto-edit', async (_, input: AutoEditInput) => {
     try {
-      return await autoEdit(input);
+      const openAiKey = settings.getProviderSettings('openai')?.apiKey;
+      const transcripts: Record<string, TranscriptSegment[]> = {};
+      let transcriptionFailed = false;
+      for (const clip of input.clips.slice(
+        0,
+        AUTO_EDIT_MAX_TRANSCRIBED_CLIPS,
+      )) {
+        try {
+          transcripts[clip.id] = openAiKey
+            ? await transcribeVideoAudio(clip.src, openAiKey)
+            : await transcribeViaLocalWhisper(clip.src);
+        } catch (err) {
+          transcriptionFailed = true;
+          logger.error(
+            `[USCut] Auto-Edit: transcription failed for clip ${clip.id}`,
+            err,
+          );
+        }
+      }
+
+      let trending: string[] | undefined;
+      try {
+        const signals = await new GoogleTrendsFetcher().fetch();
+        trending = signals.slice(0, 10).map((s) => s.keyword);
+      } catch {
+        /* trending context is a nice-to-have, never block the edit */
+      }
+
+      const result = await autoEdit(
+        {
+          ...input,
+          transcripts: Object.keys(transcripts).length
+            ? transcripts
+            : undefined,
+          trending,
+          platform: input.platform ?? detectPlatform(input.prompt),
+        },
+        resolveProvider(),
+      );
+
+      if (transcriptionFailed && !openAiKey) {
+        result.summary +=
+          ' (Local transcription failed for one or more clips — see logs. Falls back to an OpenAI API key in Settings if you have one.)';
+      }
+      return result;
     } catch (err: any) {
       return { error: err.message };
     }
@@ -262,7 +321,11 @@ export function registerAiCutHandlers(win: Electron.BrowserWindow) {
     'aicuts:generate-captions',
     async (_, transcript: string, clips: TimelineClip[]) => {
       try {
-        return await generateCaptionsFromTranscript(transcript, clips);
+        return await generateCaptionsFromTranscript(
+          transcript,
+          clips,
+          resolveProvider(),
+        );
       } catch (err: any) {
         return { error: err.message };
       }

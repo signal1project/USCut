@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import OpenAI from 'openai';
 import Groq from 'groq-sdk';
 import type { AIProvider, AIProviderName } from '@mas/types';
+import type { Settings } from '../settings/settings';
 import { ClaudeProvider, type AnthropicLike } from './claudeProvider';
 import { OpenAIProvider, type OpenAILike } from './openaiProvider';
 import { GroqProvider, type GroqLike } from './groqProvider';
@@ -12,6 +13,7 @@ import {
   OLLAMA_OPENAI_COMPAT_PATH,
 } from './ollamaProvider';
 import { ChatGPTProvider, type ChatGPTAuthSource } from './chatgptProvider';
+import { ensureFreshChatGPTAuth } from './chatgptAuth';
 
 export { ClaudeProvider } from './claudeProvider';
 export { OpenAIProvider } from './openaiProvider';
@@ -102,4 +104,27 @@ export function createAIProvider(
       throw new Error(`Unknown AI provider: ${exhaustive}`);
     }
   }
+}
+
+/**
+ * The one way any subsystem (MAS runtime, editor auto-edit, headless agent
+ * bridge) should get an AIProvider — always Settings-configured, never a
+ * hardcoded SDK client reading an env var. Throws with a message that's safe
+ * to surface directly to the user when nothing's configured yet.
+ */
+export function createProviderResolver(settings: Settings): () => AIProvider {
+  return () => {
+    const active = settings.getActiveAIProvider();
+    if (!active) {
+      throw new Error(
+        'No AI provider configured. Go to Settings → AI Providers and connect one (ChatGPT, OpenRouter, Ollama, or an API key).',
+      );
+    }
+    return createAIProvider(active.name, {
+      apiKey: active.apiKey,
+      baseUrl: active.baseUrl,
+      model: active.model,
+      chatgptAuth: { ensureFresh: () => ensureFreshChatGPTAuth(settings) },
+    });
+  };
 }

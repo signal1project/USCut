@@ -54,7 +54,7 @@ import {
 import type { FeatureRoute } from '../server';
 import {
   createAIProvider as buildAIProvider,
-  ensureFreshChatGPTAuth,
+  createProviderResolver,
 } from '../ai';
 import { fireScheduledPost, type PublishNotifier } from './scheduledFiring';
 import { ContentAssetModel } from '../../db/models/mas/contentAsset';
@@ -118,17 +118,7 @@ export function buildMasRuntime(deps: MasRuntimeDeps): MasRuntime {
 
   const resolveAdapter = (platform: Platform) => getAdapter(platform);
 
-  const resolveProvider = () => {
-    const active = settings.getActiveAIProvider();
-    if (!active)
-      throw new Error('No AI provider configured. Set one in Settings.');
-    return buildAIProvider(active.name, {
-      apiKey: active.apiKey,
-      baseUrl: active.baseUrl,
-      model: active.model,
-      chatgptAuth: { ensureFresh: () => ensureFreshChatGPTAuth(settings) },
-    });
-  };
+  const resolveProvider = createProviderResolver(settings);
   const resolveImageProvider = () => {
     const img = settings.getImageProvider();
     if (!img) throw new Error('OpenAI API key required for image generation.');
