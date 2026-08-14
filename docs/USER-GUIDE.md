@@ -62,8 +62,8 @@ Social Hub → **Publish** → account picker, or the **Accounts** button in the
    `dist-ext` folder in the AICut folder).
 2. Chrome → `chrome://extensions` → enable **Developer mode** → **Load unpacked** →
    select the `dist-ext` folder.
-3. Browse any listing on **Zillow, Realtor.com, or Redfin**. A green **Capture Listing**
-   button appears — click it while AICut is running.
+3. Browse any listing on **Zillow**. A green **Capture Listing**
+   button appears — click it while USCut is running.
 4. The listing (photos, price, specs, agent info) appears in Social Hub → **Listings**.
 
 > No extension? Paste the listing URL into the **Capture URL** box on the Listings page —

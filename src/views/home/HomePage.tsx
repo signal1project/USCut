@@ -96,8 +96,8 @@ const SOCIAL_SHORTCUTS = [
   },
   {
     icon: Building2,
-    label: 'Listing Scraper',
-    desc: 'Capture property listings from Zillow, Realtor & Redfin',
+    label: 'Zillow Scraper',
+    desc: 'Capture property listings from Zillow',
     path: '/mas/listings',
     color: '#34d399',
   },

@@ -216,12 +216,12 @@ export default function ListingScraperPage(): React.ReactElement {
       <div>
         <h2 className="flex items-center gap-2 text-lg font-semibold text-ink-strong">
           <Building2 size={18} className="text-accent" />
-          Listing Scraper
+          Zillow Scraper
         </h2>
         <p className="text-sm text-ink-muted mt-0.5">
-          Property listings captured from Zillow, Realtor.com and Redfin — ready
-          to turn into listing ads. Looking for post topics instead? That&apos;s
-          the Idea Scraper on the Research page.
+          Property listings captured from Zillow — ready to turn into listing
+          ads. Looking for post topics instead? That&apos;s the Idea Scraper on
+          the Research page.
         </p>
       </div>
 
@@ -232,12 +232,11 @@ export default function ListingScraperPage(): React.ReactElement {
             <Puzzle size={18} className="text-accent shrink-0 mt-0.5" />
             <div className="text-xs text-ink-muted leading-relaxed">
               <span className="font-medium text-ink-base">How to capture:</span>{' '}
-              install the USCut Listing Scraper Chrome extension (run{' '}
+              install the USCut Zillow Scraper Chrome extension (run{' '}
               <code>npm run build:ext</code>, then load <code>dist-ext/</code>{' '}
-              via chrome://extensions → Load unpacked). Browse any listing on
-              Zillow, Realtor.com or Redfin and click the green “Capture
-              Listing” button — it lands here automatically while USCut is
-              running.
+              via chrome://extensions → Load unpacked). Browse any Zillow
+              listing and click the green “Capture Listing” button — it lands
+              here automatically while USCut is running.
             </div>
           </div>
         </CardContent>
@@ -328,7 +327,7 @@ export default function ListingScraperPage(): React.ReactElement {
         <p className="text-center text-ink-muted py-12 text-sm">
           {appliedCity
             ? `No captured listings match "${appliedCity}".`
-            : 'No listings captured yet — browse Zillow, Realtor.com or Redfin with the extension installed.'}
+            : 'No listings captured yet — browse Zillow with the extension installed.'}
         </p>
       )}
 

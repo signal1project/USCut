@@ -1,10 +1,10 @@
 /**
  * Listing Scraper — shared types.
  * Mirrors the capture payload sent by the Chrome extension
- * (chrome-extension/utils/overlay.ts) for Zillow / Realtor.com / Redfin.
+ * (chrome-extension/utils/overlay.ts) for Zillow.
  */
 
-export type ListingSource = 'zillow' | 'realtor' | 'redfin' | 'manual';
+export type ListingSource = 'zillow' | 'manual';
 
 export interface ListingCapturePayload {
   source: ListingSource;

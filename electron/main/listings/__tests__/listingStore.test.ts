@@ -90,19 +90,19 @@ describe.skipIf(!nativeLoads)('TypeOrmListingStore', () => {
 
   it('lists with filters and pagination', async () => {
     await store.capture({
-      source: 'redfin',
+      source: 'manual',
       address: '9 Pine Ct',
       city: 'Austin',
       state: 'TX',
-      listingUrl: 'https://www.redfin.com/TX/home/9-pine-ct',
+      listingUrl: 'https://someagentsite.com/listing/9-pine-ct',
     });
 
     const all = await store.list();
     expect(all.total).toBe(3);
 
-    const redfinOnly = await store.list({ source: 'redfin' });
-    expect(redfinOnly.total).toBe(1);
-    expect(redfinOnly.listings[0].address).toBe('9 Pine Ct');
+    const manualOnly = await store.list({ source: 'manual' });
+    expect(manualOnly.total).toBe(1);
+    expect(manualOnly.listings[0].address).toBe('9 Pine Ct');
 
     const houston = await store.list({ city: 'Hous' });
     expect(houston.total).toBe(1);
@@ -113,7 +113,7 @@ describe.skipIf(!nativeLoads)('TypeOrmListingStore', () => {
   });
 
   it('gets and removes a listing by id', async () => {
-    const { listings } = await store.list({ source: 'redfin' });
+    const { listings } = await store.list({ source: 'manual' });
     const id = listings[0].id;
 
     const fetched = await store.get(id);

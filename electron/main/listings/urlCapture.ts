@@ -8,10 +8,7 @@ import type { ListingCapturePayload, ListingSource } from './types';
  */
 
 function sourceFromUrl(url: string): ListingSource {
-  if (/zillow\.com/i.test(url)) return 'zillow';
-  if (/realtor\.com/i.test(url)) return 'realtor';
-  if (/redfin\.com/i.test(url)) return 'redfin';
-  return 'manual';
+  return /zillow\.com/i.test(url) ? 'zillow' : 'manual';
 }
 
 function metaContent(html: string, property: string): string | undefined {

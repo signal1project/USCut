@@ -75,7 +75,7 @@ export default function ResearchPage(): React.ReactElement {
         </h2>
         <p className="text-sm text-ink-muted mt-0.5">
           Trending topics and the Idea Scraper — find what to post about. For
-          property listings, use the Listing Scraper on the Listings page.
+          property listings, use the Zillow Scraper on the Listings page.
         </p>
       </div>
 

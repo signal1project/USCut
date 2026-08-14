@@ -4,7 +4,7 @@
  */
 
 export interface ListingData {
-  source:        'zillow' | 'realtor' | 'redfin';
+  source:        'zillow';
   mlsNumber?:    string;
   address:       string;
   city:          string;

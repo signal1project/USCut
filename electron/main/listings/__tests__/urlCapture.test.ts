@@ -31,10 +31,10 @@ describe('extractListingFromHtml', () => {
   it('extracts from schema.org JSON-LD', () => {
     const p = extractListingFromHtml(
       JSONLD_PAGE,
-      'https://www.realtor.com/realestateandhomes-detail/456-oak',
+      'https://www.zillow.com/homedetails/456-oak',
     );
     expect(p).not.toBeNull();
-    expect(p!.source).toBe('realtor');
+    expect(p!.source).toBe('zillow');
     expect(p!.address).toBe('456 Oak Ave');
     expect(p!.city).toBe('Austin');
     expect(p!.state).toBe('TX');

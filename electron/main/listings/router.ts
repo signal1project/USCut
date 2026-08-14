@@ -7,7 +7,7 @@ import type { ListingVideoService } from './videoService';
 import { captureFromUrl } from './urlCapture';
 
 const capturePayloadSchema = z.object({
-  source: z.enum(['zillow', 'realtor', 'redfin', 'manual']),
+  source: z.enum(['zillow', 'manual']),
   mlsNumber: z.string().optional(),
   address: z.string().min(1),
   city: z.string().min(1),

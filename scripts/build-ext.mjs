@@ -36,11 +36,7 @@ await build({
 
 await build({
   ...sharedOpts,
-  entryPoints: [
-    `${EXT}/content/zillow.ts`,
-    `${EXT}/content/realtor.ts`,
-    `${EXT}/content/redfin.ts`,
-  ],
+  entryPoints: [`${EXT}/content/zillow.ts`],
   outdir: `${OUT}/content`,
   format: 'iife',
 });
