@@ -40,6 +40,7 @@ import {
   ListingVideoService,
   createListingsRouter,
 } from '../listings';
+import type { PropertyListingSummary } from '../listings/types';
 import { InsightsService, createInsightsRouter } from '../insights';
 import { ClipService, createClipsRouter } from '../clips';
 import path from 'node:path';
@@ -68,6 +69,10 @@ export interface MasRuntimeDeps {
   dataDir?: string;
   /** Surface publish success/failure (e.g. desktop Notification). */
   notifyPublish?: PublishNotifier;
+  /** Push newly-captured listings to open renderer windows (extension and
+   * paste-URL capture both come from outside the UI, so it has no other way
+   * to know a new one landed). */
+  notifyListingCaptured?: (listing: PropertyListingSummary) => void;
 }
 
 export interface MasRuntime {
@@ -274,6 +279,7 @@ export function buildMasRuntime(deps: MasRuntimeDeps): MasRuntime {
       router: createListingsRouter(listings, {
         adService: listingAds,
         videoService: listingVideos,
+        onCaptured: deps.notifyListingCaptured,
       }),
     },
     { path: '/clips', router: createClipsRouter(clips) },

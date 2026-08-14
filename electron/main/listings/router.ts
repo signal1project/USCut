@@ -4,6 +4,7 @@ import { PLATFORMS } from '@mas/types';
 import type { ListingStore } from './listingStore';
 import type { ListingAdService } from './adService';
 import type { ListingVideoService } from './videoService';
+import type { PropertyListingSummary } from './types';
 import { captureFromUrl } from './urlCapture';
 
 const capturePayloadSchema = z.object({
@@ -75,6 +76,11 @@ export function createListingsRouter(
   opts: {
     adService?: ListingAdService;
     videoService?: ListingVideoService;
+    /** Fired after a successful capture on either path below — e.g. to push
+     * a live "new listing" update to open renderer windows, since the
+     * capture request comes from a Chrome extension or a paste-URL fetch,
+     * never from the UI itself, so the UI has no other way to know. */
+    onCaptured?: (listing: PropertyListingSummary) => void;
   } = {},
 ): Router {
   const router = Router();
@@ -83,6 +89,7 @@ export function createListingsRouter(
     try {
       const payload = capturePayloadSchema.parse(req.body);
       const listing = await store.capture(payload);
+      opts.onCaptured?.(listing);
       res.status(201).json({ listing });
     } catch (err) {
       next(err);
@@ -125,6 +132,7 @@ export function createListingsRouter(
         return;
       }
       const listing = await store.capture(payload);
+      opts.onCaptured?.(listing);
       res.status(201).json({ listing });
     } catch (err) {
       next(err);

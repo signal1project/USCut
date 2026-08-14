@@ -2,6 +2,7 @@ import express from 'express';
 import type { Server } from 'node:http';
 import { createListingsRouter } from './router';
 import type { ListingStore } from './listingStore';
+import type { PropertyListingSummary } from './types';
 
 export interface CaptureServer {
   port: number;
@@ -10,6 +11,12 @@ export interface CaptureServer {
 }
 
 const DEFAULT_CAPTURE_PORT = 7474;
+
+export interface CaptureServerOptions {
+  port?: number;
+  /** Fired after the extension successfully captures a listing. */
+  onCaptured?: (listing: PropertyListingSummary) => void;
+}
 
 /**
  * Fixed-port loopback listener for the Listing Scraper Chrome extension.
@@ -23,8 +30,11 @@ const DEFAULT_CAPTURE_PORT = 7474;
  */
 export function startListingCaptureServer(
   store: ListingStore,
-  port = Number(process.env.AICUT_CAPTURE_PORT) || DEFAULT_CAPTURE_PORT,
+  options: CaptureServerOptions = {},
 ): Promise<CaptureServer> {
+  const port =
+    options.port ??
+    (Number(process.env.AICUT_CAPTURE_PORT) || DEFAULT_CAPTURE_PORT);
   const app = express();
   app.use(express.json({ limit: '5mb' }));
 
@@ -45,7 +55,10 @@ export function startListingCaptureServer(
   });
 
   // Same paths the extension has always used: /api/listings/capture
-  app.use('/api/listings', createListingsRouter(store));
+  app.use(
+    '/api/listings',
+    createListingsRouter(store, { onCaptured: options.onCaptured }),
+  );
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'not_found' });

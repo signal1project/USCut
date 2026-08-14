@@ -197,3 +197,76 @@ describe('listings router over HTTP', () => {
     expect(res.status).toBe(503);
   });
 });
+
+// Regression test for the 2026-08-14 "didn't autopopulate" bug: a listing
+// captured by the extension landed in the DB correctly, but the already-open
+// Zillow Scraper page never learned about it (it only fetches once, on
+// mount). onCaptured is the hook the main process uses to push a live
+// update — verify it actually fires on the extension's capture route
+// (/capture — the paste-URL /capture-url route calls the exact same
+// store.capture()+onCaptured pair, not separately tested here since
+// exercising it deterministically needs a real network fetch, unlike this).
+describe('onCaptured hook', () => {
+  it('fires after a successful /capture', async () => {
+    const captured: PropertyListingSummary[] = [];
+    const store2 = new InMemoryListingStore();
+    const api2 = await startApiServer({
+      token: 'hook-token',
+      routes: [
+        {
+          path: '/listings',
+          router: createListingsRouter(store2, {
+            onCaptured: (listing) => captured.push(listing),
+          }),
+        },
+      ],
+    });
+    try {
+      const res = await fetch(`${api2.url}/api/listings/capture`, {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer hook-token',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          source: 'zillow',
+          address: '9 Hook Ln',
+          city: 'Dallas',
+          state: 'TX',
+          listingUrl: 'https://www.zillow.com/homedetails/9-hook-ln',
+        }),
+      });
+      expect(res.status).toBe(201);
+      expect(captured).toHaveLength(1);
+      expect(captured[0].address).toBe('9 Hook Ln');
+    } finally {
+      await api2.close();
+    }
+  });
+
+  it('does not throw when onCaptured is omitted', async () => {
+    const store2 = new InMemoryListingStore();
+    const api2 = await startApiServer({
+      token: 'hook-token-3',
+      routes: [{ path: '/listings', router: createListingsRouter(store2) }],
+    });
+    try {
+      const res = await fetch(`${api2.url}/api/listings/capture`, {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer hook-token-3',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          source: 'manual',
+          address: '1 No Hook Way',
+          city: 'Reno',
+          state: 'NV',
+        }),
+      });
+      expect(res.status).toBe(201);
+    } finally {
+      await api2.close();
+    }
+  });
+});

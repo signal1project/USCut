@@ -17,7 +17,11 @@ export {
   type ListingAdItem,
   type GenerateListingAdOptions,
 } from './adService';
-export { startListingCaptureServer, type CaptureServer } from './captureServer';
+export {
+  startListingCaptureServer,
+  type CaptureServer,
+  type CaptureServerOptions,
+} from './captureServer';
 export type {
   ListingCapturePayload,
   PropertyListingSummary,

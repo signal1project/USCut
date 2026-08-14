@@ -1,4 +1,4 @@
-import { ipcMain, app, Notification } from 'electron';
+import { ipcMain, app, BrowserWindow, Notification } from 'electron';
 import type { DataSource } from 'typeorm';
 import fs from 'fs';
 import path from 'path';
@@ -6,6 +6,7 @@ import { Settings, type SettingsStore } from '../settings/settings';
 import { getCredentialManager } from '../credentials';
 import { startApiServer, type RunningApiServer } from '../server';
 import { startListingCaptureServer, type CaptureServer } from '../listings';
+import type { PropertyListingSummary } from '../listings/types';
 import { buildMasRuntime, type MasRuntime } from './runtime';
 import { registerMasIpc } from './ipc';
 import { registerExtensionInstallIpc } from '../listings/extensionInstall';
@@ -51,12 +52,23 @@ export async function startMas(
     }
   };
 
+  // The extension and paste-URL capture both originate outside the UI (a
+  // content script, or a raw HTTP call), so a listing can land in the DB
+  // while the Zillow Scraper page is sitting open with no way to know about
+  // it — it only ever fetches once, on mount. Push it to every window.
+  const notifyListingCaptured = (listing: PropertyListingSummary) => {
+    for (const win of BrowserWindow.getAllWindows()) {
+      win.webContents.send('listings:captured', listing);
+    }
+  };
+
   const runtime = buildMasRuntime({
     dataSource,
     settings,
     credentials,
     dataDir: app.getPath('userData'),
     notifyPublish,
+    notifyListingCaptured,
   });
   const api = await startApiServer({ routes: runtime.routes });
 
@@ -99,7 +111,9 @@ export async function startMas(
   // a busy port must never take down the rest of the MAS backend.
   let capture: CaptureServer | null = null;
   try {
-    capture = await startListingCaptureServer(runtime.listings);
+    capture = await startListingCaptureServer(runtime.listings, {
+      onCaptured: notifyListingCaptured,
+    });
     logger.log(`[AICut] Listing capture server on ${capture.url}`);
   } catch (err) {
     logger.error(

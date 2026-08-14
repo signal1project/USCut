@@ -111,6 +111,23 @@ export default function ListingScraperPage(): React.ReactElement {
     void refresh();
   }, [refresh]);
 
+  // Extension capture and paste-URL capture both happen outside this page
+  // (a content script, or a raw HTTP call) — the main process pushes this
+  // event the moment either one lands a listing, so it shows up here without
+  // needing a manual refresh, matching what the capture UI already promises.
+  useEffect(() => {
+    if (!hasIpc()) return;
+    const onCaptured = (_event: unknown, listing: unknown) => {
+      const address = (listing as { address?: string })?.address;
+      toast.success(
+        address ? `Captured: ${address}` : 'New listing captured',
+      );
+      void refresh();
+    };
+    ipc.on('listings:captured', onCaptured);
+    return () => ipc.off('listings:captured', onCaptured);
+  }, [refresh]);
+
   const remove = async (id: string) => {
     if (!api) return;
     try {
