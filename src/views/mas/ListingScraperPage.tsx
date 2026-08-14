@@ -15,6 +15,7 @@ import {
   Link,
   Film,
   Send,
+  Share2,
 } from 'lucide-react';
 import { PubType } from '@mas/types';
 import { useMasApi } from './useMasApi';
@@ -24,7 +25,7 @@ import type {
   ListingVideoResult,
 } from '@mas/ui';
 import { Button, Badge, Card, CardContent, Input } from '@/components/ui';
-import type { SchedulerPrefill } from './SchedulerPage';
+import type { ComposerPrefill } from './composerPrefill';
 
 const AD_PLATFORMS = ['facebook', 'instagram', 'linkedin'] as const;
 
@@ -191,7 +192,21 @@ export default function ListingScraperPage(): React.ReactElement {
           pubType: PubType.VIDEO,
           mediaRef: reel.path,
           body: reelCaption(listing),
-        } satisfies SchedulerPrefill,
+        } satisfies ComposerPrefill,
+      },
+    });
+  };
+
+  const postReel = (listing: PropertyListingSummary) => {
+    const reel = reels[listing.id];
+    if (!reel) return;
+    navigate('/mas/publish', {
+      state: {
+        prefill: {
+          pubType: PubType.VIDEO,
+          mediaRef: reel.path,
+          body: reelCaption(listing),
+        } satisfies ComposerPrefill,
       },
     });
   };
@@ -435,15 +450,25 @@ export default function ListingScraperPage(): React.ReactElement {
                         {reels[l.id].photosUsed} photos
                         {reels[l.id].narrated ? ', narrated' : ''})
                       </p>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => scheduleReel(l)}
-                        title="Send this reel to the Scheduler, prefilled and ready to pick accounts + a time"
-                      >
-                        <Send size={13} />
-                        Schedule
-                      </Button>
+                      <div className="flex items-center gap-1.5">
+                        <Button
+                          size="sm"
+                          onClick={() => postReel(l)}
+                          title="Open the social composer with this reel attached"
+                        >
+                          <Share2 size={13} />
+                          Post Now
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => scheduleReel(l)}
+                          title="Schedule through an API-connected social account"
+                        >
+                          <Send size={13} />
+                          Schedule
+                        </Button>
+                      </div>
                     </div>
                     <p className="text-xs text-ink-muted mt-1 break-all select-all">
                       {reels[l.id].path}

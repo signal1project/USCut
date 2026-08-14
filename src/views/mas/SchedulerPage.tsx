@@ -43,6 +43,7 @@ import {
   SelectValue,
 } from '@/components/ui';
 import { toast } from 'sonner';
+import type { ComposerPrefill } from './composerPrefill';
 
 interface ConnectedAccount {
   id: string;
@@ -50,14 +51,7 @@ interface ConnectedAccount {
   accountName: string;
   externalId: string;
   brandId?: string | null;
-}
-
-/** Prefill payload other pages (e.g. the Listing Video Generator) can hand to the
- * composer via router navigation state — see ListingScraperPage's "Schedule" button. */
-export interface SchedulerPrefill {
-  pubType: PubType;
-  mediaRef: string;
-  body?: string;
+  source?: string;
 }
 
 /** Scheduler: pick accounts, write caption, set date/time, queue the post. */
@@ -94,7 +88,7 @@ export default function SchedulerPage(): React.ReactElement {
   // on a generated listing reel) and clear it from history so it doesn't
   // reapply on back/forward navigation or a manual reload of this route.
   useEffect(() => {
-    const prefill = (location.state as { prefill?: SchedulerPrefill } | null)
+    const prefill = (location.state as { prefill?: ComposerPrefill } | null)
       ?.prefill;
     if (!prefill) return;
     setPubType(prefill.pubType);
@@ -230,9 +224,9 @@ export default function SchedulerPage(): React.ReactElement {
 
   const accounts = useMemo(
     () =>
-      activeBrandId
-        ? accountsRaw.filter((a) => a.brandId === activeBrandId)
-        : accountsRaw,
+      accountsRaw
+        .filter((a) => a.source !== 'webview')
+        .filter((a) => !activeBrandId || a.brandId === activeBrandId),
     [accountsRaw, activeBrandId],
   );
 
@@ -327,7 +321,7 @@ export default function SchedulerPage(): React.ReactElement {
           </CardTitle>
           <CardDescription>
             {accounts.length === 0
-              ? 'No connected accounts — go to Accounts in the editor to connect.'
+              ? 'No API-connected accounts — browser-session accounts can post now, but cannot run unattended schedules.'
               : activeBrandId
                 ? `Showing accounts for ${activeBrands.find((b) => b.id === activeBrandId)?.name ?? 'the active company'} — switch companies from Home.`
                 : 'Click to toggle accounts for this post.'}

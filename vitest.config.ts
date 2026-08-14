@@ -5,10 +5,11 @@ export default defineConfig({
     root: __dirname,
     include: [
       'test/**/*.{test,spec}.?(c|m)[jt]s?(x)',
+      'chrome-extension/**/*.{test,spec}.?(c|m)[jt]s?(x)',
       'electron/**/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)',
       'electron/**/*.{test,spec}.?(c|m)[jt]s?(x)',
       'packages/**/__tests__/**/*.{test,spec}.?(c|m)[jt]s?(x)',
-      'packages/**/*.{test,spec}.?(c|m)[jt]s?(x)'
+      'packages/**/*.{test,spec}.?(c|m)[jt]s?(x)',
     ],
     exclude: [
       ...configDefaults.exclude,
@@ -22,4 +23,4 @@ export default defineConfig({
     testTimeout: 1000 * 29,
     environment: 'node',
   },
-})
+});

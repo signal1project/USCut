@@ -161,20 +161,63 @@ async function downloadPhoto(
   try {
     if (!/^https?:\/\//i.test(url)) {
       // Local path (used by tests and manual captures).
-      return fs.existsSync(url) ? url : null;
+      return fs.existsSync(url) && looksLikeRasterImage(url) ? url : null;
     }
-    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+    const parsed = new URL(url);
+    const headers: Record<string, string> = {
+      Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36',
+    };
+    if (/(^|\.)zillowstatic\.com$/i.test(parsed.hostname)) {
+      headers.Referer = 'https://www.zillow.com/';
+    }
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(15_000),
+      headers,
+    });
     if (!res.ok) return null;
+    const contentType = res.headers.get('content-type')?.toLowerCase();
+    if (contentType && !contentType.startsWith('image/')) return null;
     const buf = Buffer.from(await res.arrayBuffer());
     if (buf.length < 100) return null;
     const file = path.join(
       dir,
-      `photo_${index}${path.extname(new URL(url).pathname) || '.jpg'}`,
+      `photo_${index}${path.extname(parsed.pathname) || '.jpg'}`,
     );
     fs.writeFileSync(file, buf);
+    if (!looksLikeRasterImage(file)) {
+      fs.rmSync(file, { force: true });
+      return null;
+    }
     return file;
   } catch {
     return null;
+  }
+}
+
+/** Reject HTML/error bodies and malformed files before they can hang ffmpeg. */
+function looksLikeRasterImage(file: string): boolean {
+  const fd = fs.openSync(file, 'r');
+  try {
+    const head = Buffer.alloc(16);
+    const size = fs.readSync(fd, head, 0, head.length, 0);
+    if (size < 4) return false;
+    const ascii = head.toString('ascii');
+    return (
+      (head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff) || // JPEG
+      head
+        .subarray(0, 8)
+        .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) || // PNG
+      (ascii.startsWith('RIFF') && ascii.slice(8, 12) === 'WEBP') ||
+      ascii.slice(4, 12).includes('ftypavif') ||
+      ascii.startsWith('GIF8') ||
+      ascii.startsWith('BM') ||
+      ascii.startsWith('II*\0') ||
+      ascii.startsWith('MM\0*')
+    );
+  } finally {
+    fs.closeSync(fd);
   }
 }
 
@@ -238,7 +281,15 @@ function concatWithAudio(
     if (narrationWav) {
       cmd = cmd
         .input(narrationWav)
-        .outputOptions(['-c:v copy', '-c:a aac', '-b:a 128k', '-shortest']);
+        // Pad short narration with silence so -shortest ends at the video,
+        // not halfway through a longer five-photo reel.
+        .outputOptions([
+          '-c:v copy',
+          '-af apad',
+          '-c:a aac',
+          '-b:a 128k',
+          '-shortest',
+        ]);
     } else {
       cmd = cmd.outputOptions(['-c copy']);
     }
@@ -300,7 +351,27 @@ export class ListingVideoService {
       // 2. Segments
       const segments: string[] = [];
 
-      if (photoFiles.length === 0) {
+      let renderedPhotoCount = 0;
+      if (photoFiles.length > 0) {
+        for (const [i, photo] of photoFiles.entries()) {
+          const seg = path.join(work, `seg_${i}.mp4`);
+          try {
+            await renderPhotoSegment(
+              photo,
+              buildKenBurnsFilter(i, perPhoto, banner),
+              perPhoto,
+              seg,
+            );
+            segments.push(seg);
+            renderedPhotoCount += 1;
+          } catch {
+            // A CDN can return a corrupt/unsupported image while the rest are
+            // valid. Skip that photo instead of losing the whole reel.
+          }
+        }
+      }
+
+      if (renderedPhotoCount === 0) {
         // No photos — open with a title card instead.
         const intro = path.join(work, 'seg_intro.mp4');
         await renderCardSegment(
@@ -315,17 +386,6 @@ export class ListingVideoService {
           intro,
         );
         segments.push(intro);
-      } else {
-        for (const [i, photo] of photoFiles.entries()) {
-          const seg = path.join(work, `seg_${i}.mp4`);
-          await renderPhotoSegment(
-            photo,
-            buildKenBurnsFilter(i, perPhoto, banner),
-            perPhoto,
-            seg,
-          );
-          segments.push(seg);
-        }
       }
 
       // 3. CTA end card
@@ -368,12 +428,12 @@ export class ListingVideoService {
       await concatWithAudio(concatList, narrationWav, outPath);
 
       const photoSeconds =
-        photoFiles.length > 0 ? photoFiles.length * perPhoto : 4;
+        renderedPhotoCount > 0 ? renderedPhotoCount * perPhoto : 4;
       return {
         listingId,
         path: outPath,
         durationSeconds: photoSeconds + 3,
-        photosUsed: photoFiles.length,
+        photosUsed: renderedPhotoCount,
         narrated: narrationWav !== null,
       };
     } finally {

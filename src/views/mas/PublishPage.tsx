@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useForm, Controller } from 'react-hook-form';
 import { toast } from 'sonner';
 import { Send, RefreshCw, Clock, Image, LogIn, Check } from 'lucide-react';
@@ -24,6 +25,7 @@ import {
   SelectValue,
 } from '@/components/ui';
 import ConnectAccounts from '@/views/onboarding/ConnectAccounts';
+import type { ComposerPrefill } from './composerPrefill';
 
 interface ConnectedAccount {
   id: string;
@@ -62,6 +64,8 @@ const PLATFORM_COLOR: Partial<Record<Platform, string>> = {
 /** Compose and publish (or schedule) a post to connected social accounts. */
 export default function PublishPage(): React.ReactElement {
   const api = useMasApi();
+  const location = useLocation();
+  const navigate = useNavigate();
   const {
     activeBrandId,
     brands: activeBrands,
@@ -93,6 +97,7 @@ export default function PublishPage(): React.ReactElement {
     handleSubmit,
     watch,
     control,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     defaultValues: {
@@ -106,6 +111,24 @@ export default function PublishPage(): React.ReactElement {
 
   const pubType = watch('pubType');
   const scheduleMode = watch('scheduleMode');
+
+  useEffect(() => {
+    const prefill = (location.state as { prefill?: ComposerPrefill } | null)
+      ?.prefill;
+    if (!prefill) return;
+    reset({
+      pubType: prefill.pubType,
+      body: prefill.body ?? '',
+      hashtags: '',
+      imageUrl: prefill.mediaRef,
+      scheduleMode: 'now',
+      scheduledAt: '',
+    });
+    toast.info(
+      'Reel loaded — choose Facebook, Instagram, or TikTok to post it.',
+    );
+    navigate(location.pathname, { replace: true, state: null });
+  }, [location.pathname, location.state, navigate, reset]);
 
   const loadAccounts = async () => {
     if (!hasIpc()) return;
@@ -233,6 +256,10 @@ export default function PublishPage(): React.ReactElement {
     const fullBody = [values.body, values.hashtags?.trim()]
       .filter(Boolean)
       .join('\n\n');
+    const mediaPath =
+      values.imageUrl.trim() && !/^https?:\/\//i.test(values.imageUrl.trim())
+        ? values.imageUrl.trim()
+        : undefined;
 
     if (values.scheduleMode === 'later' && !values.scheduledAt) {
       toast.error('Set a date and time to schedule');
@@ -264,11 +291,18 @@ export default function PublishPage(): React.ReactElement {
       }
       for (const platform of webviewTargets) {
         try {
-          await ipc.invoke('mas:social:post-webview', {
+          const result = (await ipc.invoke('mas:social:post-webview', {
             platform,
             body: fullBody,
-          });
-          toast.success(`Posted to ${PLATFORM_CONFIG[platform].label} ✓`);
+            mediaPath,
+          })) as { posted?: boolean; attached?: boolean; manual?: boolean };
+          if (result?.posted) {
+            toast.success(`Posted to ${PLATFORM_CONFIG[platform].label} ✓`);
+          } else {
+            toast.info(
+              `${PLATFORM_CONFIG[platform].label} composer closed${result?.attached ? ' after the reel was attached' : ''}.`,
+            );
+          }
         } catch (e) {
           errors.push(
             `${PLATFORM_CONFIG[platform].label}: ${(e as Error).message}`,
@@ -283,12 +317,17 @@ export default function PublishPage(): React.ReactElement {
         const page = facebookPages.find((a) => a.id === pageId);
         if (!page) continue;
         try {
-          await ipc.invoke('mas:social:post-webview', {
+          const result = (await ipc.invoke('mas:social:post-webview', {
             platform: 'facebook',
             body: fullBody,
+            mediaPath,
             pageId: page.externalId,
-          });
-          toast.success(`Posted to ${page.accountName} ✓`);
+          })) as { posted?: boolean; attached?: boolean; manual?: boolean };
+          toast.info(
+            result?.posted
+              ? `Posted to ${page.accountName} ✓`
+              : `${page.accountName} composer closed${result?.attached ? ' after the reel was attached' : ''}.`,
+          );
         } catch (e) {
           errors.push(`${page.accountName}: ${(e as Error).message}`);
         }
@@ -296,21 +335,22 @@ export default function PublishPage(): React.ReactElement {
     }
 
     // ── Instagram accounts (webview session, switches active account first) ──
-    // This composer has no local-file picker (imageUrl above is a public URL
-    // for the API-publish path, not usable for the CDP file attach Instagram
-    // needs) — the window opens on the right account with the caption ready
-    // on the clipboard, and the user attaches media + posts manually.
+    // A generated local reel is attached through CDP; public URLs remain for
+    // API publishing. The user reviews and clicks Post in Instagram.
     if (selectedInstagramIds.length > 0) {
       for (const accountId of selectedInstagramIds) {
         const account = instagramAccounts.find((a) => a.id === accountId);
         if (!account) continue;
         try {
-          await ipc.invoke('mas:social:post-webview', {
+          const result = (await ipc.invoke('mas:social:post-webview', {
             platform: 'instagram',
             body: fullBody,
+            mediaPath,
             accountId: account.externalId,
-          });
-          toast.success(`Opened composer for @${account.accountName} ✓`);
+          })) as { posted?: boolean; attached?: boolean; manual?: boolean };
+          toast.info(
+            `@${account.accountName} composer closed${result?.attached ? ' after the reel was attached' : ''}.`,
+          );
         } catch (e) {
           errors.push(`@${account.accountName}: ${(e as Error).message}`);
         }
@@ -570,14 +610,14 @@ export default function PublishPage(): React.ReactElement {
               <div className="space-y-1.5">
                 <Label htmlFor="imageUrl" className="flex items-center gap-1.5">
                   <Image size={13} />
-                  {pubType === PubType.VIDEO ? 'Video URL' : 'Image URL'}
+                  {pubType === PubType.VIDEO ? 'Video' : 'Image'}
                   <span className="font-normal text-ink-subtle text-xs">
-                    (publicly accessible)
+                    (public URL or generated local file)
                   </span>
                 </Label>
                 <Input
                   id="imageUrl"
-                  placeholder="https://your-site.com/image.jpg"
+                  placeholder="https://your-site.com/media or a generated local path"
                   {...register('imageUrl')}
                 />
               </div>

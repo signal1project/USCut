@@ -20,6 +20,13 @@ export default defineConfig(({ command }) => {
   const isServe = command === 'serve';
   const isBuild = command === 'build';
   const sourcemap = isServe || !!process.env.VSCODE_DEBUG;
+  // optionalDependencies (e.g. nodejs-whisper) must stay external too — they
+  // shell out to native binaries and resolve asset paths relative to their
+  // own package directory, which breaks if Rollup inlines them.
+  const externalDeps = Object.keys({
+    ...('dependencies' in pkg ? pkg.dependencies : {}),
+    ...('optionalDependencies' in pkg ? pkg.optionalDependencies : {}),
+  });
 
   return {
     resolve: {
@@ -51,9 +58,7 @@ export default defineConfig(({ command }) => {
               minify: isBuild,
               outDir: 'dist-electron/main',
               rollupOptions: {
-                external: Object.keys(
-                  'dependencies' in pkg ? pkg.dependencies : {},
-                ),
+                external: externalDeps,
               },
             },
           },
@@ -68,9 +73,7 @@ export default defineConfig(({ command }) => {
               minify: isBuild,
               outDir: 'dist-electron/preload',
               rollupOptions: {
-                external: Object.keys(
-                  'dependencies' in pkg ? pkg.dependencies : {},
-                ),
+                external: externalDeps,
               },
             },
           },

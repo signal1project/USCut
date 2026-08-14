@@ -1,10 +1,255 @@
 # USCut — Agent Handoff
 
-**Updated:** 2026-08-04 (Mick / ClaudeClaw) — v1.0 stabilization + roadmap items 1-3b
-**Status:** ✅ 287/297 tests pass (10 skipped, Electron-ABI) · tsc clean · eslint clean
-(0 errors/warnings — was previously broken, see decisions log) · vite build clean ·
-pushed to `main`
+## Codex readiness audit — 2026-08-13/14
+
+Independent review found and fixed four tomorrow-critical gaps that were not
+covered by the earlier mock-capture/FFmpeg verification:
+
+1. Zillow's `gdpClientCache` is often JSON encoded as a string. The extension
+   treated that shape as unusable and fell through to brittle DOM scraping.
+   `zillow.ts` now parses nested cache strings and searches the bounded
+   hydration subtree for the property record. Three extension regression tests
+   cover object cache, string cache, and unrelated data; extension tests are now
+   included in the main Vitest configuration.
+2. Narration used FFmpeg `-shortest` without padding, so a normal five-photo
+   reel could be cut off when the spoken track ended before the visual
+   timeline. Narration is now silence-padded so the complete reel and CTA card
+   survive. The real FFmpeg E2E test asserts the exact seven-second visual
+   duration used by its fixture.
+3. Zillow CDN/error bodies and malformed images could abort or even hang the
+   render. Downloads now use browser-like image headers (including Zillow
+   referer), reject non-image responses, validate raster signatures before
+   FFmpeg, and skip unreadable photos with a title-card fallback. A real FFmpeg
+   regression test covers the malformed-photo case.
+4. The prior handoff's Scheduler/webview claim was incorrect: Scheduler routes
+   through API-connected accounts, while the instant FB/IG/TikTok webview calls
+   did not receive the generated reel path. Listing reels now expose **Post
+   Now**, which opens Publish prefilled with the local video and caption;
+   Publish passes that local path to FB/IG/TikTok CDP attachment. **Schedule**
+   remains available for API-connected accounts only, and webview-only accounts
+   are excluded from the unattended Scheduler picker with an honest message.
+
+Verification after fixes: `npx tsc --noEmit` clean; `npm run build:ext` clean;
+full build/test run clean at **315 passed / 10 expected Electron-ABI skipped
+(325 total)**; real FFmpeg tests include vertical video, title-card fallback,
+narration duration, and corrupt-photo handling. Fresh `npm run dev` smoke test
+booted the renderer plus capture server `:7474` and agent bridge `:4255`; capture
+health returned HTTP 200. Current Facebook, Instagram, and TikTok Studio entry
+URLs were checked and redirect to the expected login surfaces when signed out.
+
+Still requires Dale's normal browser/account sessions: Zillow presented its
+current Press-and-Hold anti-bot challenge during automated detail-page review,
+so the final real capture must be done in Dale's Chrome session. Load/reload
+`dist-ext/`, open one Zillow `/homedetails/` page, complete any human challenge,
+click **Capture Listing**, then in USCut use **Create Reel → Post Now**. Select
+Facebook, Instagram, or TikTok, verify the reel is attached and caption filled,
+then click the platform's final Post button manually. Do not use **Schedule**
+for browser-session accounts; unattended scheduling requires API-connected
+developer accounts.
+
+**Updated:** 2026-08-14 (Codex audit after Mick / ClaudeClaw handoff)
+**Status:** ✅ 315/325 tests pass (10 skipped, Electron-ABI)
+· tsc clean · extension build clean · dev app boots clean, all 3 embedded servers up · NOT yet committed (previous
+session's uncommitted files below are still uncommitted too — Dale hasn't asked for a commit)
 **Read this FIRST before touching the repo.**
+
+## Earlier Mick verification record (2026-08-13; corrected by audit above)
+
+Dale's ask: "scrape Zillow listings and turn the pictures into videos formatted for
+Facebook, Instagram, and TikTok" — this was already built (inherited from BLK INK
+Scraper's Chrome extension + a purpose-built `ListingVideoService`), just never
+proven working end-to-end in the running app. Tonight it was, for real, no mocks:
+
+1. Booted the actual dev app (`npm run dev`) — MAS API, capture server `:7474`, and
+   agent bridge `:4255` all came up clean, zero errors besides benign devtools console
+   noise.
+2. POSTed a mock Zillow-shaped payload to the **real running** `:7474/api/listings/capture`
+   endpoint (exactly what `chrome-extension/content/zillow.ts` sends) — captured
+   correctly, compliance guard ran, listing appeared via `GET /api/listings`.
+3. Called the **real** `POST /api/listings/:id/generate-video` against the authed MAS
+   API — `ListingVideoService` ran actual `ffmpeg` (Ken Burns pans/zooms + address/price
+   banner + CTA end card + Windows SAPI narration), produced a real file.
+4. `ffprobe`-verified the output: **1080×1920 h264 video + AAC audio track, 7s** — the
+   correct vertical format for FB/IG Reels, IG/FB Stories, and TikTok natively (no extra
+   aspect-ratio work needed; this is different from the editor's own 16:9/9:16/1:1/4:5
+   export presets, which are a separate pipeline).
+5. Confirmed the old `Schedule` button handed the reel path + caption to Scheduler,
+   but this did not prove browser-session posting; Scheduler is the API-account path.
+   The audit above added the missing `Post Now` → Publish → webview attachment path.
+6. Read (did not drive) `webviewBridge.ts`'s posting flow for facebook/instagram/tiktok:
+   all three open a real logged-in `BrowserWindow`, CDP-attach the video file
+   (`attachMediaViaCdp`, pierces iframes/shadow DOM), fill the caption, copy caption to
+   clipboard as a safety net, then — **deliberately** — leave the window open for Dale to
+   click Post himself (`autoSubmit: false` for all three; composer markup shifts too
+   often to trust an auto-click). This is not a gap, it's the intended design.
+7. Added a real (non-mocked) regression test:
+   `electron/main/listings/__tests__/videoService.e2e.test.ts` — generates two real JPEGs
+   via ffmpeg, runs them through the actual `ListingVideoService`, ffprobes the output.
+   Catches ffmpeg-path/filter-graph regressions that the existing helper-only unit tests
+   (`videoHelpers.test.ts`) can't.
+8. Cleaned up: deleted the test listing + test reel file from the live
+   `%APPDATA%\aicuts` DB/dir afterward so Dale's real data stays clean. Stopped the dev
+   `electron.exe` (pid confirmed via `Get-Process` to be this repo's
+   `node_modules\electron\dist\electron.exe`, not another sphere's, before killing).
+
+**What is NOT verified and needs Dale's hands, not mine** — posting requires his own
+logged-in social sessions and his own final click (by design, and also because I won't
+post to real accounts on his behalf without him present):
+
+- Whether Zillow's current DOM/`__NEXT_DATA__` shape still matches `zillow.ts`'s parser
+  — Zillow changes this periodically; the paste-URL fallback (`capture-url`, schema.org/
+  OpenGraph) is a safety net if the extension parser goes stale.
+- Live posting through the FB/IG/TikTok webview windows against his real logged-in
+  sessions — the attach/fill DOM selectors could be stale (same caveat as the rest of
+  the webview posting matrix, roadmap item 10 below).
+- Chrome extension load: `npm run build:ext` output (`dist-ext/`) was rebuilt tonight
+  and is current, but loading it via `chrome://extensions` → Load unpacked and clicking
+  Capture on a real Zillow listing page is a one-time manual step only Dale can do.
+
+**For Dale, tomorrow morning, 3-minute check:** `npm run dev`, install/reload the
+extension from `dist-ext/`, capture one real Zillow listing, click Create Reel, click
+Schedule, connect (or reuse) Facebook/Instagram/TikTok in Connect Accounts, hit Share/Post
+from the Scheduler and confirm the compose window shows your video attached with caption
+filled — then click Post yourself.
+
+---
+
+## Local Whisper made functional on Windows (2026-08-12) — FIXED, 3 real bugs found
+
+Dale chose local/free Whisper (no OpenAI key, no per-use cost) over paying for API
+transcription. The 2026-08-04 handoff blamed "needs CMake + Visual Studio Build
+Tools" — turned out VS Build Tools + MSVC were **already installed** on this
+machine (probably from Mymo's virtual-camera work); only CMake itself was
+missing. Installed CMake 4.4.2 via winget. That alone was NOT enough — three
+more bugs, found only by actually pushing a real transcription through:
+
+1. `nodejs-whisper`'s Windows auto-downloader can't invoke its own bundled
+   `download-ggml-model.cmd` via shelljs (`'download-ggml-model.cmd' is not
+recognized`) — worked around by downloading `ggml-base.en.bin` (148MB,
+   official `ggerganov/whisper.cpp` HuggingFace repo) directly into
+   `node_modules/nodejs-whisper/cpp/whisper.cpp/models/`.
+2. That same auto-downloader function **skips compiling `whisper-cli.exe`
+   entirely once the model file already exists** — a real design flaw (model
+   download and compiler build are one function gated only by "does the model
+   exist"). Worked around by running the CMake steps directly from
+   `node_modules/nodejs-whisper/cpp/whisper.cpp`: `cmake -B build` then
+   `cmake --build build --config Release`.
+3. **A real bug in USCut's own code**, not a dependency's:
+   `electron/main/clips/transcription.ts`'s `transcribeViaLocalWhisper()`
+   computed the SRT output path as `wavPath.replace(/\.wav$/, '.srt')` —
+   but whisper-cli's actual default naming APPENDS `.srt` to the full
+   filename (`foo.wav` → `foo.wav.srt`, not `foo.srt`). This was latent since
+   2026-08-04 — the toolchain being broken meant this code path was never
+   actually reached in testing before today. **If you ever touch this
+   function again, verify the real whisper-cli output filename directly
+   rather than trusting the replace-extension assumption.**
+
+Verified end-to-end for real: synthesized a test line via Windows SAPI TTS,
+ran it through the actual compiled `whisper-cli.exe`, got back a correct
+transcript ("This is a test of local whisper transcription in U.S. Cut.").
+Wired `transcribeViaLocalWhisper` as the free/keyless fallback into
+`aicuts:transcribe-video` (one-click captions) and Auto-Edit's transcription
+step in `electron/main/aicuts/index.ts` — mirrors the fallback chain Auto-Clip
+(`clipService.ts`) already had (OpenAI key if set, else local whisper).
+**Not yet Dale-verified inside the running app itself** — the compile+model+
+path-fix are proven standalone; try Auto-Edit or one-click captions with no
+OpenAI key configured to confirm end-to-end in the real app.
+
+## Auto-Edit AI-provider bug (2026-08-12, same day as v1.2) — FIXED
+
+Dale live-tested Auto-Edit and hit an auth error. Root cause:
+`electron/main/aicuts/autoEdit.ts` instantiated `new Anthropic()` directly at
+module scope (reads `ANTHROPIC_API_KEY` env var — never set, Dale uses
+OAuth/Ollama/OpenRouter) — a leftover from before the multi-provider Settings
+system existed. It was the only AI-calling code path in the app that bypassed
+`resolveProvider()`. Fixed: extracted the provider-resolution closure (was
+independently duplicated 3x) into one `createProviderResolver(settings)` in
+`electron/main/ai/index.ts`; `autoEdit()`/`generateCaptionsFromTranscript()`
+now take an injected `AIProvider` instead of reaching for a global client. This
+also fixed the headless `:4255` MCP agent bridge's `/auto-edit`/`/captions`
+routes, which had the same gap. **If you add a new AI-calling feature, grep for
+`new Anthropic(`/`new OpenAI(` outside `electron/main/ai/` before shipping —
+that's the tell for a feature silently bypassing the provider system.**
+New test: `electron/main/aicuts/__tests__/autoEdit.test.ts`.
+
+Two smaller bugs fixed same pass, both things Dale spotted live: (1) native
+`window.alert()` dialogs aren't copyable in Electron on Windows — replaced all
+4 call sites (Toolbar export/auto-edit, HomePage project-open) with `sonner`
+toasts, matching the pattern already used everywhere else. (2) the alert
+dialogs' title said "aicuts" — `app.getName()` defaulted to package.json's
+`"aicuts"` (deliberately kept as an internal identifier, see decisions-log
+2026-08-11); fixed with `app.setName('USCut')` in `electron/main/index.ts` —
+display name only, no internal identifier touched.
+
+**For Dale**: retry Auto-Edit after confirming Settings → AI Providers has one
+connected (ChatGPT sign-in, OpenRouter OAuth, Ollama, or an API key). Not yet
+live-verified.
+
+---
+
+## v1.2 — Company scoping, Instagram multi-account, NSIS unblocked (2026-08-12 session)
+
+**Rebrand (AICut→USCut) committed**: was sitting uncommitted since 2026-08-11 (see
+decisions-log in `C:\ClaudeClaw\.memory\`) — pure naming, no behavior change.
+
+**NSIS installer unblocked + smoke-tested**: Dale enabled Windows Developer Mode.
+`npx tsc && npx vite build && npx electron-builder --win nsis --publish never` produces
+`release\0.1.0\USCut-0.1.0.exe` (~256MB) cleanly. Smoke-tested the packaged
+`win-unpacked\USCut.exe` in full isolation (`--user-data-dir` + alternate ports
+4256/7475, so it never touched the live dev instance on 4255/7474) — clean boot, all 3
+embedded servers up, real MAS route returned correct data. **The installer wizard UI
+itself was never run** — only the packaged binary underneath it. Confirm no publish
+env vars (`GH_TOKEN`/`EP_*`) are present before ever running electron-builder without
+`--publish never` — `electron-builder.json`'s `publish` block points at a stale
+`signal1-blkink/Master_AI_Social` target that should not be live.
+
+**Business-profile switcher (item 3 from the 2026-08-12 checkpoint) — BUILT**: global
+"active company" scope, `CompanySwitcher.tsx` on Home, persisted via
+`Settings.getActiveBrandId/setActiveBrandId` (`mas.settings.brand.active`). Filters
+account/Page pickers on Publish, Share, and Scheduler to the active company (defaults
+to "All companies" = unfiltered, original behavior). Also fixed `contentService`'s
+`resolveBrandKit` — it was hardcoded to always use `profiles[0]`'s brand voice
+regardless of context; now resolves the active company (falls back to `profiles[0]`
+when unset, so nothing changes for anyone who never touches the switcher).
+
+**ShareDialog Page-targeted posting (item 2) — BUILT**: editor Share button can now
+post to a specific Facebook Page's timeline, same as PublishPage already could. Pure
+UI wiring — the backend `pageId` param already existed and was already
+live-verified via PublishPage.
+
+**Instagram multi-account detection + switching (item 4) — BUILT, UNVERIFIED**:
+mirrors the Facebook Pages pattern (`detectInstagramAccounts()` in
+`electron/main/adapters/webviewBridge.ts`), but Instagram has no per-account URL —
+one login can have several linked accounts, switched via an in-page menu. The
+detect/switch scripts read `img[alt="{username}'s profile picture"]` in the account
+switcher — best-effort DOM scraping, **never tested against a live Instagram session**
+(no safe computer-use path to the running app this session — see Sphere Gotcha
+below). Diagnostic logging is in place
+(`[AICut] Instagram account-switcher opened`, `[AICut] Instagram account scan found
+nothing...`) — **first thing to do**: open USCut, Connect Accounts → Instagram →
+"Detect My Accounts", check `%APPDATA%\aicuts\logs\` if it comes back empty. Fix
+surface is confined to `OPEN_ACCOUNT_SWITCHER_SCRIPT` /
+`DETECT_INSTAGRAM_ACCOUNTS_SCRIPT` / `switchInstagramAccountScript` in
+`webviewBridge.ts` if selectors need updating.
+
+Also fixed a real pre-existing bug while wiring Instagram accounts in:
+`ConnectAccounts.tsx`'s "Business Pages" list had no `source === 'webview'` filter at
+all — any OAuth-connected account would've shown up mixed into it. Fixed at all 3
+call sites (now `webviewAccounts`, filtered).
+
+**Sphere gotcha, worth remembering**: requesting computer-use access to "Electron"
+generically resolves to **Tandem Browser's** process (a different sphere — OpenClaw's),
+not USCut's — USCut isn't Start-Menu-registered (launched via desktop `.vbs`), so the
+app-name resolver can't target it distinctly among the several `electron.exe`-based
+apps on this machine. Don't use a generic "Electron" computer-use grant against USCut —
+no safe way to confirm which window actually receives clicks. Verify via direct
+file/DB reads (`%APPDATA%\aicuts\config.json`, `database.sqlite` via
+`node:sqlite` `DatabaseSync(..., {readOnly: true})`, discovery files) or ask Dale to
+check live and report back.
+
+**NOT verified live this session** (build/test/typecheck all clean, but no eyes-on
+confirmation in the running app): ShareDialog Page-targeting, the company switcher's
+actual filtering behavior, Instagram detection/switching end to end.
 
 ---
 
@@ -14,6 +259,7 @@ Full CapCut-parity editor + production social pipeline, built in one sprint
 (commits `8bb7442` → HEAD). Highlights per subsystem:
 
 **Export engine v2** (`electron/main/aicuts/exportGraph.ts` — pure, unit-tested):
+
 - ONE ffmpeg `filter_complex` graph replaces trim-and-concat. Timeline gaps render
   black+silence (caption/music timing exact); audio-track clips mix in via `adelay`
   on the compressed timeline; per-clip volume/speed/fades honored.
@@ -37,6 +283,7 @@ preview proxies for HEVC/odd containers (userData/preview-proxies); projects
 autosave to userData/projects with Save/Save As/Recent Projects.
 
 **Production social pipeline:**
+
 - **Share button** (editor toolbar) → silent export to userData/shares → post to
   signed-in webview platforms and/or API accounts, optional scheduling.
 - **Webview posting** (`adapters/webviewBridge.ts`): CDP `DOM.setFileInputFiles`
@@ -58,6 +305,7 @@ OpenRouter OAuth + Ollama + API keys (Claude/OpenAI/Groq). Full management on
 `/mas/settings` (also: multi-company brand profiles, App Behavior, integrations).
 
 **Dale-side actions still required for the API posting half:**
+
 1. Register developer apps: Meta (FB+IG+Threads — app review for publish perms
    takes weeks; start first), X (media.write scope), Pinterest, TikTok, YouTube.
 2. Paste client IDs into ConnectAccounts (Advanced/API) per platform.
@@ -79,6 +327,7 @@ so webview browser views were likely never actually destroyed on unmount — fix
 a ref.
 
 **Shipped:**
+
 - Publish Reel shortcut (roadmap item 1) — see routing note in Feature Map below.
 - Local whisper.cpp fallback for auto-clip (roadmap item 2) — see Open Items below for
   honest functional status (correctly engineered, blocked on machine-level prerequisites).
@@ -120,6 +369,7 @@ npm run package:win  # → release\USCut-win32-x64\USCut.exe
 ```
 
 **Gotchas**
+
 - After fresh `npm install`, run `npm run rebuild` (better-sqlite3 → Electron ABI).
 - DB tests (`masSchema`, `listingStore`) auto-skip under plain Node — that ABI mismatch is
   expected, not a failure. Follow the `describe.skipIf(!nativeLoads)` pattern for new
@@ -128,11 +378,11 @@ npm run package:win  # → release\USCut-win32-x64\USCut.exe
 
 ## Runtime Topology (three embedded servers, all loopback)
 
-| Server | Port | Auth | Purpose |
-|---|---|---|---|
-| MAS API | ephemeral | rotating bearer token | Everything under `/api/*` — publish, content, analytics, engagement, research, listings, clips, insights. Renderer gets url+token via IPC `mas:api-info`. **Discovery file (with token): `%APPDATA%\aicuts\api-port.json`** — local agents use this. |
-| Listing capture server | **7474** (`AICUT_CAPTURE_PORT`) | none (loopback+CORS) | Chrome-extension listing capture ONLY (`/api/listings/*` minus ad/video generation). Port inherited from retired BLK INK Scraper. |
-| Agent bridge | **4255** (`AICUT_BRIDGE_PORT`) | bearer | Video-editor ops for MCP agents (`/api/aicut/*`). Discovery: `%APPDATA%\aicuts\aicut-bridge.json`. |
+| Server                 | Port                            | Auth                  | Purpose                                                                                                                                                                                                                                              |
+| ---------------------- | ------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| MAS API                | ephemeral                       | rotating bearer token | Everything under `/api/*` — publish, content, analytics, engagement, research, listings, clips, insights. Renderer gets url+token via IPC `mas:api-info`. **Discovery file (with token): `%APPDATA%\aicuts\api-port.json`** — local agents use this. |
+| Listing capture server | **7474** (`AICUT_CAPTURE_PORT`) | none (loopback+CORS)  | Chrome-extension listing capture ONLY (`/api/listings/*` minus ad/video generation). Port inherited from retired BLK INK Scraper.                                                                                                                    |
+| Agent bridge           | **4255** (`AICUT_BRIDGE_PORT`)  | bearer                | Video-editor ops for MCP agents (`/api/aicut/*`). Discovery: `%APPDATA%\aicuts\aicut-bridge.json`.                                                                                                                                                   |
 
 Generated artifacts: `%APPDATA%\aicuts\{listing-reels, clips, bio-page}\`. DB:
 `%APPDATA%\aicuts\database.sqlite` (TypeORM `synchronize:true` — new entities in
@@ -140,26 +390,26 @@ Generated artifacts: `%APPDATA%\aicuts\{listing-reels, clips, bio-page}\`. DB:
 
 ## Feature Map (v0.6) — module → API → UI
 
-| Feature | Backend module | API | UI |
-|---|---|---|---|
-| Video editor (timeline/speed/fades/export) | `electron/main/aicuts/` | bridge :4255 | `/editor` |
-| AI Auto-Edit + Auto-Captions | `aicuts/autoEdit.ts` | IPC | editor AI panel |
-| **Auto-Clip** (long video → captioned vertical shorts) | `electron/main/clips/` | `POST /api/clips/auto` | editor AI panel card |
-| Publish / schedule (8 platforms, webview + OAuth) | `publishEngine/`, `adapters/`, `scheduling/` | `POST /api/publish` | `/mas/publish`, `/mas/scheduler` |
-| AI content (posts, **A/B variants**, **carousels**, images) | `content/` | `POST /api/content/{generate,carousel,image}` | `/mas/content` |
-| **Brand Kit** (voice rules injected into every brief) | `settings/settings.ts` | IPC `mas:settings:{get,set}-brand-kit` | `/mas/brand` |
-| Idea Scraper + trending research | `research/` | `GET /api/research/{scrape,trending}` | `/mas/research` |
-| **Listing Scraper** (Chrome ext + paste-URL capture) | `listings/` | `POST /api/listings/capture`, `/capture-url` | `/mas/listings` + `chrome-extension/` |
-| **Generate Listing Ad** (compliance-gated copy) | `listings/adService.ts` | `POST /api/listings/:id/generate-ad` | Listings page button |
-| **Listing Video Generator** (photos → narrated reel) | `listings/videoService.ts` | `POST /api/listings/:id/generate-video` | "Create Reel" button |
-| Fair Housing / RESPA guard | `listings/complianceGuard.ts` | runs at capture + on all listing-ad output | shield badges |
-| **Best-time-to-post / calendar / evergreen recycle** | `insights/` | `GET /api/insights/{best-times,calendar}`, `POST /recycle` | Scheduler page |
-| **Competitor benchmarks** (manual snapshots) | `insights/router.ts` + settings | `/api/insights/competitors` CRUD | Analytics page |
-| **Bio page generator** (static HTML export) | `insights/bioPage.ts` | `POST /api/insights/bio-page` | Brand page |
-| Inbox (comments + AI reply drafts) | `engagement/` | `/api/engagement/*` | `/mas/engagement` |
-| Analytics snapshots | `analytics/` | `/api/analytics/*` | `/mas/analytics` |
-| Bulk CSV scheduling | client-side | (uses `/api/publish`) | Scheduler page |
-| Omobono workflow packages | `workflow/`, `capcut/` | `/api/workflow/*` | `/mas/pipeline`, `/mas/omobono` |
+| Feature                                                     | Backend module                               | API                                                        | UI                                    |
+| ----------------------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------- | ------------------------------------- |
+| Video editor (timeline/speed/fades/export)                  | `electron/main/aicuts/`                      | bridge :4255                                               | `/editor`                             |
+| AI Auto-Edit + Auto-Captions                                | `aicuts/autoEdit.ts`                         | IPC                                                        | editor AI panel                       |
+| **Auto-Clip** (long video → captioned vertical shorts)      | `electron/main/clips/`                       | `POST /api/clips/auto`                                     | editor AI panel card                  |
+| Publish / schedule (8 platforms, webview + OAuth)           | `publishEngine/`, `adapters/`, `scheduling/` | `POST /api/publish`                                        | `/mas/publish`, `/mas/scheduler`      |
+| AI content (posts, **A/B variants**, **carousels**, images) | `content/`                                   | `POST /api/content/{generate,carousel,image}`              | `/mas/content`                        |
+| **Brand Kit** (voice rules injected into every brief)       | `settings/settings.ts`                       | IPC `mas:settings:{get,set}-brand-kit`                     | `/mas/brand`                          |
+| Idea Scraper + trending research                            | `research/`                                  | `GET /api/research/{scrape,trending}`                      | `/mas/research`                       |
+| **Listing Scraper** (Chrome ext + paste-URL capture)        | `listings/`                                  | `POST /api/listings/capture`, `/capture-url`               | `/mas/listings` + `chrome-extension/` |
+| **Generate Listing Ad** (compliance-gated copy)             | `listings/adService.ts`                      | `POST /api/listings/:id/generate-ad`                       | Listings page button                  |
+| **Listing Video Generator** (photos → narrated reel)        | `listings/videoService.ts`                   | `POST /api/listings/:id/generate-video`                    | "Create Reel" button                  |
+| Fair Housing / RESPA guard                                  | `listings/complianceGuard.ts`                | runs at capture + on all listing-ad output                 | shield badges                         |
+| **Best-time-to-post / calendar / evergreen recycle**        | `insights/`                                  | `GET /api/insights/{best-times,calendar}`, `POST /recycle` | Scheduler page                        |
+| **Competitor benchmarks** (manual snapshots)                | `insights/router.ts` + settings              | `/api/insights/competitors` CRUD                           | Analytics page                        |
+| **Bio page generator** (static HTML export)                 | `insights/bioPage.ts`                        | `POST /api/insights/bio-page`                              | Brand page                            |
+| Inbox (comments + AI reply drafts)                          | `engagement/`                                | `/api/engagement/*`                                        | `/mas/engagement`                     |
+| Analytics snapshots                                         | `analytics/`                                 | `/api/analytics/*`                                         | `/mas/analytics`                      |
+| Bulk CSV scheduling                                         | client-side                                  | (uses `/api/publish`)                                      | Scheduler page                        |
+| Omobono workflow packages                                   | `workflow/`, `capcut/`                       | `/api/workflow/*`                                          | `/mas/pipeline`, `/mas/omobono`       |
 
 **Composition root:** `electron/main/mas/runtime.ts` — every service is wired there and
 mounted as a `FeatureRoute`. Add new features as sibling modules
@@ -197,32 +447,40 @@ mounted as a `FeatureRoute`. Add new features as sibling modules
 
 ## Open Items / Roadmap
 
-1. ~~"Publish Reel" shortcut~~ — **DONE** (2026-08-04): generated reel → Scheduler
-   prefilled via router state (ListingScraperPage → SchedulerPage).
-2. ~~Whisper local fallback~~ — **DONE, not yet functional** (2026-08-04):
-   transcribeViaLocalWhisper() wired as a 3rd tier (provided > OpenAI key >
-   local whisper.cpp), nodejs-whisper as an optionalDependency so it can't
-   break `npm install`. Needs a C++ build toolchain (CMake + MSVC) to actually
-   compile whisper-cli — same prerequisite as Mymo's virtual-camera phase —
-   plus nodejs-whisper's own Windows model-auto-downloader currently has a bug
-   (invokes a .cmd it doesn't ship). Degrades gracefully with a clear error
-   either way; paste-transcript and OpenAI-key paths are unaffected.
-3. Remove Background — **BLOCKED, needs Dale's call**: the obvious local
-   package (`@imgly/background-removal-node`) is AGPLv3 — incompatible with
-   closed-source commercial distribution, do not use it or anything else
-   AGPL/GPL here. A cloud API (remove.bg etc.) would mean per-frame charges
-   across a whole video at 30fps — real cost-surprise risk without an
-   explicit pricing decision. Needs Dale to pick a direction before building.
-   ~~Voice Studio (ElevenLabs)~~ — **DONE** (2026-08-04): optional upgrade
-   over the existing keyless SAPI default, key stored/managed on the Settings
-   page.
-4. Platform OAuth app registration — Dale, per dev portal (Meta/X/LinkedIn/etc.).
-   This is the only remaining blocker on the production social-posting pipeline.
-5. NSIS installer needs admin/Developer Mode (winCodeSign symlink issue); `package:win`
-   works today. Confirmed 2026-08-04: Developer Mode has never been enabled on
-   this machine — needs Dale to flip it (Settings → Privacy & security → For
-   developers) before packaging can proceed.
-6. DM inbox — vendor-gated on messaging scopes for the platform OAuth apps.
+1. ~~"Publish Reel" shortcut~~ — **DONE** (2026-08-04).
+2. ~~Whisper local fallback~~ — **DONE, not yet functional** (2026-08-04): needs a
+   C++ build toolchain (CMake + MSVC) on this machine to actually compile whisper-cli
+   — same prerequisite as Mymo's virtual-camera phase. Degrades gracefully either way.
+3. ~~Remove Background~~ — **SKIPPED (Dale's call, 2026-08-12)**: local package
+   (`@imgly/background-removal-node`) is AGPLv3 — incompatible with closed-source
+   commercial distribution; cloud API (remove.bg etc.) means per-frame charges
+   across a whole video — real cost-surprise risk. Dale chose to skip rather than
+   accept either tradeoff. Off the roadmap — don't re-raise unless Dale brings it
+   up.
+4. ~~Platform OAuth app registration~~ — **DEMOTED from blocker to optional
+   later upgrade** (Dale's ruling, 2026-08-11): production posting path is
+   webview-login-only, same as BLK INK Lead Machine. No dev-portal registration
+   needed for launch.
+5. ~~NSIS installer~~ — **DONE** (2026-08-12): Dale enabled Developer Mode;
+   `release\0.1.0\USCut-0.1.0.exe` builds clean, packaged binary smoke-tested in
+   isolation. Installer wizard UI itself still unverified (needs hands-on or a
+   working computer-use path — see Sphere Gotcha above).
+6. DM inbox — vendor-gated; reading/replying via a logged-in webview session is a
+   materially harder build than posting (DOM scraping vs. attach+fill). Not
+   scoped yet under the webview-only pivot.
+7. **Business-profile switcher** — **BUILT 2026-08-12, unverified live**: see v1.2
+   section above. Extended same session to Analytics (account picker) +
+   Competitor Benchmarks (per-entry company assignment) — was previously only
+   Publish/Share/Scheduler + AI briefs. tsc/eslint/tests/build all clean; NOT
+   yet Dale-verified live.
+8. **ShareDialog Facebook Page-targeting** — **BUILT 2026-08-12, unverified live**.
+9. **Instagram multi-account switching** — **BUILT 2026-08-12, genuinely unverified**
+   (DOM-scraping, no live test yet) — see v1.2 section above, this is the most
+   likely thing to need a follow-up fix.
+10. **Per-platform webview posting verification** — only X and LinkedIn have
+    confirmed auto-submit; Pinterest/YouTube/TikTok/Snapchat/Threads flows were
+    built 2026-07-12 and never live-verified against current DOM. Long-standing
+    gap, not new this session.
 
 ## How to Work With Dale
 
