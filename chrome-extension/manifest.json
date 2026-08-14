@@ -1,9 +1,13 @@
 {
   "manifest_version": 3,
   "name": "USCut Zillow Scraper",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Capture Zillow listings directly into USCut.",
-  "permissions": ["activeTab", "scripting", "storage"],
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
   "host_permissions": [
     "https://www.zillow.com/*",
     "http://localhost:7474/*"
@@ -18,7 +22,9 @@
         "https://www.zillow.com/homedetails/*",
         "https://www.zillow.com/homes/*"
       ],
-      "js": ["content/zillow.js"],
+      "js": [
+        "content/zillow.js"
+      ],
       "run_at": "document_idle"
     }
   ],
@@ -27,8 +33,8 @@
     "default_title": "USCut Zillow Scraper"
   },
   "icons": {
-    "16":  "icons/icon16.png",
-    "48":  "icons/icon48.png",
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   }
 }

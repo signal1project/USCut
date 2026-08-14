@@ -9,7 +9,7 @@
  */
 
 import { build } from 'esbuild';
-import { cpSync, mkdirSync, rmSync, writeFileSync } from 'fs';
+import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'fs';
 import { createDeflateRaw } from 'zlib';
 import { promisify } from 'util';
 
@@ -49,7 +49,18 @@ await build({
 });
 
 // ── Static assets ─────────────────────────────────────────────────────────────
-cpSync(`${EXT}/manifest.json`,   `${OUT}/manifest.json`);
+// Bump the patch version on every build (persisted back to the checked-in
+// manifest.json, not just the dist-ext copy) so Chrome's extensions page
+// visibly shows a different version after "Load unpacked" or "Reload" —
+// otherwise a stale, un-reloaded extension and a freshly rebuilt one look
+// identical in Chrome, with no way to tell which one is actually running.
+const manifest = JSON.parse(readFileSync(`${EXT}/manifest.json`, 'utf8'));
+const [major, minor, patch] = manifest.version.split('.').map(Number);
+manifest.version = `${major}.${minor}.${patch + 1}`;
+writeFileSync(`${EXT}/manifest.json`, JSON.stringify(manifest, null, 2) + '\n');
+writeFileSync(`${OUT}/manifest.json`, JSON.stringify(manifest, null, 2) + '\n');
+console.log(`  version -> ${manifest.version}`);
+
 cpSync(`${EXT}/popup/popup.html`, `${OUT}/popup/popup.html`);
 
 // ── Icon generation — solid emerald square ────────────────────────────────────
