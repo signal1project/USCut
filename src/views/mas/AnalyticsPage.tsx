@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import { Users, Plus, Trash2, TrendingUp } from 'lucide-react';
@@ -8,7 +8,10 @@ import {
   type AnalyticsSnapshot,
   type CompetitorEntry,
 } from '@mas/ui';
+import type { Platform } from '@mas/types';
 import { useMasApi } from './useMasApi';
+import { ipc, hasIpc } from '@/lib/ipc';
+import { useActiveBrandStore } from '@/store/activeBrandStore';
 import {
   Button,
   Card,
@@ -24,15 +27,54 @@ interface FormValues {
   accountId: string;
 }
 
+interface ConnectedAccount {
+  id: string;
+  platform: Platform;
+  accountName: string;
+  externalId: string;
+  brandId?: string | null;
+}
+
 /** View captured metric snapshots for an account's posts. */
 export default function AnalyticsPage(): React.ReactElement {
   const api = useMasApi();
   const [loading, setLoading] = useState(false);
   const [snapshots, setSnapshots] = useState<AnalyticsSnapshot[]>([]);
+  const [accountsRaw, setAccountsRaw] = useState<ConnectedAccount[]>([]);
+  const {
+    activeBrandId,
+    brands: activeBrands,
+    loaded,
+    load: loadActiveBrand,
+  } = useActiveBrandStore();
   const { register, handleSubmit } = useForm<FormValues>();
 
+  useEffect(() => {
+    if (!loaded) void loadActiveBrand();
+    if (!hasIpc()) return;
+    void (async () => {
+      try {
+        const list = (await ipc.invoke(
+          'mas:accounts:list',
+        )) as ConnectedAccount[];
+        setAccountsRaw(list);
+      } catch {
+        /* account picker is a convenience — raw entry below still works */
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const accounts = useMemo(
+    () =>
+      activeBrandId
+        ? accountsRaw.filter((a) => a.brandId === activeBrandId)
+        : accountsRaw,
+    [accountsRaw, activeBrandId],
+  );
+
   const load = async (values: FormValues) => {
-    if (!api) return;
+    if (!api || !values.accountId) return;
     setLoading(true);
     try {
       const { snapshots: rows } = await api.getAnalyticsByAccount(
@@ -64,22 +106,45 @@ export default function AnalyticsPage(): React.ReactElement {
         <CardHeader>
           <CardTitle>Analytics</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-2">
           <form onSubmit={handleSubmit(load)} className="flex gap-2">
             <div className="flex-1 space-y-1">
               <Label htmlFor="accountId" className="sr-only">
-                Account ID
+                Account
               </Label>
-              <Input
-                id="accountId"
-                placeholder="Account ID"
-                {...register('accountId', { required: true })}
-              />
+              {accounts.length > 0 ? (
+                <select
+                  id="accountId"
+                  {...register('accountId', { required: true })}
+                  className="w-full h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-ink-strong focus:outline-none focus:border-accent"
+                >
+                  <option value="">Choose an account…</option>
+                  {accounts.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.accountName} · {a.platform}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <Input
+                  id="accountId"
+                  placeholder="Account ID"
+                  {...register('accountId', { required: true })}
+                />
+              )}
             </div>
             <Button type="submit" loading={loading} disabled={!api}>
               Load
             </Button>
           </form>
+          {activeBrandId && (
+            <p className="text-xs text-ink-muted">
+              Showing accounts for{' '}
+              {activeBrands.find((b) => b.id === activeBrandId)?.name ??
+                'the active company'}{' '}
+              — switch companies from Home.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -169,13 +234,24 @@ export default function AnalyticsPage(): React.ReactElement {
 /** Manual competitor benchmarking: track handles + periodic follower snapshots. */
 function CompetitorTracker(): React.ReactElement {
   const api = useMasApi();
+  const {
+    activeBrandId,
+    brands: activeBrands,
+    loaded,
+    load: loadActiveBrand,
+  } = useActiveBrandStore();
   const [competitors, setCompetitors] = useState<CompetitorEntry[]>([]);
   const [name, setName] = useState('');
   const [platform, setPlatform] = useState('');
   const [handle, setHandle] = useState('');
+  const [brandId, setBrandId] = useState('');
   const [followerInput, setFollowerInput] = useState<Record<string, string>>(
     {},
   );
+
+  useEffect(() => {
+    if (!loaded) void loadActiveBrand();
+  }, [loaded, loadActiveBrand]);
 
   const load = useCallback(async () => {
     if (!api) return;
@@ -191,6 +267,14 @@ function CompetitorTracker(): React.ReactElement {
     void load();
   }, [load]);
 
+  const visibleCompetitors = useMemo(
+    () =>
+      activeBrandId
+        ? competitors.filter((c) => c.brandId === activeBrandId)
+        : competitors,
+    [competitors, activeBrandId],
+  );
+
   const add = async () => {
     if (!api || !name.trim() || !platform.trim() || !handle.trim()) return;
     try {
@@ -198,13 +282,25 @@ function CompetitorTracker(): React.ReactElement {
         name: name.trim(),
         platform: platform.trim(),
         handle: handle.trim(),
+        brandId: brandId || activeBrandId || null,
       });
       setName('');
       setPlatform('');
       setHandle('');
+      setBrandId('');
       void load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Add failed');
+    }
+  };
+
+  const assignBrand = async (id: string, newBrandId: string) => {
+    if (!api) return;
+    try {
+      await api.assignCompetitorBrand(id, newBrandId || null);
+      void load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Assign failed');
     }
   };
 
@@ -274,6 +370,22 @@ function CompetitorTracker(): React.ReactElement {
             onChange={(e) => setHandle(e.target.value)}
             className="w-40"
           />
+          {activeBrands.length > 0 && (
+            <select
+              value={brandId}
+              onChange={(e) => setBrandId(e.target.value)}
+              className="h-9 rounded-md border border-border bg-surface-2 px-2 text-xs text-ink-strong focus:outline-none focus:border-accent"
+            >
+              <option value="">
+                {activeBrandId ? 'Active company' : 'No company'}
+              </option>
+              {activeBrands.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          )}
           <Button
             onClick={() => void add()}
             disabled={!api || !name.trim() || !handle.trim()}
@@ -283,11 +395,15 @@ function CompetitorTracker(): React.ReactElement {
           </Button>
         </div>
 
-        {competitors.length === 0 && (
-          <p className="text-xs text-ink-subtle">No competitors tracked yet.</p>
+        {visibleCompetitors.length === 0 && (
+          <p className="text-xs text-ink-subtle">
+            {activeBrandId
+              ? 'No competitors tracked for this company yet.'
+              : 'No competitors tracked yet.'}
+          </p>
         )}
 
-        {competitors.map((c) => {
+        {visibleCompetitors.map((c) => {
           const latest = c.snapshots[c.snapshots.length - 1];
           const g = growth(c);
           return (
@@ -314,6 +430,20 @@ function CompetitorTracker(): React.ReactElement {
                       </span>
                     )}
                   </p>
+                  {activeBrands.length > 0 && (
+                    <select
+                      value={c.brandId ?? ''}
+                      onChange={(e) => void assignBrand(c.id, e.target.value)}
+                      className="mt-1 h-6 rounded border border-border/60 bg-surface px-1.5 text-[10px] text-ink-muted focus:outline-none focus:border-accent"
+                    >
+                      <option value="">No company</option>
+                      {activeBrands.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <Input

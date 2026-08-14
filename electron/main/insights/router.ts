@@ -18,6 +18,11 @@ const competitorSchema = z.object({
   platform: z.string().min(1),
   handle: z.string().min(1),
   notes: z.string().default(''),
+  brandId: z.string().nullable().optional(),
+});
+
+const competitorBrandSchema = z.object({
+  brandId: z.string().nullable(),
 });
 
 const competitorSnapshotSchema = z.object({
@@ -100,10 +105,28 @@ export function createInsightsRouter(deps: InsightsRouterDeps): Router {
       const entry: CompetitorEntry = {
         id: crypto.randomUUID(),
         ...b,
+        brandId: b.brandId ?? null,
         snapshots: [],
       };
       settings.setCompetitors([...settings.getCompetitors(), entry]);
       res.status(201).json({ competitor: entry });
+    }),
+  );
+
+  router.patch(
+    '/competitors/:id/brand',
+    validateBody(competitorBrandSchema),
+    asyncHandler(async (req, res) => {
+      const b = req.body as z.infer<typeof competitorBrandSchema>;
+      const all = settings.getCompetitors();
+      const entry = all.find((c) => c.id === req.params.id);
+      if (!entry) {
+        res.status(404).json({ error: 'competitor_not_found' });
+        return;
+      }
+      entry.brandId = b.brandId;
+      settings.setCompetitors(all);
+      res.json({ competitor: entry });
     }),
   );
 

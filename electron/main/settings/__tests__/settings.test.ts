@@ -97,6 +97,40 @@ describe('Settings — active company scope', () => {
   });
 });
 
+describe('Settings — competitor tracking', () => {
+  it('round-trips competitors including their company assignment', () => {
+    settings.setCompetitors([
+      {
+        id: 'c1',
+        name: 'Rival Realty',
+        platform: 'instagram',
+        handle: '@rivalrealty',
+        notes: '',
+        brandId: 'one',
+        snapshots: [],
+      },
+      {
+        id: 'c2',
+        name: 'Unassigned Co',
+        platform: 'facebook',
+        handle: '@unassigned',
+        notes: '',
+        brandId: null,
+        snapshots: [],
+      },
+    ]);
+
+    const stored = settings.getCompetitors();
+    expect(stored).toHaveLength(2);
+    expect(stored[0].brandId).toBe('one');
+    expect(stored[1].brandId).toBeNull();
+  });
+
+  it('defaults to an empty list when nothing has been tracked yet', () => {
+    expect(settings.getCompetitors()).toEqual([]);
+  });
+});
+
 describe('Settings — platform OAuth', () => {
   it('returns null until configured', () => {
     expect(settings.getPlatformOAuth('facebook')).toBeNull();

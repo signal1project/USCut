@@ -195,6 +195,7 @@ export interface CompetitorEntry {
   platform: string;
   handle: string;
   notes: string;
+  brandId?: string | null;
   snapshots: Array<{
     date: string;
     followers: number;
@@ -661,11 +662,23 @@ export class MasApiClient {
     platform: string;
     handle: string;
     notes?: string;
+    brandId?: string | null;
   }): Promise<{ competitor: CompetitorEntry }> {
     return this.req('POST', '/api/insights/competitors', {
       notes: '',
       ...body,
     });
+  }
+
+  assignCompetitorBrand(
+    id: string,
+    brandId: string | null,
+  ): Promise<{ competitor: CompetitorEntry }> {
+    return this.req(
+      'PATCH',
+      `/api/insights/competitors/${encodeURIComponent(id)}/brand`,
+      { brandId },
+    );
   }
 
   addCompetitorSnapshot(

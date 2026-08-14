@@ -84,6 +84,9 @@ export interface CompetitorEntry {
   platform: string;
   handle: string;
   notes: string;
+  /** Which company this competitor is benchmarked against. null = unassigned
+   * (shown regardless of active company, same as an unassigned Page/account). */
+  brandId?: string | null;
   /** Manual metric snapshots: { date, followers, engagementRate? } */
   snapshots: Array<{
     date: string;
