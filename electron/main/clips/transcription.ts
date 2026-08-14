@@ -151,7 +151,10 @@ export async function transcribeViaLocalWhisper(
   }
 
   const wavPath = await toWhisperWav(filePath);
-  const srtPath = wavPath.replace(/\.wav$/, '.srt');
+  // whisper-cli's default output naming APPENDS the extension to the full
+  // input filename (foo.wav -> foo.wav.srt) rather than replacing it —
+  // confirmed against real whisper-cli output, not documentation.
+  const srtPath = `${wavPath}.srt`;
   try {
     await nodewhisper(wavPath, {
       modelName,
