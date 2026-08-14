@@ -110,6 +110,37 @@ export function injectCaptureButton(extractor: () => ListingData | null) {
   }
 
   document.body.appendChild(btn);
+  watchForNavigation(resetButton);
+}
+
+/**
+ * Zillow (and similar Next.js sites) navigate between listings via
+ * history.pushState/replaceState without a full page load, so this content
+ * script instance and its button never re-run or get recreated — left alone,
+ * the button keeps showing "✓ Captured" from whichever listing was captured
+ * first, on every listing visited afterward. Patch the History API (the
+ * standard way an extension can observe SPA navigation, since there's no
+ * native browser event for it) and reset the button the moment the URL
+ * actually changes.
+ */
+function watchForNavigation(onNavigate: () => void): void {
+  let lastUrl = location.href;
+  const check = () => {
+    if (location.href !== lastUrl) {
+      lastUrl = location.href;
+      onNavigate();
+    }
+  };
+
+  for (const method of ['pushState', 'replaceState'] as const) {
+    const original = history[method];
+    history[method] = function (...args: Parameters<History[typeof method]>) {
+      const result = original.apply(this, args);
+      check();
+      return result;
+    };
+  }
+  window.addEventListener('popstate', check);
 }
 
 function showToast(msg: string, type: 'success' | 'error') {

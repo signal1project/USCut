@@ -70,10 +70,24 @@ export function findZillowProperty(raw: unknown): ZillowRecord | null {
   return null;
 }
 
+// Zillow is a client-routed SPA: clicking through from one listing to
+// another changes window.location without a full page load, so the content
+// script (and this module) never re-runs. __NEXT_DATA__ is a Next.js
+// hydration artifact written once at the ORIGINAL full page load — Zillow's
+// client router updates the visible page but does not rewrite that script
+// tag, so after any in-app navigation it silently holds the PREVIOUS
+// listing's data. Pin the URL this module instance actually loaded for, so
+// extractZillow() can tell when __NEXT_DATA__ has gone stale and must not be
+// trusted, even though it's still present and still parses cleanly.
+const loadedForUrl = typeof window !== 'undefined' ? window.location.href : '';
+
 export function extractZillow(): ListingData | null {
-  // ── Try Next.js hydration data first ──────────────────────────────────────
+  // ── Try Next.js hydration data first (only while it's still trustworthy) ──
   try {
-    const el = document.getElementById('__NEXT_DATA__');
+    const el =
+      window.location.href === loadedForUrl
+        ? document.getElementById('__NEXT_DATA__')
+        : null;
     if (el) {
       const data = JSON.parse(el.textContent ?? '{}');
       // Navigate to property details (path varies by page type)
