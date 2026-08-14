@@ -118,10 +118,19 @@ export function injectCaptureButton(extractor: () => ListingData | null) {
  * history.pushState/replaceState without a full page load, so this content
  * script instance and its button never re-run or get recreated — left alone,
  * the button keeps showing "✓ Captured" from whichever listing was captured
- * first, on every listing visited afterward. Patch the History API (the
- * standard way an extension can observe SPA navigation, since there's no
- * native browser event for it) and reset the button the moment the URL
- * actually changes.
+ * first, on every listing visited afterward.
+ *
+ * Patching the History API is the standard way to observe this (no native
+ * browser event exists for it), but it only catches navigations that
+ * literally call history.pushState/replaceState through the property this
+ * patch replaced — if Zillow's router bound or cached a reference to the
+ * original function before this content script ran, or navigates some other
+ * way internally, the patch silently sees nothing. Rather than depend on
+ * getting that timing/internals assumption right, back the patch with a
+ * plain interval poll of location.href — can't miss any navigation
+ * mechanism, whatever Zillow uses, at the cost of at most ~750ms of lag on
+ * a purely cosmetic button reset. check() is idempotent (compares against
+ * the last seen URL) so having both fire is harmless.
  */
 function watchForNavigation(onNavigate: () => void): void {
   let lastUrl = location.href;
@@ -141,6 +150,7 @@ function watchForNavigation(onNavigate: () => void): void {
     };
   }
   window.addEventListener('popstate', check);
+  setInterval(check, 750);
 }
 
 function showToast(msg: string, type: 'success' | 'error') {
