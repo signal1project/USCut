@@ -20,6 +20,24 @@ export interface ApiAppOptions {
  */
 export function createApiApp(options: ApiAppOptions): Express {
   const app = express();
+
+  // The renderer calls this API with an Authorization header, which forces
+  // the browser to send a CORS preflight (OPTIONS) before every request —
+  // even a plain GET. This is a loopback-only API trusted by its rotating
+  // bearer token, not by origin, so allow any origin; the important part is
+  // answering OPTIONS with 2xx *before* bearerAuth, which would otherwise
+  // 401 every preflight (browsers never send Authorization on preflight).
+  app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,PUT,DELETE,OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'authorization,content-type');
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(204);
+      return;
+    }
+    next();
+  });
+
   app.use(express.json({ limit: '10mb' }));
 
   app.get('/health', (_req, res) => {

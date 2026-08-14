@@ -101,4 +101,35 @@ describe('embedded API server', () => {
     const res = await fetch(`${api.url}/api/nope`, { headers: auth });
     expect(res.status).toBe(404);
   });
+
+  // The renderer sends an Authorization header on every request, which forces
+  // browsers to preflight with OPTIONS before the real call. bearerAuth would
+  // 401 that preflight (browsers never attach Authorization to it), and with
+  // no CORS headers the browser blocks the real request too — this is the
+  // literal "Failed to fetch" Dale saw in the running app on 2026-08-14 while
+  // curl against the same endpoint got a real response, since curl ignores CORS.
+  it('answers a CORS preflight with 2xx and no auth required', async () => {
+    const res = await fetch(`${api.url}/api/test/echo`, {
+      method: 'OPTIONS',
+      headers: {
+        Origin: 'http://localhost:5173',
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'authorization,content-type',
+      },
+    });
+    expect(res.status).toBeLessThan(300);
+    expect(res.headers.get('access-control-allow-origin')).toBeTruthy();
+    expect(res.headers.get('access-control-allow-headers')).toMatch(
+      /authorization/i,
+    );
+  });
+
+  it('includes CORS headers on a real authed response', async () => {
+    const res = await fetch(`${api.url}/api/test/echo`, {
+      method: 'POST',
+      headers: auth,
+      body: JSON.stringify({ name: 'Dale' }),
+    });
+    expect(res.headers.get('access-control-allow-origin')).toBeTruthy();
+  });
 });
