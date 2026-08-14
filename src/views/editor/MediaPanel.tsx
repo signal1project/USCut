@@ -12,6 +12,7 @@ import {
   Mic,
   Eraser,
   Scissors,
+  Trash2,
 } from 'lucide-react';
 import { useEditorStore, type MediaItem } from '@/store/editorStore';
 import { ipc } from '@/lib/ipc';
@@ -46,6 +47,7 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
   const mediaLibrary = useEditorStore((s) => s.mediaLibrary);
   const tracks = useEditorStore((s) => s.tracks);
   const addMediaItem = useEditorStore((s) => s.addMediaItem);
+  const removeMediaItem = useEditorStore((s) => s.removeMediaItem);
   const addClipToTrack = useEditorStore((s) => s.addClipToTrack);
   const addTrack = useEditorStore((s) => s.addTrack);
   const [importing, setImporting] = useState(false);
@@ -188,6 +190,11 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
     for (const item of items) {
       addMediaItem({ id: uuidv4(), ...item });
     }
+  };
+
+  const handleRemoveMedia = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    removeMediaItem(id);
   };
 
   const handleAddToTimeline = (item: MediaItem) => {
@@ -360,10 +367,18 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
             ) : (
               <div className="grid grid-cols-2 gap-2">
                 {visibleMedia.map((item) => (
-                  <button
+                  <div
                     key={item.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleAddToTimeline(item)}
-                    className="group relative flex flex-col rounded-lg overflow-hidden bg-[#1d1d22] border border-transparent hover:border-[#4d7cff] transition-colors text-left"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleAddToTimeline(item);
+                      }
+                    }}
+                    className="group relative flex flex-col rounded-lg overflow-hidden bg-[#1d1d22] border border-transparent hover:border-[#4d7cff] transition-colors text-left cursor-pointer"
                     title={`Add to timeline: ${item.name}`}
                   >
                     <div className="relative aspect-video bg-[#0c0c0f] flex items-center justify-center overflow-hidden">
@@ -390,6 +405,13 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
                           file missing
                         </span>
                       )}
+                      <button
+                        onClick={(e) => handleRemoveMedia(e, item.id)}
+                        title={`Remove from library: ${item.name}`}
+                        className="absolute top-1 right-1 flex items-center justify-center w-5 h-5 rounded-md bg-black/70 text-white/80 opacity-0 group-hover:opacity-100 hover:!bg-red-600 hover:text-white transition-all z-10"
+                      >
+                        <Trash2 size={11} />
+                      </button>
                       <div className="absolute inset-0 flex items-center justify-center bg-[#4d7cff]/0 group-hover:bg-[#4d7cff]/15 transition-colors">
                         <Plus
                           size={22}
@@ -401,7 +423,7 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
                     <p className="px-1.5 py-1 text-[10px] text-[#b8b8c2] truncate leading-tight">
                       {item.name}
                     </p>
-                  </button>
+                  </div>
                 ))}
               </div>
             )}

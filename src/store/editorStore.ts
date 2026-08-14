@@ -135,6 +135,7 @@ export interface EditorState {
   setSaveState: (state: SaveState, savedAt?: string) => void;
   forkProjectAs: (name: string) => void;
   addMediaItem: (item: MediaItem) => void;
+  removeMediaItem: (id: string) => void;
   addClipToTrack: (
     trackId: string,
     clip: Omit<Clip, 'id' | 'trackId'>,
@@ -367,6 +368,17 @@ export const useEditorStore = create<EditorState>()(
       set((s) => {
         if (!s.mediaLibrary.find((m) => m.id === item.id)) {
           s.mediaLibrary.push(item);
+          s.saveState = 'dirty';
+        }
+      }),
+
+    // Removes a library item only — clips already placed on the timeline from
+    // it are untouched (same "library vs. instance" split as every other NLE).
+    removeMediaItem: (id) =>
+      set((s) => {
+        const idx = s.mediaLibrary.findIndex((m) => m.id === id);
+        if (idx !== -1) {
+          s.mediaLibrary.splice(idx, 1);
           s.saveState = 'dirty';
         }
       }),
