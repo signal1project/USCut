@@ -41,6 +41,12 @@ class FakeHistory implements PublishHistoryStore {
   async update(id: string, patch: any) {
     Object.assign(this.rows.get(id)!, patch);
   }
+  async list(filter?: { platform?: Platform; status?: PubStatus; limit?: number }) {
+    let rows = [...this.rows.values()];
+    if (filter?.platform) rows = rows.filter((r) => r.platform === filter.platform);
+    if (filter?.status) rows = rows.filter((r) => r.status === filter.status);
+    return rows.slice(0, filter?.limit ?? 25);
+  }
 }
 
 class FakeScheduled implements ScheduledPostStore {
@@ -54,6 +60,13 @@ class FakeScheduled implements ScheduledPostStore {
   }
   async update(id: string, patch: any) {
     Object.assign(this.rows.get(id)!, patch);
+  }
+  async list(platform?: Platform) {
+    const rows = [...this.rows.values()];
+    return platform ? rows.filter((r) => r.platform === platform) : rows;
+  }
+  async remove(id: string) {
+    return this.rows.delete(id);
   }
 }
 
@@ -197,5 +210,43 @@ describe('PublishEngine.schedule', () => {
     expect(audit.entries.filter((e) => e.action === 'schedule')).toHaveLength(
       2,
     );
+  });
+});
+
+describe('PublishEngine.listScheduled / cancelScheduled', () => {
+  it('lists scheduled posts, optionally filtered by platform', async () => {
+    const engine = makeEngine();
+    await engine.schedule(
+      ['a1', 'a2'],
+      { ...content, contentAssetId: 'asset-1' },
+      new Date('2026-06-01T12:00:00Z'),
+    );
+    expect(await engine.listScheduled()).toHaveLength(2);
+    expect(await engine.listScheduled('facebook')).toHaveLength(1);
+  });
+
+  it('cancels a scheduled post by id', async () => {
+    const engine = makeEngine();
+    const out = await engine.schedule(
+      ['a1'],
+      { ...content, contentAssetId: 'asset-1' },
+      new Date('2026-06-01T12:00:00Z'),
+    );
+    const id = out.scheduledPostIds[0];
+    expect(await engine.cancelScheduled(id)).toBe(true);
+    expect(await engine.listScheduled()).toHaveLength(0);
+    expect(await engine.cancelScheduled(id)).toBe(false);
+  });
+});
+
+describe('PublishEngine.listHistory', () => {
+  it('lists publish history, optionally filtered by platform/status', async () => {
+    const engine = makeEngine({ twitter: 'throw' } as any);
+    await engine.publishNow(['a1', 'a2'], content);
+    expect(await engine.listHistory()).toHaveLength(2);
+    expect(await engine.listHistory({ platform: 'facebook' })).toHaveLength(1);
+    expect(
+      await engine.listHistory({ status: PubStatus.FAILED }),
+    ).toHaveLength(1);
   });
 });

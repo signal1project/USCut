@@ -13,6 +13,7 @@ import {
   TypeOrmPublishHistoryStore,
   TypeOrmScheduledPostStore,
   createPublishRouter,
+  createAccountsRouter,
   type EngineAccount,
 } from '../publishEngine';
 import {
@@ -266,6 +267,7 @@ export function buildMasRuntime(deps: MasRuntimeDeps): MasRuntime {
         },
       ),
     },
+    { path: '/accounts', router: createAccountsRouter(dataSource) },
     { path: '/content', router: createContentRouter(content) },
     { path: '/analytics', router: createAnalyticsRouter(analytics) },
     { path: '/engagement', router: createEngagementRouter(engagement) },

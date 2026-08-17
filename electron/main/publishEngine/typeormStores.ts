@@ -64,6 +64,22 @@ export class TypeOrmPublishHistoryStore implements PublishHistoryStore {
   ): Promise<void> {
     await this.ds.getRepository(PublishHistoryModel).update({ id }, patch);
   }
+  async list(filter?: {
+    platform?: Platform;
+    status?: PubStatus;
+    limit?: number;
+  }): Promise<PublishHistoryRecord[]> {
+    const repo = this.ds.getRepository(PublishHistoryModel);
+    const rows = await repo.find({
+      where: {
+        ...(filter?.platform ? { platform: filter.platform } : {}),
+        ...(filter?.status ? { status: filter.status } : {}),
+      },
+      order: { createdAt: 'DESC' },
+      take: filter?.limit ?? 25,
+    });
+    return rows as unknown as PublishHistoryRecord[];
+  }
 }
 
 export class TypeOrmScheduledPostStore implements ScheduledPostStore {
@@ -84,6 +100,18 @@ export class TypeOrmScheduledPostStore implements ScheduledPostStore {
     patch: Partial<Pick<ScheduledPostRecord, 'status'>>,
   ): Promise<void> {
     await this.ds.getRepository(ScheduledPostModel).update({ id }, patch);
+  }
+  async list(platform?: Platform): Promise<ScheduledPostRecord[]> {
+    const repo = this.ds.getRepository(ScheduledPostModel);
+    const rows = await repo.find({
+      where: platform ? { platform } : {},
+      order: { runAt: 'ASC' },
+    });
+    return rows as unknown as ScheduledPostRecord[];
+  }
+  async remove(id: string): Promise<boolean> {
+    const result = await this.ds.getRepository(ScheduledPostModel).delete({ id });
+    return (result.affected ?? 0) > 0;
   }
 }
 

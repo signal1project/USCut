@@ -1,9 +1,19 @@
 import express, { type Router } from 'express';
 import { z } from 'zod';
-import { PubType } from '@mas/types';
+import { PubType, PLATFORMS, type PubStatus } from '@mas/types';
 import { asyncHandler, validateBody } from '../server/middleware';
 import type { Scheduler } from '../scheduling/scheduler';
 import type { PublishEngine } from './publishEngine';
+
+const scheduledQuerySchema = z.object({
+  platform: z.enum(PLATFORMS).optional(),
+});
+
+const historyQuerySchema = z.object({
+  platform: z.enum(PLATFORMS).optional(),
+  status: z.enum(['draft', 'queued', 'publishing', 'published', 'failed', 'part-success']).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
 
 const publishBodySchema = z.object({
   accountIds: z.array(z.string().min(1)).min(1),
@@ -92,6 +102,42 @@ export function createPublishRouter(
 
       const outcome = await engine.publishNow(b.accountIds, content);
       res.json(outcome);
+    }),
+  );
+
+  router.get(
+    '/scheduled',
+    asyncHandler(async (req, res) => {
+      const { platform } = scheduledQuerySchema.parse(req.query);
+      const scheduled = await engine.listScheduled(platform);
+      res.json({ scheduled });
+    }),
+  );
+
+  router.get(
+    '/history',
+    asyncHandler(async (req, res) => {
+      const q = historyQuerySchema.parse(req.query);
+      const history = await engine.listHistory({
+        platform: q.platform,
+        status: q.status as PubStatus | undefined,
+        limit: q.limit,
+      });
+      res.json({ history });
+    }),
+  );
+
+  router.delete(
+    '/scheduled/:id',
+    asyncHandler(async (req, res) => {
+      const id = String(req.params.id);
+      const removed = await engine.cancelScheduled(id);
+      if (!removed) {
+        res.status(404).json({ error: 'scheduled_post_not_found' });
+        return;
+      }
+      scheduler.cancel(id);
+      res.json({ ok: true });
     }),
   );
 

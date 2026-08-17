@@ -54,6 +54,11 @@ export interface PublishHistoryStore {
       >
     >,
   ): Promise<void>;
+  list(filter?: {
+    platform?: Platform;
+    status?: PubStatus;
+    limit?: number;
+  }): Promise<PublishHistoryRecord[]>;
 }
 
 export interface ScheduledPostStore {
@@ -68,6 +73,9 @@ export interface ScheduledPostStore {
     id: string,
     patch: Partial<Pick<ScheduledPostRecord, 'status'>>,
   ): Promise<void>;
+  list(platform?: Platform): Promise<ScheduledPostRecord[]>;
+  /** Removes the row outright (a cancelled post has no useful terminal status to keep). */
+  remove(id: string): Promise<boolean>;
 }
 
 export interface AuditStore {

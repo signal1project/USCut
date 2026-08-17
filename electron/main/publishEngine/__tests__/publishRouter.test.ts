@@ -34,23 +34,46 @@ function buildEngine() {
     },
   };
   let seq = 0;
+  const historyRows: any[] = [];
   const history: PublishHistoryStore = {
     async create(input) {
-      return {
+      const rec = {
         id: `h${++seq}`,
         externalPostId: '',
         error: '',
         publishedAt: null,
         ...input,
       } as any;
+      historyRows.push(rec);
+      return rec;
     },
-    async update() {},
+    async update(id, patch) {
+      Object.assign(historyRows.find((r) => r.id === id), patch);
+    },
+    async list(filter) {
+      let rows = historyRows;
+      if (filter?.platform) rows = rows.filter((r) => r.platform === filter.platform);
+      if (filter?.status) rows = rows.filter((r) => r.status === filter.status);
+      return rows.slice(0, filter?.limit ?? 25);
+    },
   };
+  const scheduledRows = new Map<string, any>();
   const scheduled: ScheduledPostStore = {
     async create(input) {
-      return { id: `s${++seq}`, ...input } as any;
+      const rec = { id: `s${++seq}`, ...input } as any;
+      scheduledRows.set(rec.id, rec);
+      return rec;
     },
-    async update() {},
+    async update(id, patch) {
+      Object.assign(scheduledRows.get(id), patch);
+    },
+    async list(platform) {
+      const rows = [...scheduledRows.values()];
+      return platform ? rows.filter((r) => r.platform === platform) : rows;
+    },
+    async remove(id) {
+      return scheduledRows.delete(id);
+    },
   };
   const audit: AuditStore = { async record() {} };
   const queue: QueueRunner = { run: (_p, t) => t() };
@@ -166,5 +189,73 @@ describe('POST /api/publish', () => {
       }),
     });
     expect(res.status).toBe(400);
+  });
+});
+
+describe('GET /api/publish/scheduled and DELETE /api/publish/scheduled/:id', () => {
+  it('lists a post scheduled via POST /api/publish and cancels it', async () => {
+    const runAt = new Date(Date.now() + 3_600_000).toISOString();
+    const scheduleRes = await fetch(`${api.url}/api/publish`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        accountIds: ['a1'],
+        pubType: PubType.IMAGE_TEXT,
+        body: 'scheduled post',
+        contentAssetId: 'asset-list-1',
+        runAt,
+      }),
+    });
+    const { scheduledPostIds } = await scheduleRes.json();
+    const id = scheduledPostIds[0];
+
+    const listRes = await fetch(`${api.url}/api/publish/scheduled`, { headers });
+    expect(listRes.status).toBe(200);
+    const { scheduled } = await listRes.json();
+    expect(scheduled.some((s: any) => s.id === id)).toBe(true);
+
+    const cancelRes = await fetch(`${api.url}/api/publish/scheduled/${id}`, {
+      method: 'DELETE',
+      headers,
+    });
+    expect(cancelRes.status).toBe(200);
+
+    const afterRes = await fetch(`${api.url}/api/publish/scheduled`, { headers });
+    const { scheduled: afterCancel } = await afterRes.json();
+    expect(afterCancel.some((s: any) => s.id === id)).toBe(false);
+  });
+
+  it('404s cancelling an unknown scheduled post', async () => {
+    const res = await fetch(`${api.url}/api/publish/scheduled/nope`, {
+      method: 'DELETE',
+      headers,
+    });
+    expect(res.status).toBe(404);
+  });
+});
+
+describe('GET /api/publish/history', () => {
+  it('returns publish history after a publish', async () => {
+    await fetch(`${api.url}/api/publish`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        accountIds: ['a1'],
+        pubType: PubType.IMAGE_TEXT,
+        body: 'history check',
+      }),
+    });
+    const res = await fetch(`${api.url}/api/publish/history`, { headers });
+    expect(res.status).toBe(200);
+    const { history } = await res.json();
+    expect(history.length).toBeGreaterThan(0);
+    expect(history[0].platform).toBe('facebook');
+
+    const filtered = await fetch(
+      `${api.url}/api/publish/history?platform=twitter`,
+      { headers },
+    );
+    const { history: twitterOnly } = await filtered.json();
+    expect(twitterOnly.every((h: any) => h.platform === 'twitter')).toBe(true);
   });
 });

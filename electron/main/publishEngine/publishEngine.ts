@@ -1,11 +1,13 @@
-import { AuditAction, PubStatus } from '@mas/types';
+import { AuditAction, PubStatus, type Platform } from '@mas/types';
 import type {
   AccountStore,
   AdapterResolver,
   AuditStore,
   PublishContentInput,
+  PublishHistoryRecord,
   PublishHistoryStore,
   QueueRunner,
+  ScheduledPostRecord,
   ScheduledPostStore,
   TokenResolver,
 } from './ports';
@@ -191,5 +193,24 @@ export class PublishEngine {
       ids.push(row.id);
     }
     return { scheduledPostIds: ids };
+  }
+
+  /** Upcoming scheduled posts, optionally filtered by platform. */
+  async listScheduled(platform?: Platform): Promise<ScheduledPostRecord[]> {
+    return this.deps.scheduled.list(platform);
+  }
+
+  /** Removes a scheduled-post row. Caller is responsible for cancelling the matching timer. */
+  async cancelScheduled(id: string): Promise<boolean> {
+    return this.deps.scheduled.remove(id);
+  }
+
+  /** Recent publish history, optionally filtered by platform/status. */
+  async listHistory(filter?: {
+    platform?: Platform;
+    status?: PubStatus;
+    limit?: number;
+  }): Promise<PublishHistoryRecord[]> {
+    return this.deps.history.list(filter);
   }
 }

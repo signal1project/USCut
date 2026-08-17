@@ -6,6 +6,7 @@ export type {
   ScheduleOutcome,
 } from './publishEngine';
 export { createPublishRouter } from './router';
+export { createAccountsRouter } from './accountsRouter';
 export * from './ports';
 export {
   TypeOrmAccountStore,
