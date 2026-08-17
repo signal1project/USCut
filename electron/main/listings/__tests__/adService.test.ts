@@ -145,4 +145,29 @@ describe('ListingAdService', () => {
       'Schedule your private showing',
     );
   });
+
+  it('buildListingBrief truncates a long description at a sentence boundary, not mid-word', () => {
+    const sentence = 'This home has a gorgeous renovated kitchen with quartz counters. ';
+    const longDescription = sentence.repeat(20); // well over 800 chars
+    const brief = buildListingBrief(
+      { ...listing, description: longDescription },
+      { platforms: ['facebook'] },
+    );
+    const descLine = brief
+      .split('\n')
+      .find((l) => l.startsWith('- Description:'))!;
+    const text = descLine.replace('- Description: ', '');
+    expect(text.length).toBeLessThanOrEqual(800);
+    // Ends on a full sentence (no mid-word cut) since the repeated sentence
+    // has a clean boundary well before the 800-char cap.
+    expect(text.trim().endsWith('.')).toBe(true);
+    expect(text).not.toMatch(/\bquartz cou$/); // would indicate a mid-word cut
+  });
+
+  it('buildListingBrief keeps a short description untouched', () => {
+    const brief = buildListingBrief(listing, { platforms: ['facebook'] });
+    expect(brief).toContain(
+      '- Description: Charming 3/2 with updated kitchen.',
+    );
+  });
 });

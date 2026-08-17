@@ -143,6 +143,36 @@ describe('ListingVideoService — real ffmpeg E2E', () => {
     expect(fs.existsSync(result!.path)).toBe(true);
   }, 30_000);
 
+  it('honors photoOrder to curate/reorder which photos are used, ignoring out-of-range indexes', async () => {
+    const service = new ListingVideoService(store as any, outDir);
+    // listing.photoUrls has 2 entries (indexes 0,1); ask for [1, 5] — 5 is
+    // out of range and must be dropped rather than crashing the render.
+    const result = await service.generateVideo(listing.id, {
+      maxPhotos: 2,
+      secondsPerPhoto: 2,
+      narration: false,
+      photoOrder: [1, 5],
+    });
+    expect(result).not.toBeNull();
+    expect(result!.photosUsed).toBe(1);
+    expect(fs.existsSync(result!.path)).toBe(true);
+  }, 30_000);
+
+  it('accepts a custom ctaText and narrationScript without breaking the render', async () => {
+    const service = new ListingVideoService(store as any, outDir);
+    const result = await service.generateVideo(listing.id, {
+      maxPhotos: 2,
+      secondsPerPhoto: 2,
+      narration: process.platform === 'win32',
+      ctaText: 'Open house Saturday 1-3pm',
+      narrationScript: 'Custom voiceover for this walkthrough.',
+    });
+    expect(result).not.toBeNull();
+    expect(result!.photosUsed).toBe(2);
+    expect(fs.existsSync(result!.path)).toBe(true);
+    expect(fs.statSync(result!.path).size).toBeGreaterThan(1000);
+  }, 60_000);
+
   it('skips an unreadable photo instead of failing the entire reel', async () => {
     const corruptPhoto = path.join(workDir, 'not-an-image.jpg');
     fs.writeFileSync(corruptPhoto, 'not actually a jpeg');

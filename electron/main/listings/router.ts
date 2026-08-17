@@ -45,6 +45,9 @@ const generateVideoSchema = z.object({
   maxPhotos: z.number().int().min(1).max(8).optional(),
   secondsPerPhoto: z.number().min(2).max(6).optional(),
   narration: z.boolean().optional(),
+  ctaText: z.string().max(120).optional(),
+  narrationScript: z.string().max(1000).optional(),
+  photoOrder: z.array(z.number().int().nonnegative()).max(20).optional(),
 });
 
 const listQuerySchema = z.object({

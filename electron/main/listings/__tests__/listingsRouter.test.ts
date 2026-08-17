@@ -182,6 +182,56 @@ describe('listings router over HTTP', () => {
     expect(res.status).toBe(400);
   });
 
+  it('accepts Video Producer fields (ctaText/narrationScript/photoOrder) on generate-video', async () => {
+    let received: unknown;
+    const videoService = {
+      generateVideo: (id: string, opts: unknown) => {
+        received = opts;
+        return Promise.resolve({
+          listingId: id,
+          path: '/tmp/reel.mp4',
+          durationSeconds: 10,
+          photosUsed: 1,
+          narrated: false,
+        });
+      },
+    };
+    const videoApi = await startApiServer({
+      token: 'video-test-token',
+      routes: [
+        {
+          path: '/listings',
+          router: createListingsRouter(store, { videoService: videoService as any }),
+        },
+      ],
+    });
+    try {
+      const res = await fetch(
+        `${videoApi.url}/api/listings/${listingId}/generate-video`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer video-test-token',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ctaText: 'Open house Saturday 1-3pm',
+            narrationScript: 'Custom voiceover.',
+            photoOrder: [2, 0, 1],
+          }),
+        },
+      );
+      expect(res.status).toBe(200);
+      expect(received).toMatchObject({
+        ctaText: 'Open house Saturday 1-3pm',
+        narrationScript: 'Custom voiceover.',
+        photoOrder: [2, 0, 1],
+      });
+    } finally {
+      await videoApi.close();
+    }
+  });
+
   it('returns 503 for generate-ad on the capture-server shape (no adService)', async () => {
     const res = await fetch(
       `${openApi.url}/api/listings/${listingId}/generate-ad`,

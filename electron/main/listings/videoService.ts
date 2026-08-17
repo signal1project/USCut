@@ -19,6 +19,17 @@ export interface ListingVideoOptions {
   secondsPerPhoto?: number;
   /** Windows SAPI text-to-speech narration (default true on win32). */
   narration?: boolean;
+  /** Replaces the default 'DM us to schedule a showing' CTA card line. */
+  ctaText?: string;
+  /** Replaces the auto-generated spoken narration script (see buildNarrationScript). */
+  narrationScript?: string;
+  /**
+   * Indexes into the listing's photoUrls, in the order they should appear —
+   * lets a curator (agent or future auto-ranking step) pick and order the
+   * best shots instead of taking Zillow's raw photo order. Indexes outside
+   * the photo array are ignored; defaults to the first `maxPhotos` in order.
+   */
+  photoOrder?: number[];
 }
 
 export interface ListingVideoResult {
@@ -329,11 +340,16 @@ export class ListingVideoService {
     fs.mkdirSync(work, { recursive: true });
 
     try {
-      // 1. Photos
+      // 1. Photos — honor an agent-curated order/selection when supplied,
+      // falling back to the raw scrape order otherwise.
+      const allPhotoUrls = listing.photoUrls ?? [];
+      const orderedPhotoUrls = opts.photoOrder
+        ? opts.photoOrder
+            .map((i) => allPhotoUrls[i])
+            .filter((u): u is string => typeof u === 'string')
+        : allPhotoUrls;
       const photoFiles: string[] = [];
-      for (const [i, url] of (listing.photoUrls ?? [])
-        .slice(0, maxPhotos)
-        .entries()) {
+      for (const [i, url] of orderedPhotoUrls.slice(0, maxPhotos).entries()) {
         const file = await downloadPhoto(url, work, i);
         if (file) photoFiles.push(file);
       }
@@ -396,7 +412,7 @@ export class ListingVideoService {
           listing.address,
           specs,
           '',
-          'DM us to schedule a showing',
+          opts.ctaText || 'DM us to schedule a showing',
         ].filter(Boolean),
         3,
         cta,
@@ -407,7 +423,7 @@ export class ListingVideoService {
       let narrationWav: string | null = null;
       if (wantNarration) {
         narrationWav = await synthesizeNarration(
-          buildNarrationScript(listing),
+          opts.narrationScript || buildNarrationScript(listing),
           path.join(work, 'narration.wav'),
         );
       }

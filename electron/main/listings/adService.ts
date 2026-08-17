@@ -34,6 +34,20 @@ function formatPrice(cents: number | null): string {
     : `$${dollars.toLocaleString()}`;
 }
 
+/** Truncates at the last sentence boundary before maxLen instead of mid-sentence. */
+function truncateAtSentence(text: string, maxLen: number): string {
+  if (text.length <= maxLen) return text;
+  const cut = text.slice(0, maxLen);
+  const lastBoundary = Math.max(
+    cut.lastIndexOf('. '),
+    cut.lastIndexOf('! '),
+    cut.lastIndexOf('? '),
+  );
+  return lastBoundary > maxLen * 0.4
+    ? cut.slice(0, lastBoundary + 1)
+    : `${cut.trimEnd()}…`;
+}
+
 function specLine(l: PropertyListingSummary): string {
   return [
     l.beds ? `${l.beds}bd` : null,
@@ -62,7 +76,7 @@ LISTING DETAILS:
 - Type: ${l.propertyType ?? 'residential'}
 - Days on market: ${l.daysOnMarket ?? 'new listing'}
 ${opts.highlight ? `- Agent highlight: ${opts.highlight}` : ''}
-${l.description ? `- Description: ${l.description.slice(0, 300)}` : ''}
+${l.description ? `- Description: ${truncateAtSentence(l.description, 800)}` : ''}
 
 REQUIREMENTS:
 - Do NOT include any language about race, religion, national origin, sex, familial status, or disability (Fair Housing Act) — describe the property, never the buyer
