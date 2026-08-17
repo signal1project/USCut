@@ -212,14 +212,16 @@ export interface ListingVideoResult {
 }
 
 export interface AutoClipResult {
-  transcriptSource: 'provided' | 'whisper';
-  pickedBy: 'ai' | 'heuristic';
+  transcriptSource: 'provided' | 'whisper' | 'whisper-local';
+  pickedBy: 'ai' | 'ai-visual' | 'heuristic';
   clips: Array<{
     path: string;
     start: number;
     end: number;
     durationSeconds: number;
     hook: string;
+    score: number;
+    tracked: boolean;
   }>;
 }
 
@@ -621,6 +623,8 @@ export class MasApiClient {
     clipSeconds?: number;
     vertical?: boolean;
     burnCaptions?: boolean;
+    query?: string;
+    trackSubject?: boolean;
   }): Promise<AutoClipResult> {
     return this.req('POST', '/api/clips/auto', body);
   }

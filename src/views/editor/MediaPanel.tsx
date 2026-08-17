@@ -57,8 +57,27 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
   const [autoEditBusy, setAutoEditBusy] = useState(false);
   const masApi = useMasApi();
   const [clipSrt, setClipSrt] = useState('');
+  const [clipSourceId, setClipSourceId] = useState<string>('');
+  const [clipMaxClips, setClipMaxClips] = useState(3);
+  const [clipSeconds, setClipSeconds] = useState(30);
+  const [clipVertical, setClipVertical] = useState(true);
+  const [clipBurnCaptions, setClipBurnCaptions] = useState(true);
+  const [clipTrackSubject, setClipTrackSubject] = useState(true);
+  const [clipQuery, setClipQuery] = useState('');
   const [clipBusy, setClipBusy] = useState(false);
   const [clipStatus, setClipStatus] = useState<string | null>(null);
+  const [clipResults, setClipResults] = useState<
+    | {
+        pickedBy: string;
+        clips: Array<{
+          hook: string;
+          score: number;
+          tracked: boolean;
+          durationSeconds: number;
+        }>;
+      }
+    | null
+  >(null);
   const [whisperBusy, setWhisperBusy] = useState(false);
   const [whisperStatus, setWhisperStatus] = useState<string | null>(null);
   const [ttsText, setTtsText] = useState('');
@@ -147,17 +166,28 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
     setTtsText('');
   };
 
+  const clipVideoOptions = mediaLibrary.filter((m) => m.type === 'video');
+
   const handleAutoClip = async () => {
-    const sourceVideo = mediaLibrary.find((m) => m.type === 'video');
+    const sourceVideo =
+      clipVideoOptions.find((m) => m.id === clipSourceId) ?? clipVideoOptions[0];
     if (!masApi || !sourceVideo) return;
     setClipBusy(true);
     setClipStatus(null);
+    setClipResults(null);
     try {
       const result = await masApi.autoClip({
         videoPath: sourceVideo.src,
         transcriptSrt: clipSrt.trim() || undefined,
-        maxClips: 3,
+        maxClips: clipMaxClips,
+        clipSeconds,
+        vertical: clipVertical,
+        burnCaptions: clipBurnCaptions,
+        trackSubject: clipTrackSubject,
+        query: clipQuery.trim() || undefined,
       });
+      // Clips already come back ranked highest-score first (see
+      // ClipService.autoClip) — add them to the library in that order.
       for (const clip of result.clips) {
         addMediaItem({
           id: uuidv4(),
@@ -169,10 +199,20 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
           type: 'video',
         } as MediaItem);
       }
+      setClipResults({
+        pickedBy: result.pickedBy,
+        clips: result.clips.map((c) => ({
+          hook: c.hook,
+          score: c.score,
+          tracked: c.tracked,
+          durationSeconds: c.durationSeconds,
+        })),
+      });
       setClipStatus(
-        `✓ ${result.clips.length} clip${result.clips.length === 1 ? '' : 's'} added to library (picked by ${result.pickedBy})`,
+        `✓ ${result.clips.length} clip${result.clips.length === 1 ? '' : 's'} added to library`,
       );
       setClipSrt('');
+      setClipQuery('');
     } catch (err) {
       setClipStatus(err instanceof Error ? err.message : 'Auto-clip failed');
     } finally {
@@ -606,25 +646,117 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
                 </span>
               </div>
               <p className="text-[10px] text-[#71717f] mb-2.5">
-                Finds the best moments in your first library video and cuts
-                vertical short clips with burned captions. Paste an SRT/VTT
-                transcript, or leave empty to use Whisper (OpenAI key in
-                Settings).
+                Finds and ranks the best moments in a source video, cuts
+                vertical short clips, and burns captions.
               </p>
+
+              <label className="block text-[9px] font-medium text-[#71717f] mb-1">
+                Source video
+              </label>
+              <select
+                value={clipSourceId || clipVideoOptions[0]?.id || ''}
+                onChange={(e) => setClipSourceId(e.target.value)}
+                disabled={clipVideoOptions.length === 0}
+                className="w-full bg-[#0c0c0f] text-[10px] text-ink-base rounded-lg p-2 mb-2 border border-[#303039] focus:outline-none focus:border-[#34d399] disabled:opacity-50"
+              >
+                {clipVideoOptions.length === 0 ? (
+                  <option value="">No video in library</option>
+                ) : (
+                  clipVideoOptions.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))
+                )}
+              </select>
+
               <textarea
                 value={clipSrt}
                 onChange={(e) => setClipSrt(e.target.value)}
-                placeholder="Optional: paste SRT/VTT transcript…"
-                className="w-full bg-[#0c0c0f] text-[10px] text-ink-base rounded-lg p-2 h-16 resize-none border border-[#303039] focus:outline-none focus:border-[#34d399] placeholder:text-[#4a4a55]"
+                placeholder="Optional: paste SRT/VTT transcript, or leave empty for Whisper…"
+                className="w-full bg-[#0c0c0f] text-[10px] text-ink-base rounded-lg p-2 h-14 resize-none border border-[#303039] focus:outline-none focus:border-[#34d399] placeholder:text-[#4a4a55]"
               />
+
+              <input
+                value={clipQuery}
+                onChange={(e) => setClipQuery(e.target.value)}
+                placeholder='Optional: "find the funny moments"…'
+                className="w-full bg-[#0c0c0f] text-[10px] text-ink-base rounded-lg p-2 mt-2 border border-[#303039] focus:outline-none focus:border-[#34d399] placeholder:text-[#4a4a55]"
+              />
+
+              <div className="flex gap-2 mt-2">
+                <div className="flex-1">
+                  <label className="block text-[9px] font-medium text-[#71717f] mb-1">
+                    Clips
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={8}
+                    value={clipMaxClips}
+                    onChange={(e) =>
+                      setClipMaxClips(
+                        Math.min(8, Math.max(1, Number(e.target.value) || 1)),
+                      )
+                    }
+                    className="w-full bg-[#0c0c0f] text-[10px] text-ink-base rounded-lg p-2 border border-[#303039] focus:outline-none focus:border-[#34d399]"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-[9px] font-medium text-[#71717f] mb-1">
+                    Length (s)
+                  </label>
+                  <input
+                    type="number"
+                    min={10}
+                    max={90}
+                    value={clipSeconds}
+                    onChange={(e) =>
+                      setClipSeconds(
+                        Math.min(90, Math.max(10, Number(e.target.value) || 10)),
+                      )
+                    }
+                    className="w-full bg-[#0c0c0f] text-[10px] text-ink-base rounded-lg p-2 border border-[#303039] focus:outline-none focus:border-[#34d399]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1 mt-2">
+                <label className="flex items-center gap-1.5 text-[10px] text-[#a1a1ab]">
+                  <input
+                    type="checkbox"
+                    checked={clipVertical}
+                    onChange={(e) => setClipVertical(e.target.checked)}
+                    className="accent-[#34d399]"
+                  />
+                  Crop to vertical (9:16)
+                </label>
+                <label className="flex items-center gap-1.5 text-[10px] text-[#a1a1ab]">
+                  <input
+                    type="checkbox"
+                    checked={clipBurnCaptions}
+                    onChange={(e) => setClipBurnCaptions(e.target.checked)}
+                    className="accent-[#34d399]"
+                  />
+                  Burn captions
+                </label>
+                <label className="flex items-center gap-1.5 text-[10px] text-[#a1a1ab]">
+                  <input
+                    type="checkbox"
+                    checked={clipTrackSubject}
+                    onChange={(e) => setClipTrackSubject(e.target.checked)}
+                    disabled={!clipVertical}
+                    className="accent-[#34d399] disabled:opacity-50"
+                  />
+                  Follow subject (needs a vision-capable AI provider — falls
+                  back to a fixed crop otherwise)
+                </label>
+              </div>
+
               <button
                 onClick={handleAutoClip}
-                disabled={
-                  clipBusy ||
-                  !masApi ||
-                  !mediaLibrary.some((m) => m.type === 'video')
-                }
-                className="mt-2 w-full flex items-center justify-center gap-1.5 bg-[#12352a] hover:bg-[#174534] disabled:opacity-50 text-[#34d399] text-[11px] font-medium rounded-lg py-2 transition-colors"
+                disabled={clipBusy || !masApi || clipVideoOptions.length === 0}
+                className="mt-2.5 w-full flex items-center justify-center gap-1.5 bg-[#12352a] hover:bg-[#174534] disabled:opacity-50 text-[#34d399] text-[11px] font-medium rounded-lg py-2 transition-colors"
               >
                 {clipBusy ? (
                   <>
@@ -639,6 +771,36 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
                 <p className="text-[10px] text-[#a1a1ab] mt-1.5">
                   {clipStatus}
                 </p>
+              )}
+              {clipResults && (
+                <div className="mt-2 flex flex-col gap-1.5">
+                  <p className="text-[9px] text-[#71717f]">
+                    picked by:{' '}
+                    {clipResults.pickedBy === 'ai-visual'
+                      ? 'AI (transcript + visual)'
+                      : clipResults.pickedBy === 'ai'
+                        ? 'AI (transcript)'
+                        : 'heuristic (no AI provider configured)'}
+                  </p>
+                  {clipResults.clips.map((c, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-2 bg-[#0c0c0f] rounded-lg px-2 py-1.5 border border-[#26262d]"
+                    >
+                      <span className="text-[10px] font-semibold text-[#34d399] shrink-0">
+                        {c.score}
+                      </span>
+                      <span className="text-[10px] text-ink-base flex-1 truncate">
+                        {c.hook || `${c.durationSeconds}s clip`}
+                      </span>
+                      {c.tracked && (
+                        <span className="text-[8px] bg-[#12352a] text-[#34d399] px-1 py-0.5 rounded shrink-0">
+                          tracked
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 

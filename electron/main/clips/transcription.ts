@@ -5,11 +5,26 @@ import crypto from 'node:crypto';
 import ffmpeg from 'fluent-ffmpeg';
 import { resolveFfmpegPath } from '../../util/ffmpegBinary';
 
+export interface TranscriptWord {
+  /** Seconds. */
+  start: number;
+  end: number;
+  text: string;
+}
+
 export interface TranscriptSegment {
   /** Seconds. */
   start: number;
   end: number;
   text: string;
+  /**
+   * Word-level timing, when the transcription source provides it (OpenAI
+   * Whisper with timestamp_granularities, or local whisper.cpp with word
+   * output enabled). Absent for caller-provided SRT/VTT — those only carry
+   * segment-level timing. Used for karaoke-style caption highlighting; see
+   * toAss().
+   */
+  words?: TranscriptWord[];
 }
 
 function timeToSeconds(t: string): number {
@@ -66,10 +81,141 @@ export function toSrt(
     .join('\n');
 }
 
+/** Escape ASS/SSA text-field special characters: braces (override-tag delimiters) and newlines. */
+function escapeAssText(text: string): string {
+  return text
+    .replace(/\\/g, '\\\\')
+    .replace(/\{/g, '\\{')
+    .replace(/\}/g, '\\}')
+    .replace(/\n/g, '\\N');
+}
+
+function assTimestamp(seconds: number): string {
+  const t = Math.max(0, seconds);
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const s = Math.floor(t % 60);
+  const cs = Math.round((t % 1) * 100);
+  return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(cs).padStart(2, '0')}`;
+}
+
+/** Builds the {\kNN}word... run for one segment's karaoke-highlighted line. */
+function buildKaraokeText(seg: TranscriptSegment): string {
+  const words = seg.words ?? [];
+  let cursor = seg.start;
+  const parts: string[] = [];
+  for (const w of words) {
+    const centis = Math.max(1, Math.round((w.end - cursor) * 100));
+    parts.push(`{\\k${centis}}${escapeAssText(w.text)} `);
+    cursor = w.end;
+  }
+  return parts.join('').trim();
+}
+
 /**
- * Transcribe an audio/video file with the OpenAI Whisper API
- * (verbose_json gives segment timestamps). ~25MB upload limit applies;
- * larger files should be pre-extracted to audio by the caller.
+ * Styled ASS captions — bold, larger font, centered lower-third, outline +
+ * background box (a real visual upgrade over plain burned-in SRT). When a
+ * segment has word-level timing (see TranscriptSegment.words), renders
+ * per-word karaoke-style progressive highlighting via ASS's native `\k`
+ * tags (rendered by libass, ffmpeg's bundled subtitle renderer — no new
+ * dependency); segments without word timing (e.g. a caller-provided SRT)
+ * fall back to a static styled line for that segment.
+ */
+export function toAss(
+  segments: TranscriptSegment[],
+  offsetSeconds = 0,
+): string {
+  const header = `[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,Arial,76,&H0000FFFF,&H00FFFFFF,&H00000000,&H00000000,-1,0,0,0,100,100,0,0,3,0,0,2,60,60,220,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+`;
+
+  const lines = segments.map((seg) => {
+    const start = assTimestamp(seg.start - offsetSeconds);
+    const end = assTimestamp(seg.end - offsetSeconds);
+    const text = seg.words?.length
+      ? buildKaraokeText(seg)
+      : escapeAssText(seg.text);
+    return `Dialogue: 0,${start},${end},Default,,0,0,0,,${text}`;
+  });
+
+  return header + lines.join('\n') + '\n';
+}
+
+/**
+ * Parses whisper.cpp's --output-json-full token-level output into
+ * word-level timing. Best-effort and defensive: whisper.cpp's JSON schema
+ * has shifted across versions, and this hasn't been verified against a live
+ * compiled binary in this dev environment (whisper-cli requires a C++
+ * toolchain this environment doesn't have) — any shape mismatch returns an
+ * empty array rather than throwing, so local transcription still succeeds
+ * with segment-only (no karaoke) captions.
+ */
+export function parseWhisperCppJsonWords(raw: string): TranscriptWord[] {
+  try {
+    const data = JSON.parse(raw) as {
+      transcription?: Array<{
+        tokens?: Array<{
+          text?: string;
+          offsets?: { from?: number; to?: number };
+        }>;
+      }>;
+    };
+    const words: TranscriptWord[] = [];
+    for (const seg of data.transcription ?? []) {
+      for (const tok of seg.tokens ?? []) {
+        const text = tok.text?.trim();
+        // whisper.cpp emits special/control tokens like "[_BEG_]" — skip
+        // anything that isn't plain spoken text.
+        if (!text || /^\[.*\]$/.test(text)) continue;
+        const from = tok.offsets?.from;
+        const to = tok.offsets?.to;
+        if (!Number.isFinite(from) || !Number.isFinite(to)) continue;
+        words.push({
+          start: (from as number) / 1000,
+          end: (to as number) / 1000,
+          text,
+        });
+      }
+    }
+    return words;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Attaches each word to the segment it time-overlaps most, for karaoke-style
+ * caption highlighting. Words that don't overlap any segment (rare — gaps
+ * between segments) are dropped rather than misattributed.
+ */
+function attachWordsToSegments(
+  segments: Array<{ start: number; end: number; text: string }>,
+  words: TranscriptWord[],
+): TranscriptSegment[] {
+  return segments.map((seg) => {
+    const segWords = words.filter(
+      (w) => w.end > seg.start && w.start < seg.end,
+    );
+    return { ...seg, words: segWords.length ? segWords : undefined };
+  });
+}
+
+/**
+ * Transcribe an audio/video file with the OpenAI Whisper API (verbose_json +
+ * word-level timestamp_granularities gives both segment and per-word
+ * timing — the latter powers karaoke-style caption highlighting in
+ * toAss()). ~25MB upload limit applies; larger files should be pre-extracted
+ * to audio by the caller.
  */
 export async function transcribeViaOpenAI(
   filePath: string,
@@ -80,6 +226,8 @@ export async function transcribeViaOpenAI(
   form.append('file', new Blob([buf]), path.basename(filePath));
   form.append('model', 'whisper-1');
   form.append('response_format', 'verbose_json');
+  form.append('timestamp_granularities[]', 'segment');
+  form.append('timestamp_granularities[]', 'word');
 
   const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
     method: 'POST',
@@ -89,15 +237,24 @@ export async function transcribeViaOpenAI(
   if (!res.ok) throw new Error(`whisper_failed_${res.status}`);
   const data = (await res.json()) as {
     segments?: Array<{ start: number; end: number; text: string }>;
+    words?: Array<{ word: string; start: number; end: number }>;
     text?: string;
     duration?: number;
   };
+  const words: TranscriptWord[] = (data.words ?? []).map((w) => ({
+    start: w.start,
+    end: w.end,
+    text: w.word,
+  }));
   if (data.segments?.length) {
-    return data.segments.map((s) => ({
+    const segments = data.segments.map((s) => ({
       start: s.start,
       end: s.end,
       text: s.text.trim(),
     }));
+    return words.length
+      ? attachWordsToSegments(segments, words)
+      : segments;
   }
   if (data.text)
     return [{ start: 0, end: data.duration ?? 60, text: data.text.trim() }];
@@ -155,6 +312,7 @@ export async function transcribeViaLocalWhisper(
   // input filename (foo.wav -> foo.wav.srt) rather than replacing it —
   // confirmed against real whisper-cli output, not documentation.
   const srtPath = `${wavPath}.srt`;
+  const jsonPath = `${wavPath}.json`;
   try {
     await nodewhisper(wavPath, {
       modelName,
@@ -165,14 +323,22 @@ export async function transcribeViaLocalWhisper(
         outputInText: false,
         outputInVtt: false,
         outputInJson: false,
-        outputInJsonFull: false,
+        // Token-level timestamps (word timing) for karaoke captions —
+        // best-effort: parseWhisperCppJsonWords() never throws, so a
+        // schema mismatch across whisper.cpp versions just means no word
+        // timing, not a broken transcript.
+        outputInJsonFull: true,
         outputInCsv: false,
         outputInLrc: false,
         outputInWords: false,
       },
     });
     if (!fs.existsSync(srtPath)) throw new Error('no_srt_output');
-    return parseSrtOrVtt(fs.readFileSync(srtPath, 'utf8'));
+    const segments = parseSrtOrVtt(fs.readFileSync(srtPath, 'utf8'));
+    const words = fs.existsSync(jsonPath)
+      ? parseWhisperCppJsonWords(fs.readFileSync(jsonPath, 'utf8'))
+      : [];
+    return words.length ? attachWordsToSegments(segments, words) : segments;
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     throw new Error(
@@ -184,5 +350,6 @@ export async function transcribeViaLocalWhisper(
   } finally {
     fs.rm(wavPath, () => {});
     fs.rm(srtPath, () => {});
+    fs.rm(jsonPath, () => {});
   }
 }

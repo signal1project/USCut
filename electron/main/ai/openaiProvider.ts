@@ -1,10 +1,15 @@
 import type {
   AIProvider,
   AIProviderName,
+  AnalyzeFramesInput,
   GenerateImageOptions,
   GenerateTextOptions,
 } from '@mas/types';
 import { resolveMaxTokens, systemPrompt } from './prompt';
+
+type OpenAIContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string } };
 
 // Minimal structural slice of the openai SDK we depend on.
 export interface OpenAILike {
@@ -13,7 +18,10 @@ export interface OpenAILike {
       create(args: {
         model: string;
         max_tokens?: number;
-        messages: Array<{ role: 'system' | 'user'; content: string }>;
+        messages: Array<{
+          role: 'system' | 'user';
+          content: string | OpenAIContentPart[];
+        }>;
       }): Promise<{
         choices: Array<{ message?: { content?: string | null } }>;
       }>;
@@ -70,5 +78,29 @@ export class OpenAIProvider implements AIProvider {
       (first?.b64_json ? `data:image/png;base64,${first.b64_json}` : '');
     if (!url) throw new Error('OpenAI returned no image.');
     return url;
+  }
+
+  async analyzeFrames(
+    frames: AnalyzeFramesInput[],
+    prompt: string,
+  ): Promise<string> {
+    const content: OpenAIContentPart[] = [{ type: 'text', text: prompt }];
+    for (const frame of frames) {
+      content.push({
+        type: 'text',
+        text: `[frame at ${frame.timestampSeconds.toFixed(2)}s]`,
+      });
+      content.push({
+        type: 'image_url',
+        image_url: { url: `data:image/jpeg;base64,${frame.base64Jpeg}` },
+      });
+    }
+
+    const res = await this.client.chat.completions.create({
+      model: this.textModel,
+      max_tokens: 2048,
+      messages: [{ role: 'user', content }],
+    });
+    return (res.choices[0]?.message?.content ?? '').trim();
   }
 }

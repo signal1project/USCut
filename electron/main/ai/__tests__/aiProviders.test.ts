@@ -65,6 +65,34 @@ describe('ClaudeProvider', () => {
       /does not support image/,
     );
   });
+
+  it('analyzeFrames sends each frame as an image block plus the prompt', async () => {
+    let captured: any;
+    const client: AnthropicLike = {
+      messages: {
+        create: async (args) => {
+          captured = args;
+          return { content: [{ type: 'text', text: '{"points":[]}' }] };
+        },
+      },
+    };
+    const out = await new ClaudeProvider(client).analyzeFrames(
+      [
+        { timestampSeconds: 0, base64Jpeg: 'AAA' },
+        { timestampSeconds: 1, base64Jpeg: 'BBB' },
+      ],
+      'locate the subject',
+    );
+    expect(out).toBe('{"points":[]}');
+    const content = captured.messages[0].content;
+    expect(content.filter((b: any) => b.type === 'image')).toHaveLength(2);
+    expect(content[0].source).toEqual({
+      type: 'base64',
+      media_type: 'image/jpeg',
+      data: 'AAA',
+    });
+    expect(content.at(-1)).toEqual({ type: 'text', text: 'locate the subject' });
+  });
 });
 
 // ── OpenAIProvider ────────────────────────────────────────────────────────────
@@ -114,6 +142,30 @@ describe('OpenAIProvider', () => {
     };
     const url = await new OpenAIProvider(client).generateImage('x');
     expect(url).toBe('data:image/png;base64,AAAA');
+  });
+
+  it('analyzeFrames sends each frame as a data-URI image_url part plus the prompt', async () => {
+    let captured: any;
+    const client: OpenAILike = {
+      chat: {
+        completions: {
+          create: async (args) => {
+            captured = args;
+            return { choices: [{ message: { content: '{"points":[]}' } }] };
+          },
+        },
+      },
+      images: { generate: async () => ({ data: [] }) },
+    };
+    const out = await new OpenAIProvider(client).analyzeFrames(
+      [{ timestampSeconds: 0, base64Jpeg: 'AAA' }],
+      'locate the subject',
+    );
+    expect(out).toBe('{"points":[]}');
+    const content = captured.messages[0].content;
+    expect(content[0]).toEqual({ type: 'text', text: 'locate the subject' });
+    const imagePart = content.find((b: any) => b.type === 'image_url');
+    expect(imagePart.image_url.url).toBe('data:image/jpeg;base64,AAA');
   });
 });
 

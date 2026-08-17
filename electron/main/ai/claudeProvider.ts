@@ -1,10 +1,18 @@
 import type {
   AIProvider,
   AIProviderName,
+  AnalyzeFramesInput,
   GenerateImageOptions,
   GenerateTextOptions,
 } from '@mas/types';
 import { resolveMaxTokens, systemPrompt } from './prompt';
+
+type AnthropicContentBlock =
+  | { type: 'text'; text: string }
+  | {
+      type: 'image';
+      source: { type: 'base64'; media_type: 'image/jpeg'; data: string };
+    };
 
 // Minimal structural slice of @anthropic-ai/sdk we depend on.
 export interface AnthropicLike {
@@ -13,7 +21,10 @@ export interface AnthropicLike {
       model: string;
       max_tokens: number;
       system?: string;
-      messages: Array<{ role: 'user' | 'assistant'; content: string }>;
+      messages: Array<{
+        role: 'user' | 'assistant';
+        content: string | AnthropicContentBlock[];
+      }>;
     }): Promise<{ content: Array<{ type: string; text?: string }> }>;
   };
 }
@@ -50,5 +61,38 @@ export class ClaudeProvider implements AIProvider {
     throw new Error(
       'Claude does not support image generation. Use the OpenAI provider for images.',
     );
+  }
+
+  async analyzeFrames(
+    frames: AnalyzeFramesInput[],
+    prompt: string,
+  ): Promise<string> {
+    const content: AnthropicContentBlock[] = [];
+    for (const frame of frames) {
+      content.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: 'image/jpeg',
+          data: frame.base64Jpeg,
+        },
+      });
+      content.push({
+        type: 'text',
+        text: `[frame at ${frame.timestampSeconds.toFixed(2)}s]`,
+      });
+    }
+    content.push({ type: 'text', text: prompt });
+
+    const res = await this.client.messages.create({
+      model: this.model,
+      max_tokens: 2048,
+      messages: [{ role: 'user', content }],
+    });
+    return res.content
+      .filter((b) => b.type === 'text')
+      .map((b) => b.text ?? '')
+      .join('')
+      .trim();
   }
 }

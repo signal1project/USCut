@@ -10,14 +10,19 @@ const autoClipSchema = z.object({
   clipSeconds: z.number().min(10).max(90).optional(),
   vertical: z.boolean().optional(),
   burnCaptions: z.boolean().optional(),
+  query: z.string().max(200).optional(),
+  trackSubject: z.boolean().optional(),
 });
 
 export function createClipsRouter(service: ClipService): Router {
   const router = express.Router();
 
   /**
-   * POST /api/clips/auto — long video in, short vertical highlight clips out.
-   * Transcript via SRT/VTT body field or Whisper (OpenAI key in Settings).
+   * POST /api/clips/auto — long video in, short vertical highlight clips out,
+   * ranked by score. Transcript via SRT/VTT body field or Whisper (OpenAI key
+   * in Settings). `query` narrows to moments matching a natural-language
+   * request, e.g. "find the funny moments" (best-effort keyword match when
+   * no AI provider is configured — see autoClip.ts).
    */
   router.post(
     '/auto',

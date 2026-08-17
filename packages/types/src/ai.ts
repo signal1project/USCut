@@ -91,6 +91,13 @@ export interface GenerateImageOptions {
   height?: number;
 }
 
+export interface AnalyzeFramesInput {
+  /** Seconds from clip/video start — matches how the frame was sampled. */
+  timestampSeconds: number;
+  /** Raw base64-encoded JPEG bytes (no data: URI prefix). */
+  base64Jpeg: string;
+}
+
 /** Abstraction every AI provider implements. Swapped via config, not code. */
 export interface AIProvider {
   readonly name: AIProviderName;
@@ -98,6 +105,18 @@ export interface AIProvider {
   generateImage(
     prompt: string,
     options?: GenerateImageOptions,
+  ): Promise<string>;
+  /**
+   * Vision analysis over one or more sampled frames — used for subject
+   * tracking (locate the on-screen subject per frame) and genre-agnostic
+   * highlight detection (visually-driven moments a transcript alone can't
+   * surface). Optional: only vision-capable providers implement it: callers
+   * must check for its presence before use and fall back gracefully
+   * (fixed-crop reframe, transcript-only curation) when absent.
+   */
+  analyzeFrames?(
+    frames: AnalyzeFramesInput[],
+    prompt: string,
   ): Promise<string>;
 }
 
