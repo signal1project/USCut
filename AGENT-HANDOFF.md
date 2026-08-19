@@ -1,5 +1,80 @@
 # USCut — Agent Handoff
 
+## Reel-spec template shipped + a real ffmpeg-selection bug fixed — 2026-08-19
+
+**Read this first if you're touching video export, ffmpeg, or the listing-reel
+pipeline.**
+
+A new opt-in listing-reel template landed this session (inherited uncommitted from
+2026-08-18, no handoff note from that session — committed as-is once verified clean):
+`reelTemplate: 'reel-spec'` alongside the existing legacy Ken-Burns pipeline. Classifies
+listing photos into a 6-block hook/kitchen/living/primary+bath/money-shot/CTA structure
+(`electron/main/listings/video/roomBuckets.ts`), picks standard-vs-luxury styling by price
+(`priceTier.ts`), narrates via Kokoro-82M (local/offline neural TTS, `kokoroNarration.ts`,
+falls back to Windows SAPI then none), and mixes in music beds from
+`public/assets/music/{standard,luxury}/` (**Dale is populating these now** — empty
+resolves to silent-except-narration gracefully, not an error). New `photoCaptions` field
+on captured listings (Zillow extension now pairs each photo with its room-label caption)
+feeds the room classifier. UI: Create Reel now has a small options panel (template/price
+tier/narration engine/hook text) — `src/views/mas/ListingScraperPage.tsx`.
+
+**Two real, previously-undiscovered bugs found and fixed while live-verifying this**
+(both are bundling issues in `vite.config.ts` / the main-process Rollup build, not
+anything Dale needs to change behaviorally):
+
+1. **The app could not boot at all** once kokoro-js became a dependency — instant crash
+   on `npm run dev`/packaged launch: `Could not dynamically require
+   "../bin/napi-v3/win32/x64/onnxruntime_binding.node"`. kokoro-js pulls in
+   onnxruntime-node (native binding, runtime-computed require path) as a *transitive*
+   dependency, so it was never in `vite.config.ts`'s Rollup `external` list (built from
+   `package.json`'s own `dependencies` keys) and Rollup's commonjs plugin tried to bundle
+   it, which can't work for a dynamic native require. Fixed by explicitly externalizing
+   `onnxruntime-node`/`onnxruntime-common`/`@huggingface/transformers`. If you add another
+   dependency that itself depends on a native `.node` binding, check whether it's a
+   *direct* `package.json` dependency (auto-externalized) or transitive (needs adding to
+   that explicit list by hand) — this bug class will recur otherwise.
+2. **ffmpeg has been silently running on the ancient 2018 `@ffmpeg-installer` binary (no
+   xfade support) in every real run of the app — dev and packaged — likely since
+   ffmpeg-static was introduced, not something new this session.** `resolveFfmpegPath()`
+   (`electron/util/ffmpegBinary.ts`) called a bare `require('ffmpeg-static')`. The
+   main-process bundle loads as an ES module, where bare `require` has no global to
+   resolve against — it threw `ReferenceError: require is not defined` on every single
+   call, silently caught, always falling through to the old binary. **Vitest never caught
+   this because tests run under plain Node, where a bare `require` happens to exist** — so
+   every prior "live-verified via real ffmpeg" claim anywhere in this repo's history was
+   only ever proven under vitest's Node process, never the actual Electron one. It
+   surfaced now because reel-spec's cross-dissolve/whip-cut transitions were the first
+   thing to exercise a transition-heavy `filter_complex` through the *real running app*
+   instead of only vitest — failed with `ffmpeg exited with code 1: Error initializing
+   complex filters. Invalid argument` (the old binary rejecting xfade). Fixed with
+   `createRequire(import.meta.url)` — a real CJS require bound to the file's own URL,
+   correct under both ESM and CJS. **The main editor's own transition-based export
+   (Toolbar → Export, with any clip transition) runs through the exact same
+   `exportProject()` function** reel-spec uses — proven working live post-fix via
+   reel-spec's luxury-tier cross-dissolve reel, so it's covered too, not a separate
+   unverified surface. Worth a normal spot-check next time you export something with a
+   transition for real, just to see it with your own eyes.
+
+**Verified for real**: after both fixes, booted the actual dev app fresh (confirmed via a
+temporary diagnostic that `resolveFfmpegPath()` returned the broken path pre-fix and the
+correct one post-fix, then removed the diagnostic), POSTed a mock listing with
+`photoCaptions` to the real `:7474` capture server, called the real authed MAS API with
+`reelTemplate:'reel-spec', priceTier:'luxury', narrationEngine:'kokoro'`, ffprobed the
+result: genuine 1080×1920 h264 + AAC, 15.6s. Also separately live-smoke-tested Kokoro
+standalone before touching any of this (first real model download, 89MB/~12s, real 5.8s
+WAV out — not part of the committed test suite, a one-off manual proof). Full suite
+420/432 pass throughout (12 skipped = expected Electron-ABI), tsc clean, vite build clean.
+Cleaned up the test listing + generated reel from the live `%APPDATA%\aicuts` DB/dir;
+verified all electron.exe PIDs were this repo's own `node_modules\electron\dist\
+electron.exe` before stopping them. 3 commits on `push-v4-2`, **pushed to main** (Dale's
+go-ahead): `150dcea` (reel-spec feature) → `6ca9669` (the two bundling fixes) →
+`af7b817` (UI wiring).
+
+**Still open**: music beds are empty pending Dale's in-progress track sourcing; the new
+Create Reel options panel hasn't been click-tested by a human yet (no safe computer-use
+path to USCut's window — see Sphere Gotcha note below, unchanged); Dale is about to run
+the app himself and debug live — next session should expect to pick up whatever he finds.
+
 ## Codex readiness audit — 2026-08-13/14
 
 Independent review found and fixed four tomorrow-critical gaps that were not
