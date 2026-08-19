@@ -601,6 +601,14 @@ export class MasApiClient {
       maxPhotos?: number;
       secondsPerPhoto?: number;
       narration?: boolean;
+      ctaText?: string;
+      narrationScript?: string;
+      photoOrder?: number[];
+      reelTemplate?: 'legacy' | 'reel-spec';
+      priceTier?: 'auto' | 'standard' | 'luxury';
+      hookText?: string;
+      narrationEngine?: 'auto' | 'kokoro' | 'sapi' | 'none';
+      narrationVoice?: string;
     } = {},
   ): Promise<ListingVideoResult> {
     return this.req(
