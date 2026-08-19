@@ -25,6 +25,7 @@ const capturePayloadSchema = z.object({
   daysOnMarket: z.number().int().nonnegative().optional(),
   description: z.string().optional(),
   photoUrls: z.array(z.string()).max(20).optional(),
+  photoCaptions: z.array(z.string().nullable()).max(20).optional(),
   agentName: z.string().optional(),
   agentPhone: z.string().optional(),
   agentEmail: z.string().optional(),
@@ -48,6 +49,11 @@ const generateVideoSchema = z.object({
   ctaText: z.string().max(120).optional(),
   narrationScript: z.string().max(1000).optional(),
   photoOrder: z.array(z.number().int().nonnegative()).max(20).optional(),
+  reelTemplate: z.enum(['legacy', 'reel-spec']).optional(),
+  priceTier: z.enum(['auto', 'standard', 'luxury']).optional(),
+  hookText: z.string().max(120).optional(),
+  narrationEngine: z.enum(['auto', 'kokoro', 'sapi', 'none']).optional(),
+  narrationVoice: z.string().max(40).optional(),
 });
 
 const listQuerySchema = z.object({

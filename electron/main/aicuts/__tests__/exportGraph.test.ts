@@ -249,6 +249,42 @@ describe('buildAssSubtitles', () => {
     // top alignment = 8
     expect(ass).toMatch(/,8,40,40,40,1$/m);
   });
+
+  it('declares the same number of [Events] fields in Format as Dialogue lines actually emit', () => {
+    // Regression test: the Format line previously omitted the standard
+    // "Name" field while Dialogue lines already emitted 10 comma-separated
+    // leading fields, so libass absorbed the unused 10th field (and its
+    // separating comma) into the start of the rendered Text — every caption
+    // in the app rendered with a stray leading comma (caught via an actual
+    // rendered frame, not just string assertions on the .ass content).
+    const ass = buildAssSubtitles(
+      [
+        clip({
+          id: 'cap',
+          type: 'caption',
+          startTime: 0,
+          duration: 3,
+          captionText: 'Kitchen',
+        }),
+      ],
+      { width: 1080, height: 1920, transitions: [] },
+    );
+    const formatLine = ass
+      .split('\n')
+      .find((l) => l.startsWith('Format:') && l.includes('Layer'))!;
+    const dialogueLine = ass
+      .split('\n')
+      .find((l) => l.startsWith('Dialogue:'))!;
+    expect(formatLine).toContain('Name');
+    // Layer,Start,End,Style,Name,MarginL,MarginR,MarginV,Effect are the
+    // first 9 comma-separated fields; Text is everything after (rejoined,
+    // since Text may itself legitimately contain commas). Before the fix,
+    // Format was missing "Name", so a libass-style 9-field parse would
+    // have left Text as ",Kitchen" instead of "Kitchen".
+    const fields = dialogueLine.slice('Dialogue: '.length).split(',');
+    const text = fields.slice(9).join(',');
+    expect(text).toBe('Kitchen');
+  });
 });
 
 describe('bucketPeaks', () => {

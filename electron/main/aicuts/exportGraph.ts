@@ -682,7 +682,7 @@ export function buildAssSubtitles(
     ...styles,
     '',
     '[Events]',
-    'Format: Layer, Start, End, Style, MarginL, MarginR, MarginV, Effect, Text',
+    'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text',
     ...events,
   ].join('\n');
 }

@@ -1,5 +1,6 @@
 import type { DataSource } from 'typeorm';
 import type { Platform } from '@mas/types';
+import { getAssetPath } from '../../util/index';
 import type { CredentialManager } from '../credentials/credentialManager';
 import { createOAuthService } from '../oauth';
 import { getAdapter } from '../adapters/registry';
@@ -209,6 +210,9 @@ export function buildMasRuntime(deps: MasRuntimeDeps): MasRuntime {
   const listingVideos = new ListingVideoService(
     listings,
     path.join(dataDir, 'listing-reels'),
+    getAssetPath('fonts'),
+    path.join(dataDir, 'models', 'kokoro'),
+    getAssetPath('music'),
   );
   const insights = new InsightsService({
     dataSource,

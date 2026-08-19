@@ -41,6 +41,7 @@ function toSummary(row: PropertyListingModel): PropertyListingSummary {
     daysOnMarket: row.daysOnMarket,
     description: row.description,
     photoUrls: row.photoUrls ?? [],
+    photoCaptions: row.photoCaptions ?? [],
     agentName: row.agentName,
     agentPhone: row.agentPhone,
     agentEmail: row.agentEmail,
@@ -93,6 +94,7 @@ export class TypeOrmListingStore implements ListingStore {
     row.daysOnMarket = payload.daysOnMarket ?? null;
     row.description = payload.description ?? null;
     row.photoUrls = payload.photoUrls ?? [];
+    row.photoCaptions = payload.photoCaptions ?? [];
     row.agentName = payload.agentName ?? null;
     row.agentPhone = payload.agentPhone ?? null;
     row.agentEmail = payload.agentEmail ?? null;

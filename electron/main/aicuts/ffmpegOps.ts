@@ -71,6 +71,15 @@ export interface ExportOptions {
   format: 'mp4' | 'mov';
   fps: number;
   duckMusic?: boolean;
+  /**
+   * Directory of bundled font files (e.g. public/assets/fonts) for caption
+   * `captionStyle.fontFamily` matching, in addition to fonts installed on
+   * the system. Matched by libass against each file's own name-table
+   * family/style records, so a caller-supplied fontFamily must match what
+   * the font file actually declares itself as (see fontTools name-table
+   * fixups in the fonts asset pipeline for why this matters).
+   */
+  fontsDir?: string;
   onProgress?: (percent: number) => void;
 }
 
@@ -181,7 +190,12 @@ export async function exportProject(
         transitions: graph.transitions,
       }),
     );
-    filters.push(`[${videoLabel}]ass='${escapeFilterPath(assPath)}'[vsub]`);
+    const fontsdir = options.fontsDir
+      ? `:fontsdir='${escapeFilterPath(options.fontsDir)}'`
+      : '';
+    filters.push(
+      `[${videoLabel}]ass='${escapeFilterPath(assPath)}'${fontsdir}[vsub]`,
+    );
     videoLabel = 'vsub';
   }
 

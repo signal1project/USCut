@@ -34,6 +34,7 @@ const zillowCapture: ListingCapturePayload = {
   sqft: 1850,
   description: 'Charming 3/2 with updated kitchen and large backyard.',
   photoUrls: ['https://photos.example.com/1.jpg'],
+  photoCaptions: ['Kitchen'],
   listingUrl: 'https://www.zillow.com/homedetails/123-main-st',
 };
 
@@ -61,6 +62,7 @@ describe.skipIf(!nativeLoads)('TypeOrmListingStore', () => {
     expect(listing.complianceOk).toBe(true);
     expect(listing.complianceFlags).toHaveLength(0);
     expect(listing.photoUrls).toEqual(['https://photos.example.com/1.jpg']);
+    expect(listing.photoCaptions).toEqual(['Kitchen']);
   });
 
   it('dedupes re-captures of the same listingUrl (update, not duplicate)', async () => {

@@ -40,6 +40,7 @@ class InMemoryListingStore implements ListingStore {
       daysOnMarket: p.daysOnMarket ?? null,
       description: p.description ?? null,
       photoUrls: p.photoUrls ?? [],
+      photoCaptions: p.photoCaptions ?? [],
       agentName: p.agentName ?? null,
       agentPhone: p.agentPhone ?? null,
       agentEmail: p.agentEmail ?? null,

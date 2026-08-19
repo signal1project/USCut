@@ -81,6 +81,48 @@ export function findZillowProperty(raw: unknown): ZillowRecord | null {
 // trusted, even though it's still present and still parses cleanly.
 const loadedForUrl = typeof window !== 'undefined' ? window.location.href : '';
 
+export interface PhotoEntry {
+  url: string;
+  caption: string | null;
+}
+
+/**
+ * Pairs each raw Zillow photo object with its url + caption (if any), then
+ * filters to real http(s) image URLs, dedupes by url, and caps at 10 —
+ * keeping url/caption paired through every step so a later split into
+ * parallel photoUrls/photoCaptions arrays stays aligned by construction.
+ * Exact caption key is unconfirmed as of writing, so several likely
+ * candidates are checked rather than guessing a single one.
+ */
+export function extractPhotoEntries(rawPhotos: unknown): PhotoEntry[] {
+  const list = Array.isArray(rawPhotos) ? rawPhotos : [];
+  return list
+    .map((p: any) => {
+      const url =
+        typeof p === 'string'
+          ? p
+          : (p?.url ?? p?.mixedSources?.jpeg?.at(-1)?.url);
+      const rawCaption =
+        p && typeof p === 'object'
+          ? (p.caption ?? p.text ?? p.description ?? p.roomLabel ?? p.label)
+          : null;
+      const caption =
+        typeof rawCaption === 'string' && rawCaption.trim()
+          ? rawCaption.trim()
+          : null;
+      return { url, caption };
+    })
+    .filter(
+      (e: { url: unknown }): e is PhotoEntry =>
+        typeof e.url === 'string' && /^https?:\/\//i.test(e.url),
+    )
+    .filter(
+      (e: PhotoEntry, i: number, all: PhotoEntry[]) =>
+        all.findIndex((x) => x.url === e.url) === i,
+    )
+    .slice(0, 10);
+}
+
 export function extractZillow(): ListingData | null {
   // ── Try Next.js hydration data first (only while it's still trustworthy) ──
   try {
@@ -101,20 +143,9 @@ export function extractZillow(): ListingData | null {
 
       if (detail?.address) {
         const address = detail.address;
-        const photoUrls = (detail.photos ?? detail.images ?? [])
-          .map((p: any) =>
-            typeof p === 'string'
-              ? p
-              : (p?.url ?? p?.mixedSources?.jpeg?.at(-1)?.url),
-          )
-          .filter(
-            (url: unknown): url is string =>
-              typeof url === 'string' && /^https?:\/\//i.test(url),
-          )
-          .filter(
-            (url: string, i: number, all: string[]) => all.indexOf(url) === i,
-          )
-          .slice(0, 10);
+        const photoEntries = extractPhotoEntries(detail.photos ?? detail.images);
+        const photoUrls = photoEntries.map((e) => e.url);
+        const photoCaptions = photoEntries.map((e) => e.caption);
         return {
           source: 'zillow',
           mlsNumber: detail.mlsid ?? detail.zestimate?.mlsNumber,
@@ -133,6 +164,7 @@ export function extractZillow(): ListingData | null {
           daysOnMarket: detail.daysOnZillow,
           description: detail.description,
           photoUrls,
+          photoCaptions,
           agentName: detail.attributionInfo?.agentName,
           agentPhone: detail.attributionInfo?.agentPhoneNumber,
           listingUrl: window.location.href,

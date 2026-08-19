@@ -1,4 +1,5 @@
 import ffmpeg from 'fluent-ffmpeg';
+import sharp from 'sharp';
 import { resolveFfmpegPath } from '../../util/ffmpegBinary';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -7,6 +8,15 @@ import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import type { ListingStore } from './listingStore';
 import type { PropertyListingSummary } from './types';
+import { formatPrice } from './video/format';
+import { selectPriceTier, type PriceTier } from './video/priceTier';
+import { assignPhotoBuckets } from './video/roomBuckets';
+import { buildReelNarrationScript } from './video/narrationScript';
+import { buildReelTimeline } from './video/reelTimeline';
+import { resolveCaptionStyle } from './video/captionStyle';
+import { synthesizeNarrationKokoro } from './video/kokoroNarration';
+import { selectMusicTrack } from './video/musicBed';
+import { probeVideo, exportProject } from '../aicuts/ffmpegOps';
 
 ffmpeg.setFfmpegPath(resolveFfmpegPath());
 
@@ -30,6 +40,25 @@ export interface ListingVideoOptions {
    * the photo array are ignored; defaults to the first `maxPhotos` in order.
    */
   photoOrder?: number[];
+  /**
+   * 'legacy' (default): today's single Ken-Burns-per-photo pipeline.
+   * 'reel-spec': the 6-block hook/kitchen/living/primary+bath/money-shot/CTA
+   * template with per-price-tier transitions and captions, rendered through
+   * the shared timeline engine (electron/main/aicuts).
+   */
+  reelTemplate?: 'legacy' | 'reel-spec';
+  /** reel-spec only. 'auto' (default) picks by listing price ($600k threshold). */
+  priceTier?: 'auto' | PriceTier;
+  /** reel-spec only. Overrides the auto "POV: [hook]" hook-frame line. */
+  hookText?: string;
+  /**
+   * reel-spec only. 'auto' (default): Kokoro if its model is available
+   * (cached or reachable), else SAPI, else none. SAPI stays the zero-setup
+   * fallback — Kokoro's model is a first-run download.
+   */
+  narrationEngine?: 'auto' | 'kokoro' | 'sapi' | 'none';
+  /** reel-spec only. Kokoro voice id (see video/kokoroNarration.ts); ignored for SAPI. */
+  narrationVoice?: string;
 }
 
 export interface ListingVideoResult {
@@ -108,14 +137,6 @@ export function buildKenBurnsFilter(
       : `zoompan=z=1.13:x='(iw-iw/zoom)*on/${frames}':y='(ih-ih/zoom)/2':d=${frames}:s=${OUT_W}x${OUT_H}:fps=${FPS}`;
   const text = banner ? `,${drawtext(banner, 46, 'h-300')}` : '';
   return `${pre},${zoom},format=yuv420p${text}`;
-}
-
-function formatPrice(cents: number | null): string {
-  if (!cents) return '';
-  const dollars = cents / 100;
-  return dollars >= 1_000_000
-    ? `$${(dollars / 1_000_000).toFixed(2)}M`
-    : `$${dollars.toLocaleString()}`;
 }
 
 /** Short spoken narration script for the reel. Exported for tests. */
@@ -323,6 +344,12 @@ export class ListingVideoService {
   constructor(
     private readonly store: ListingStore,
     private readonly outputDir: string,
+    /** Directory of bundled reel-spec fonts (see video/captionStyle.ts). Injected — this file stays Electron-free, so it never resolves app-relative paths itself. */
+    private readonly fontsDir: string | null = null,
+    /** Directory Kokoro caches its downloaded ONNX model in (see video/kokoroNarration.ts). Injected for the same reason as fontsDir. */
+    private readonly kokoroModelCacheDir: string | null = null,
+    /** Directory of {standard,luxury}/ music subfolders (see video/musicBed.ts). Injected for the same reason as fontsDir. */
+    private readonly musicDir: string | null = null,
   ) {}
 
   async generateVideo(
@@ -340,6 +367,10 @@ export class ListingVideoService {
     fs.mkdirSync(work, { recursive: true });
 
     try {
+      if ((opts.reelTemplate ?? 'legacy') === 'reel-spec') {
+        return await this.generateReelSpecVideo(listing, opts, work);
+      }
+
       // 1. Photos — honor an agent-curated order/selection when supplied,
       // falling back to the raw scrape order otherwise.
       const allPhotoUrls = listing.photoUrls ?? [];
@@ -455,5 +486,141 @@ export class ListingVideoService {
     } finally {
       fs.rm(work, { recursive: true, force: true }, () => {});
     }
+  }
+
+  /**
+   * reel-spec template: classifies photos into the 6-block hook/kitchen/
+   * living/primary+bath/money-shot structure and renders through the shared
+   * timeline engine (electron/main/aicuts) instead of this file's own
+   * concat-demuxer pipeline. `work` is owned/cleaned up by generateVideo().
+   */
+  private async generateReelSpecVideo(
+    listing: PropertyListingSummary,
+    opts: ListingVideoOptions,
+    work: string,
+  ): Promise<ListingVideoResult> {
+    const maxPhotos = Math.min(Math.max(opts.maxPhotos ?? 8, 1), 8);
+    const wantNarration = opts.narration ?? process.platform === 'win32';
+    const tier: PriceTier =
+      opts.priceTier && opts.priceTier !== 'auto'
+        ? opts.priceTier
+        : selectPriceTier(listing.price);
+
+    // 1. Photos — same curated-order/select semantics as the legacy path,
+    // but keeping each photo's caption paired through download so bucket
+    // classification stays aligned with the downloaded (local-path) photo.
+    const allPhotoUrls = listing.photoUrls ?? [];
+    const allCaptions = listing.photoCaptions ?? [];
+    const orderedIndexes = opts.photoOrder ?? allPhotoUrls.map((_, i) => i);
+    const orderedPhotos = orderedIndexes
+      .map((i) => ({ url: allPhotoUrls[i], caption: allCaptions[i] ?? null }))
+      .filter(
+        (p): p is { url: string; caption: string | null } =>
+          typeof p.url === 'string',
+      );
+
+    const downloaded: { url: string; caption: string | null }[] = [];
+    for (const [i, p] of orderedPhotos.slice(0, maxPhotos).entries()) {
+      const file = await downloadPhoto(p.url, work, i);
+      if (file) downloaded.push({ url: file, caption: p.caption });
+    }
+
+    const assignment = assignPhotoBuckets(downloaded);
+
+    // 2. CTA card background — generated on the fly (no bundled asset yet).
+    const ctaBackgroundImage = path.join(work, 'cta-bg.jpg');
+    await sharp({
+      create: {
+        width: OUT_W,
+        height: OUT_H,
+        channels: 3,
+        background: { r: 12, g: 12, b: 15 },
+      },
+    })
+      .jpeg()
+      .toFile(ctaBackgroundImage);
+
+    // 3. Narration — Kokoro (warm local voice) when requested/available,
+    // falling back to SAPI (zero-setup, but robotic) exactly like the
+    // legacy template. 'none' skips narration entirely.
+    let narration: { path: string; durationSeconds: number } | null = null;
+    const narrationEngine = opts.narrationEngine ?? 'auto';
+    if (wantNarration && narrationEngine !== 'none') {
+      const script =
+        opts.narrationScript ||
+        buildReelNarrationScript(listing, assignment, {
+          hookText: opts.hookText,
+        });
+
+      if (narrationEngine === 'auto' || narrationEngine === 'kokoro') {
+        if (this.kokoroModelCacheDir) {
+          const kokoro = await synthesizeNarrationKokoro(
+            script,
+            work,
+            this.kokoroModelCacheDir,
+            opts.narrationVoice,
+          );
+          if (kokoro) narration = { path: kokoro.path, durationSeconds: kokoro.duration };
+        }
+      }
+
+      if (!narration && narrationEngine !== 'kokoro') {
+        const wav = await synthesizeNarration(
+          script,
+          path.join(work, 'narration.wav'),
+        );
+        if (wav) {
+          const probed = await probeVideo(wav);
+          narration = { path: wav, durationSeconds: probed.duration };
+        }
+      }
+    }
+
+    // 4. Build the timeline and render through the shared export pipeline.
+    const captionStyle = resolveCaptionStyle(tier, this.fontsDir);
+    const musicTrack = selectMusicTrack(tier, this.musicDir);
+    const clips = buildReelTimeline(listing, assignment, {
+      tier,
+      hookText: opts.hookText,
+      ctaText: opts.ctaText,
+      ctaBackgroundImage,
+      captionStyle,
+      narration,
+      // Renders silent-except-narration until Dale drops MP3s into
+      // public/assets/music/{standard,luxury}/ — selectMusicTrack()
+      // resolves null gracefully until then.
+      music: musicTrack ? { path: musicTrack } : null,
+    });
+
+    fs.mkdirSync(this.outputDir, { recursive: true });
+    const outPath = path.join(
+      this.outputDir,
+      `reel-${listing.id.slice(0, 8)}-${Date.now()}.mp4`,
+    );
+    await exportProject(clips, {
+      outputPath: outPath,
+      resolution: '1080p',
+      aspect: '9:16',
+      format: 'mp4',
+      fps: FPS,
+      fontsDir: this.fontsDir ?? undefined,
+    });
+
+    const photoClipCount = clips.filter(
+      (c) => c.type === 'image' && c.id !== 'reel-cta-bg',
+    ).length;
+    const durationSeconds = clips.reduce(
+      (max, c) =>
+        c.type === 'audio' ? max : Math.max(max, c.startTime + c.duration),
+      0,
+    );
+
+    return {
+      listingId: listing.id,
+      path: outPath,
+      durationSeconds,
+      photosUsed: photoClipCount,
+      narrated: narration !== null,
+    };
   }
 }

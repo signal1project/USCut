@@ -25,6 +25,8 @@ export interface ListingCapturePayload {
   daysOnMarket?: number;
   description?: string;
   photoUrls?: string[];
+  /** Aligned 1:1 by index with photoUrls; null = no caption/room-label on that photo. */
+  photoCaptions?: (string | null)[];
   agentName?: string;
   agentPhone?: string;
   agentEmail?: string;
@@ -50,6 +52,7 @@ export interface PropertyListingSummary {
   daysOnMarket: number | null;
   description: string | null;
   photoUrls: string[];
+  photoCaptions: (string | null)[];
   agentName: string | null;
   agentPhone: string | null;
   agentEmail: string | null;

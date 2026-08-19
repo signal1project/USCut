@@ -42,6 +42,7 @@ describe('ListingVideoService — real ffmpeg E2E', () => {
     daysOnMarket: 2,
     description: 'Beautiful home',
     photoUrls: [],
+    photoCaptions: [],
     agentName: 'Jane Agent',
     agentPhone: '555-1234',
     agentEmail: null,

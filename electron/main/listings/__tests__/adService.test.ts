@@ -27,6 +27,7 @@ const listing: PropertyListingSummary = {
   daysOnMarket: 4,
   description: 'Charming 3/2 with updated kitchen.',
   photoUrls: [],
+  photoCaptions: [],
   agentName: null,
   agentPhone: null,
   agentEmail: null,

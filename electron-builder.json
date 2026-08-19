@@ -3,7 +3,14 @@
   "appId": "com.familyoffice.uscut",
   "productName": "USCut",
   "asar": true,
-  "asarUnpack": ["**/node_modules/sharp/**/*", "**/node_modules/@img/**/*"],
+  "asarUnpack": [
+    "**/node_modules/sharp/**/*",
+    "**/node_modules/@img/**/*",
+    "**/node_modules/onnxruntime-node/**/*",
+    "**/node_modules/onnxruntime-common/**/*",
+    "**/node_modules/@huggingface/transformers/**/*",
+    "**/node_modules/kokoro-js/**/*"
+  ],
   "directories": {
     "output": "release/${version}"
   },

@@ -69,6 +69,10 @@ export class PropertyListingModel {
   @Column({ type: 'simple-json', default: '[]' })
   photoUrls!: string[];
 
+  /** Aligned 1:1 by index with photoUrls; null = no caption/room-label on that photo. */
+  @Column({ type: 'simple-json', default: '[]' })
+  photoCaptions!: (string | null)[];
+
   @Column({ type: 'varchar', nullable: true })
   agentName!: string | null;
 

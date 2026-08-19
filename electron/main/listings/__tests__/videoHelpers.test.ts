@@ -25,6 +25,7 @@ const listing: PropertyListingSummary = {
   daysOnMarket: null,
   description: null,
   photoUrls: [],
+  photoCaptions: [],
   agentName: null,
   agentPhone: null,
   agentEmail: null,
