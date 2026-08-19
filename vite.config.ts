@@ -23,10 +23,21 @@ export default defineConfig(({ command }) => {
   // optionalDependencies (e.g. nodejs-whisper) must stay external too — they
   // shell out to native binaries and resolve asset paths relative to their
   // own package directory, which breaks if Rollup inlines them.
-  const externalDeps = Object.keys({
-    ...('dependencies' in pkg ? pkg.dependencies : {}),
-    ...('optionalDependencies' in pkg ? pkg.optionalDependencies : {}),
-  });
+  const externalDeps = [
+    ...Object.keys({
+      ...('dependencies' in pkg ? pkg.dependencies : {}),
+      ...('optionalDependencies' in pkg ? pkg.optionalDependencies : {}),
+    }),
+    // kokoro-js's transitive deps — not in package.json directly, but they
+    // load a native .node binding via a runtime-computed require() path
+    // (`../bin/napi-v${napi}/${platform}/${arch}/...`) that Rollup's
+    // commonjs plugin can't resolve statically. Bundling them crashes the
+    // app on boot with "Could not dynamically require ...onnxruntime_binding.node".
+    // Keeping them external lets Node's own require resolve the path for real.
+    'onnxruntime-node',
+    'onnxruntime-common',
+    '@huggingface/transformers',
+  ];
 
   return {
     resolve: {
