@@ -28,7 +28,7 @@ function pickFeatureLines(
 export function buildReelNarrationScript(
   listing: PropertyListingSummary,
   assignment: BucketAssignment,
-  opts: { hookText?: string } = {},
+  opts: { hookText?: string; ctaText?: string } = {},
 ): string {
   const hook =
     opts.hookText || `Just listed in ${listing.city} — this one won't last`;
@@ -66,7 +66,7 @@ export function buildReelNarrationScript(
   const price = formatPrice(listing.price);
   if (price) parts.push(`Offered at ${price}.`);
 
-  parts.push(`DM "TOUR" today to schedule your private showing.`);
+  parts.push(opts.ctaText || `DM "TOUR" today to schedule your private showing.`);
 
   return parts.join(' ');
 }

@@ -30,6 +30,7 @@ const listing: PropertyListingSummary = {
   complianceOk: true,
   complianceFlags: [],
   capturedAt: new Date().toISOString(),
+  filesFolder: null,
 };
 
 function wordCount(s: string): number {

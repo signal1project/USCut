@@ -70,7 +70,7 @@ export function buildListingBrief(
   return `Write a real estate listing ad for this property.
 
 LISTING DETAILS:
-- Address: ${l.address}, ${l.city}, ${l.state} ${l.zip}
+- Location: ${l.city}, ${l.state}
 - Price: ${formatPrice(l.price)}
 - Specs: ${specLine(l) || 'see description'}
 - Type: ${l.propertyType ?? 'residential'}
@@ -81,6 +81,7 @@ ${l.description ? `- Description: ${truncateAtSentence(l.description, 800)}` : '
 REQUIREMENTS:
 - Do NOT include any language about race, religion, national origin, sex, familial status, or disability (Fair Housing Act) — describe the property, never the buyer
 - Do NOT mention referral fees or kickbacks (RESPA)
+- Never state the exact street address or unit number — refer to the property only by city, state, price, and highlights
 - Include a clear call-to-action (DM for details, schedule a showing, link in bio)
 - Include relevant real estate hashtags at the end`;
 }
@@ -105,7 +106,7 @@ export function buildListingTemplate(
   highlight?: string,
 ): string {
   const lines = [
-    `🏠 New Listing Alert! ${l.address}, ${l.city}, ${l.state}`,
+    `🏠 New Listing Alert! ${l.city}, ${l.state}`,
     l.price ? `💰 Listed at ${formatPrice(l.price)}` : '',
     specLine(l) ? `📐 ${specLine(l)}` : '',
     highlight ? `✨ ${highlight}` : '',

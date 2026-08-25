@@ -29,12 +29,13 @@ const base: PropertyListingSummary = {
   complianceOk: true,
   complianceFlags: [],
   capturedAt: new Date().toISOString(),
+  filesFolder: null,
 };
 
 describe('buildCtaLines', () => {
-  it('orders lines as address, specs, price, then the DM-to-tour line', () => {
+  it('orders lines as city/state, specs, price, then the DM-to-tour line', () => {
     expect(buildCtaLines(base)).toEqual([
-      '123 Main St, Yorkville GA 30179',
+      'Yorkville, GA',
       '3 bd · 2 ba',
       '$389,000',
       "DM 'TOUR' for private showing",
@@ -43,7 +44,7 @@ describe('buildCtaLines', () => {
 
   it('lets ctaText override only the final line', () => {
     expect(buildCtaLines(base, { ctaText: 'Open house Saturday 1-3pm' })).toEqual([
-      '123 Main St, Yorkville GA 30179',
+      'Yorkville, GA',
       '3 bd · 2 ba',
       '$389,000',
       'Open house Saturday 1-3pm',
@@ -59,8 +60,17 @@ describe('buildCtaLines', () => {
       price: null,
     };
     expect(buildCtaLines(noSpecs)).toEqual([
-      '123 Main St, Yorkville GA 30179',
+      'Yorkville, GA',
       "DM 'TOUR' for private showing",
     ]);
+  });
+
+  it('never includes the street address', () => {
+    for (const lines of [
+      buildCtaLines(base),
+      buildCtaLines(base, { ctaText: 'Open house Saturday 1-3pm' }),
+    ]) {
+      expect(lines.join(' ')).not.toContain('123 Main St');
+    }
   });
 });

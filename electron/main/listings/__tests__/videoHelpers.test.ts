@@ -33,6 +33,7 @@ const listing: PropertyListingSummary = {
   complianceOk: true,
   complianceFlags: [],
   capturedAt: new Date().toISOString(),
+  filesFolder: null,
 };
 
 describe('escapeDrawtext', () => {
@@ -59,11 +60,18 @@ describe('buildKenBurnsFilter', () => {
 });
 
 describe('buildNarrationScript', () => {
-  it('speaks the address, specs, price, and CTA', () => {
+  it('speaks the city/state, specs, price, and CTA — never the street address', () => {
     const script = buildNarrationScript(listing);
-    expect(script).toContain("123 O'Malley St, Houston, TX");
+    expect(script).toContain('Houston, TX');
+    expect(script).not.toContain("O'Malley");
     expect(script).toContain('3 bedrooms, 2 baths, 1,850 square feet');
     expect(script).toContain('425,000 dollars');
     expect(script).toContain('private showing');
+  });
+
+  it('honors a ctaText override for the closing line', () => {
+    const script = buildNarrationScript(listing, 'Comment TOUR below to schedule a viewing');
+    expect(script).toContain('Comment TOUR below to schedule a viewing');
+    expect(script).not.toContain('private showing');
   });
 });

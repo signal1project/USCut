@@ -35,6 +35,7 @@ const listing: PropertyListingSummary = {
   complianceOk: true,
   complianceFlags: [],
   capturedAt: new Date().toISOString(),
+  filesFolder: null,
 };
 
 function storeWith(l: PropertyListingSummary | null): ListingStore {
@@ -43,6 +44,7 @@ function storeWith(l: PropertyListingSummary | null): ListingStore {
     list: () => Promise.reject(new Error('not used')),
     get: () => Promise.resolve(l),
     remove: () => Promise.reject(new Error('not used')),
+    setFilesFolder: () => Promise.reject(new Error('not used')),
   };
 }
 
@@ -70,7 +72,8 @@ describe('ListingAdService', () => {
     expect(result?.provider).toBe('template');
     expect(result?.items).toHaveLength(2);
     const fb = result!.items.find((i) => i.platform === 'facebook')!;
-    expect(fb.body).toContain('123 Main St');
+    expect(fb.body).toContain('Houston, TX');
+    expect(fb.body).not.toContain('123 Main St');
     expect(fb.body).toContain('$425,000');
     expect(fb.body).toContain('new roof');
     expect(fb.complianceOk).toBe(true);
@@ -132,7 +135,8 @@ describe('ListingAdService', () => {
       platforms: ['facebook'],
       highlight: 'pool',
     });
-    expect(brief).toContain('123 Main St, Houston, TX 77002');
+    expect(brief).toContain('- Location: Houston, TX');
+    expect(brief).not.toContain('123 Main St');
     expect(brief).toContain('$425,000');
     expect(brief).toContain('Fair Housing Act');
     expect(brief).toContain('pool');
