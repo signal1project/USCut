@@ -20,6 +20,10 @@ import {
   Hammer,
   FolderOpen,
   SlidersHorizontal,
+  Images,
+  ChevronLeft,
+  ChevronRight,
+  X,
 } from 'lucide-react';
 import { PubType } from '@mas/types';
 import { useMasApi } from './useMasApi';
@@ -46,6 +50,14 @@ import type { ComposerPrefill } from './composerPrefill';
 import { ipc, hasIpc } from '@/lib/ipc';
 
 const AD_PLATFORMS = ['facebook', 'instagram', 'linkedin'] as const;
+
+const CTA_PRESETS = [
+  "Comment 'TOUR' below to schedule a viewing",
+  "Comment 'INFO' below to schedule a viewing",
+  'Drop a 🏠 emoji below to schedule your viewing',
+  "Comment 'SHOWING' below to lock in a time",
+  'Comment your name below to schedule a viewing',
+];
 
 const SOURCE_VARIANT: Record<string, 'default' | 'info' | 'secondary'> = {
   zillow: 'info',
@@ -78,12 +90,9 @@ function specs(l: PropertyListingSummary): string {
 
 function reelCaption(l: PropertyListingSummary): string {
   const loc = [l.city, l.state].filter(Boolean).join(', ');
-  const parts = [
-    l.address,
-    loc || null,
-    formatPrice(l.price),
-    specs(l) || null,
-  ].filter(Boolean);
+  const parts = [loc || null, formatPrice(l.price), specs(l) || null].filter(
+    Boolean,
+  );
   return parts.join(' | ');
 }
 
@@ -215,14 +224,18 @@ export default function ListingScraperPage(): React.ReactElement {
   interface ReelOptions {
     template: 'legacy' | 'reel-spec';
     priceTier: 'auto' | 'standard' | 'luxury';
+    narrationOn: boolean;
     narrationEngine: 'auto' | 'kokoro' | 'sapi' | 'none';
     hookText: string;
+    ctaText: string;
   }
   const DEFAULT_REEL_OPTIONS: ReelOptions = {
     template: 'legacy',
     priceTier: 'auto',
-    narrationEngine: 'auto',
+    narrationOn: false,
+    narrationEngine: 'none',
     hookText: '',
+    ctaText: CTA_PRESETS[0],
   };
   const [reelOpts, setReelOpts] = useState<Record<string, ReelOptions>>({});
   const getReelOpts = (id: string): ReelOptions =>
@@ -238,14 +251,55 @@ export default function ListingScraperPage(): React.ReactElement {
     }));
   };
 
-  const createReel = async (id: string) => {
+  // ── Photo & description picker ─────────────────────────────────────────────
+  const [photoPickerOpen, setPhotoPickerOpen] = useState<
+    Record<string, boolean>
+  >({});
+  const [photoSelection, setPhotoSelection] = useState<
+    Record<string, number[]>
+  >({});
+  const getPhotoSelection = (l: PropertyListingSummary): number[] =>
+    photoSelection[l.id] ?? l.photoUrls.map((_, i) => i);
+  const togglePhoto = (l: PropertyListingSummary, index: number) => {
+    const current = getPhotoSelection(l);
+    // Unchecking removes it from wherever it sits in the order; re-checking
+    // appends it at the end rather than snapping back to scrape order — so a
+    // manually-arranged order survives toggling other photos on/off.
+    const next = current.includes(index)
+      ? current.filter((i) => i !== index)
+      : [...current, index];
+    setPhotoSelection((prev) => ({ ...prev, [l.id]: next }));
+  };
+  const movePhoto = (
+    l: PropertyListingSummary,
+    from: number,
+    to: number,
+  ) => {
+    const current = [...getPhotoSelection(l)];
+    if (to < 0 || to >= current.length) return;
+    const [moved] = current.splice(from, 1);
+    current.splice(to, 0, moved);
+    setPhotoSelection((prev) => ({ ...prev, [l.id]: current }));
+  };
+
+  const createReel = async (id: string, listing: PropertyListingSummary) => {
     if (!api || reelBusyId) return;
     setReelBusyId(id);
     setError(null);
     try {
       const opts = getReelOpts(id);
+      const selection = getPhotoSelection(listing);
       const result = await api.generateListingVideo(id, {
         reelTemplate: opts.template,
+        ctaText: opts.ctaText.trim() || undefined,
+        narration:
+          opts.template === 'reel-spec'
+            ? opts.narrationEngine !== 'none'
+            : opts.narrationOn,
+        // Send whenever the user has actually touched the picker (even with
+        // every photo still selected) — a full-but-reordered selection must
+        // still override the raw scrape order, not just a trimmed subset.
+        photoOrder: photoSelection[id] ? selection : undefined,
         ...(opts.template === 'reel-spec'
           ? {
               priceTier: opts.priceTier,
@@ -601,7 +655,7 @@ export default function ListingScraperPage(): React.ReactElement {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => void createReel(l.id)}
+                      onClick={() => void createReel(l.id, l)}
                       disabled={!api || reelBusyId !== null}
                       title={
                         getReelOpts(l.id).template === 'reel-spec'
@@ -616,6 +670,18 @@ export default function ListingScraperPage(): React.ReactElement {
                       )}
                       Create Reel
                     </Button>
+                    <button
+                      onClick={() =>
+                        setPhotoPickerOpen((prev) => ({
+                          ...prev,
+                          [l.id]: !prev[l.id],
+                        }))
+                      }
+                      className="text-ink-muted hover:text-accent transition-colors p-1.5"
+                      title="Choose photos for the reel & view the scraped description"
+                    >
+                      <Images size={14} />
+                    </button>
                     <button
                       onClick={() =>
                         setReelOptionsOpen((prev) => ({
@@ -679,6 +745,63 @@ export default function ListingScraperPage(): React.ReactElement {
                             </SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+                      {getReelOpts(l.id).template === 'legacy' && (
+                        <div>
+                          <label className="text-xs text-ink-muted">
+                            Narration
+                          </label>
+                          <Select
+                            value={
+                              getReelOpts(l.id).narrationOn ? 'on' : 'off'
+                            }
+                            onValueChange={(v) =>
+                              setReelOpt(l.id, 'narrationOn', v === 'on')
+                            }
+                          >
+                            <SelectTrigger className="mt-1 h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="off">No narration</SelectItem>
+                              <SelectItem value="on">
+                                Narration on (Windows SAPI)
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+                      <div>
+                        <label className="text-xs text-ink-muted">
+                          CTA preset
+                        </label>
+                        <Select
+                          value={getReelOpts(l.id).ctaText}
+                          onValueChange={(v) => setReelOpt(l.id, 'ctaText', v)}
+                        >
+                          <SelectTrigger className="mt-1 h-8 text-xs">
+                            <SelectValue placeholder="Custom" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {CTA_PRESETS.map((preset) => (
+                              <SelectItem key={preset} value={preset}>
+                                {preset}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-xs text-ink-muted">
+                          CTA text (editable)
+                        </label>
+                        <Input
+                          className="mt-1 h-8 text-xs"
+                          value={getReelOpts(l.id).ctaText}
+                          onChange={(e) =>
+                            setReelOpt(l.id, 'ctaText', e.target.value)
+                          }
+                        />
                       </div>
                       {getReelOpts(l.id).template === 'reel-spec' && (
                         <>
@@ -758,6 +881,124 @@ export default function ListingScraperPage(): React.ReactElement {
                           </div>
                         </>
                       )}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Photo & description picker */}
+                <Collapsible open={!!photoPickerOpen[l.id]}>
+                  <CollapsibleContent>
+                    <div className="mt-3 pt-3 border-t border-border/60 space-y-3">
+                      {l.photoUrls.length > 0 ? (
+                        <div>
+                          <p className="text-xs text-ink-muted mb-1.5">
+                            {getPhotoSelection(l).length} of{' '}
+                            {l.photoUrls.length} photos selected for the reel
+                            — click to toggle. Numbers show reel order.
+                          </p>
+                          <div className="grid grid-cols-4 gap-1.5">
+                            {l.photoUrls.map((url, i) => {
+                              const order = getPhotoSelection(l).indexOf(i);
+                              const selected = order !== -1;
+                              return (
+                                <button
+                                  key={`${l.id}-photo-${i}`}
+                                  type="button"
+                                  onClick={() => togglePhoto(l, i)}
+                                  className={`relative rounded-md overflow-hidden border aspect-square transition-opacity ${
+                                    selected
+                                      ? 'border-accent opacity-100'
+                                      : 'border-border/60 opacity-40'
+                                  }`}
+                                  title={l.photoCaptions[i] ?? undefined}
+                                >
+                                  <img
+                                    src={url}
+                                    alt={l.photoCaptions[i] ?? `Photo ${i + 1}`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                  {selected && (
+                                    <span className="absolute top-1 right-1 bg-accent text-white rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center text-[10px] font-semibold leading-none">
+                                      {order + 1}
+                                    </span>
+                                  )}
+                                  {l.photoCaptions[i] && (
+                                    <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] px-1 py-0.5 truncate">
+                                      {l.photoCaptions[i]}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {getPhotoSelection(l).length > 0 && (
+                            <div className="mt-2">
+                              <p className="text-xs text-ink-muted mb-1">
+                                Reel order — use the arrows to rearrange
+                              </p>
+                              <div className="flex gap-1.5 overflow-x-auto pb-1">
+                                {getPhotoSelection(l).map((photoIndex, pos) => (
+                                  <div
+                                    key={`${l.id}-order-${photoIndex}`}
+                                    className="relative shrink-0 w-16 rounded-md overflow-hidden border border-border/60"
+                                  >
+                                    <img
+                                      src={l.photoUrls[photoIndex]}
+                                      alt={`Position ${pos + 1}`}
+                                      className="w-full h-16 object-cover"
+                                    />
+                                    <span className="absolute top-1 left-1 bg-accent text-white rounded-full min-w-[16px] h-4 px-1 flex items-center justify-center text-[10px] font-semibold leading-none">
+                                      {pos + 1}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => togglePhoto(l, photoIndex)}
+                                      className="absolute top-1 right-1 bg-black/60 text-white rounded-full p-0.5"
+                                      title="Remove from reel"
+                                    >
+                                      <X size={10} />
+                                    </button>
+                                    <div className="absolute bottom-1 inset-x-1 flex justify-between">
+                                      <button
+                                        type="button"
+                                        onClick={() => movePhoto(l, pos, pos - 1)}
+                                        disabled={pos === 0}
+                                        className="bg-black/60 text-white rounded p-0.5 disabled:opacity-30"
+                                        title="Move earlier"
+                                      >
+                                        <ChevronLeft size={10} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => movePhoto(l, pos, pos + 1)}
+                                        disabled={
+                                          pos === getPhotoSelection(l).length - 1
+                                        }
+                                        className="bg-black/60 text-white rounded p-0.5 disabled:opacity-30"
+                                        title="Move later"
+                                      >
+                                        <ChevronRight size={10} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-ink-muted">
+                          No photos were captured with this listing.
+                        </p>
+                      )}
+                      <div>
+                        <p className="text-xs text-ink-muted mb-1">
+                          Description (reference for AI ad copy)
+                        </p>
+                        <p className="text-xs text-ink-base bg-surface-2 border border-border/60 rounded-md p-2 whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto">
+                          {l.description || 'No description captured.'}
+                        </p>
+                      </div>
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
