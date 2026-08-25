@@ -2,6 +2,7 @@ import express from 'express';
 import type { Server } from 'node:http';
 import { createListingsRouter } from './router';
 import type { ListingStore } from './listingStore';
+import type { ListingFilesService } from './listingFiles';
 import type { PropertyListingSummary } from './types';
 
 export interface CaptureServer {
@@ -16,6 +17,8 @@ export interface CaptureServerOptions {
   port?: number;
   /** Fired after the extension successfully captures a listing. */
   onCaptured?: (listing: PropertyListingSummary) => void;
+  /** Syncs the per-listing photos/description folder on capture. */
+  filesService?: ListingFilesService;
 }
 
 /**
@@ -57,7 +60,10 @@ export function startListingCaptureServer(
   // Same paths the extension has always used: /api/listings/capture
   app.use(
     '/api/listings',
-    createListingsRouter(store, { onCaptured: options.onCaptured }),
+    createListingsRouter(store, {
+      onCaptured: options.onCaptured,
+      filesService: options.filesService,
+    }),
   );
 
   app.use((_req, res) => {

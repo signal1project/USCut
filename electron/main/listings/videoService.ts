@@ -8,6 +8,7 @@ import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import type { ListingStore } from './listingStore';
 import type { PropertyListingSummary } from './types';
+import { downloadPhoto } from './photoDownload';
 import { formatPrice } from './video/format';
 import { selectPriceTier, type PriceTier } from './video/priceTier';
 import { assignPhotoBuckets } from './video/roomBuckets';
@@ -140,8 +141,12 @@ export function buildKenBurnsFilter(
 }
 
 /** Short spoken narration script for the reel. Exported for tests. */
-export function buildNarrationScript(l: PropertyListingSummary): string {
-  const parts = [`Just listed. ${l.address}, ${l.city}, ${l.state}.`];
+export function buildNarrationScript(
+  l: PropertyListingSummary,
+  ctaText?: string,
+): string {
+  const loc = [l.city, l.state].filter(Boolean).join(', ');
+  const parts = [`Just listed in ${loc}.`];
   const specs = [
     l.beds ? `${l.beds} bedrooms` : '',
     l.baths ? `${l.baths} baths` : '',
@@ -152,7 +157,7 @@ export function buildNarrationScript(l: PropertyListingSummary): string {
   if (specs) parts.push(`${specs}.`);
   const price = formatPrice(l.price);
   if (price) parts.push(`Offered at ${price.replace('$', '')} dollars.`);
-  parts.push('Message us today to schedule your private showing.');
+  parts.push(ctaText || 'Message us today to schedule your private showing.');
   return parts.join(' ');
 }
 
@@ -183,74 +188,6 @@ function synthesizeNarration(
       resolve(code === 0 && fs.existsSync(outWav) ? outWav : null);
     });
   });
-}
-
-async function downloadPhoto(
-  url: string,
-  dir: string,
-  index: number,
-): Promise<string | null> {
-  try {
-    if (!/^https?:\/\//i.test(url)) {
-      // Local path (used by tests and manual captures).
-      return fs.existsSync(url) && looksLikeRasterImage(url) ? url : null;
-    }
-    const parsed = new URL(url);
-    const headers: Record<string, string> = {
-      Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0 Safari/537.36',
-    };
-    if (/(^|\.)zillowstatic\.com$/i.test(parsed.hostname)) {
-      headers.Referer = 'https://www.zillow.com/';
-    }
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(15_000),
-      headers,
-    });
-    if (!res.ok) return null;
-    const contentType = res.headers.get('content-type')?.toLowerCase();
-    if (contentType && !contentType.startsWith('image/')) return null;
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.length < 100) return null;
-    const file = path.join(
-      dir,
-      `photo_${index}${path.extname(parsed.pathname) || '.jpg'}`,
-    );
-    fs.writeFileSync(file, buf);
-    if (!looksLikeRasterImage(file)) {
-      fs.rmSync(file, { force: true });
-      return null;
-    }
-    return file;
-  } catch {
-    return null;
-  }
-}
-
-/** Reject HTML/error bodies and malformed files before they can hang ffmpeg. */
-function looksLikeRasterImage(file: string): boolean {
-  const fd = fs.openSync(file, 'r');
-  try {
-    const head = Buffer.alloc(16);
-    const size = fs.readSync(fd, head, 0, head.length, 0);
-    if (size < 4) return false;
-    const ascii = head.toString('ascii');
-    return (
-      (head[0] === 0xff && head[1] === 0xd8 && head[2] === 0xff) || // JPEG
-      head
-        .subarray(0, 8)
-        .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])) || // PNG
-      (ascii.startsWith('RIFF') && ascii.slice(8, 12) === 'WEBP') ||
-      ascii.slice(4, 12).includes('ftypavif') ||
-      ascii.startsWith('GIF8') ||
-      ascii.startsWith('BM') ||
-      ascii.startsWith('II*\0') ||
-      ascii.startsWith('MM\0*')
-    );
-  } finally {
-    fs.closeSync(fd);
-  }
 }
 
 function renderPhotoSegment(
@@ -352,6 +289,16 @@ export class ListingVideoService {
     private readonly musicDir: string | null = null,
   ) {}
 
+  /** Prefer the listing's own synced folder (see listingFiles.ts) so a reel
+   * lands alongside its photos/description; falls back to the constructor's
+   * shared outputDir for rows captured before that feature existed or where
+   * folder sync failed. */
+  private resolveOutputDir(listing: PropertyListingSummary): string {
+    return listing.filesFolder && fs.existsSync(listing.filesFolder)
+      ? listing.filesFolder
+      : this.outputDir;
+  }
+
   async generateVideo(
     listingId: string,
     opts: ListingVideoOptions = {},
@@ -361,7 +308,7 @@ export class ListingVideoService {
 
     const maxPhotos = Math.min(Math.max(opts.maxPhotos ?? 5, 1), 8);
     const perPhoto = Math.min(Math.max(opts.secondsPerPhoto ?? 3, 2), 6);
-    const wantNarration = opts.narration ?? process.platform === 'win32';
+    const wantNarration = opts.narration ?? false;
 
     const work = path.join(os.tmpdir(), `aicut-reel-${crypto.randomUUID()}`);
     fs.mkdirSync(work, { recursive: true });
@@ -386,7 +333,8 @@ export class ListingVideoService {
       }
 
       const price = formatPrice(listing.price);
-      const banner = [listing.address, price].filter(Boolean).join('  •  ');
+      const cityState = [listing.city, listing.state].filter(Boolean).join(', ');
+      const banner = [cityState, price].filter(Boolean).join('  •  ');
       const specs = [
         listing.beds ? `${listing.beds} bd` : '',
         listing.baths ? `${listing.baths} ba` : '',
@@ -422,13 +370,7 @@ export class ListingVideoService {
         // No photos — open with a title card instead.
         const intro = path.join(work, 'seg_intro.mp4');
         await renderCardSegment(
-          [
-            'JUST LISTED',
-            listing.address,
-            `${listing.city}, ${listing.state}`,
-            price,
-            specs,
-          ].filter(Boolean),
+          ['JUST LISTED', cityState, price, specs].filter(Boolean),
           4,
           intro,
         );
@@ -440,7 +382,7 @@ export class ListingVideoService {
       await renderCardSegment(
         [
           price || 'FOR SALE',
-          listing.address,
+          cityState,
           specs,
           '',
           opts.ctaText || 'DM us to schedule a showing',
@@ -454,7 +396,7 @@ export class ListingVideoService {
       let narrationWav: string | null = null;
       if (wantNarration) {
         narrationWav = await synthesizeNarration(
-          opts.narrationScript || buildNarrationScript(listing),
+          opts.narrationScript || buildNarrationScript(listing, opts.ctaText),
           path.join(work, 'narration.wav'),
         );
       }
@@ -467,9 +409,10 @@ export class ListingVideoService {
           .map((s) => `file '${s.replace(/\\/g, '/').replace(/'/g, "'\\''")}'`)
           .join('\n'),
       );
-      fs.mkdirSync(this.outputDir, { recursive: true });
+      const outDir = this.resolveOutputDir(listing);
+      fs.mkdirSync(outDir, { recursive: true });
       const outPath = path.join(
-        this.outputDir,
+        outDir,
         `reel-${listingId.slice(0, 8)}-${Date.now()}.mp4`,
       );
       await concatWithAudio(concatList, narrationWav, outPath);
@@ -500,7 +443,7 @@ export class ListingVideoService {
     work: string,
   ): Promise<ListingVideoResult> {
     const maxPhotos = Math.min(Math.max(opts.maxPhotos ?? 8, 1), 8);
-    const wantNarration = opts.narration ?? process.platform === 'win32';
+    const wantNarration = opts.narration ?? false;
     const tier: PriceTier =
       opts.priceTier && opts.priceTier !== 'auto'
         ? opts.priceTier
@@ -550,6 +493,7 @@ export class ListingVideoService {
         opts.narrationScript ||
         buildReelNarrationScript(listing, assignment, {
           hookText: opts.hookText,
+          ctaText: opts.ctaText,
         });
 
       if (narrationEngine === 'auto' || narrationEngine === 'kokoro') {
@@ -592,9 +536,10 @@ export class ListingVideoService {
       music: musicTrack ? { path: musicTrack } : null,
     });
 
-    fs.mkdirSync(this.outputDir, { recursive: true });
+    const outDir = this.resolveOutputDir(listing);
+    fs.mkdirSync(outDir, { recursive: true });
     const outPath = path.join(
-      this.outputDir,
+      outDir,
       `reel-${listing.id.slice(0, 8)}-${Date.now()}.mp4`,
     );
     await exportProject(clips, {

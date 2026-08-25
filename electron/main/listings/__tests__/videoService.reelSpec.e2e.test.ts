@@ -111,6 +111,7 @@ describe('ListingVideoService — reel-spec E2E (real ffmpeg)', () => {
       complianceOk: true,
       complianceFlags: [],
       capturedAt: new Date().toISOString(),
+      filesFolder: null,
     };
 
     store = {

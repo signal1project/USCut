@@ -1,3 +1,5 @@
+import os from 'node:os';
+import path from 'node:path';
 import type { AIAuthMethod, AIProviderName, Platform } from '@mas/types';
 import { AI_PROVIDER_INFO } from '@mas/types';
 import { OLLAMA_DEFAULT_BASE_URL } from '../ai/ollamaProvider';
@@ -43,6 +45,8 @@ const K = {
   activeBrand: 'mas.settings.brand.active',
   platformBrands: 'mas.settings.brand.platformAssignments',
   competitors: 'mas.settings.competitors',
+  generalOutputDir: 'mas.settings.storage.generalOutputDir',
+  zillowScraperDir: 'mas.settings.storage.zillowScraperDir',
 };
 
 /** OAuth token bundle for ChatGPT sign-in (main-process only, like API keys). */
@@ -340,6 +344,32 @@ export class Settings {
 
   setCompetitors(entries: CompetitorEntry[]): void {
     this.store.set(K.competitors, entries);
+  }
+
+  // ── Storage locations ──────────────────────────────────────────────────────
+  // Where generated files land on disk — user-visible, unlike the hidden
+  // ~/.aicut dataDir used for the DB and model caches.
+
+  getGeneralOutputDir(): string {
+    return (
+      (this.store.get(K.generalOutputDir) as string | undefined) ??
+      path.join(os.homedir(), 'USCut')
+    );
+  }
+
+  setGeneralOutputDir(dir: string): void {
+    this.store.set(K.generalOutputDir, dir);
+  }
+
+  getZillowScraperDir(): string {
+    return (
+      (this.store.get(K.zillowScraperDir) as string | undefined) ??
+      path.join(this.getGeneralOutputDir(), 'Zillow Scraper')
+    );
+  }
+
+  setZillowScraperDir(dir: string): void {
+    this.store.set(K.zillowScraperDir, dir);
   }
 
   // ── Image generation (always OpenAI) ──────────────────────────────────────

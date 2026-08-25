@@ -113,6 +113,7 @@ export async function startMas(
   try {
     capture = await startListingCaptureServer(runtime.listings, {
       onCaptured: notifyListingCaptured,
+      filesService: runtime.listingFiles,
     });
     logger.log(`[AICut] Listing capture server on ${capture.url}`);
   } catch (err) {

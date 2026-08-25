@@ -156,6 +156,28 @@ describe('Settings — platform OAuth', () => {
   });
 });
 
+describe('Settings — storage locations', () => {
+  it('defaults the general output dir under the home folder, unset', () => {
+    expect(settings.getGeneralOutputDir()).toMatch(/USCut$/);
+  });
+
+  it('persists a custom general output dir', () => {
+    settings.setGeneralOutputDir('D:\\Media\\USCut');
+    expect(settings.getGeneralOutputDir()).toBe('D:\\Media\\USCut');
+  });
+
+  it('defaults the Zillow Scraper dir under the general output dir, unset', () => {
+    settings.setGeneralOutputDir('D:\\Media\\USCut');
+    expect(settings.getZillowScraperDir()).toBe('D:\\Media\\USCut\\Zillow Scraper');
+  });
+
+  it('persists a custom Zillow Scraper dir independent of the general dir', () => {
+    settings.setGeneralOutputDir('D:\\Media\\USCut');
+    settings.setZillowScraperDir('E:\\Listings');
+    expect(settings.getZillowScraperDir()).toBe('E:\\Listings');
+  });
+});
+
 describe('Settings — AI providers', () => {
   it('returns the active provider only when a key exists', () => {
     settings.setActiveAIProvider('claude');

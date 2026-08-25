@@ -150,6 +150,37 @@ export function useMasIpc() {
     ) as Promise<{ ok: boolean }>;
   }, []);
 
+  /** Current general output folder + Zillow Scraper folder. */
+  const getStoragePaths = useCallback(async () => {
+    return window.ipcRenderer.invoke(
+      'mas:settings:get-storage-paths',
+    ) as Promise<{ generalOutputDir: string; zillowScraperDir: string }>;
+  }, []);
+
+  /** Save the general output folder (creates it if missing). */
+  const setGeneralOutputDir = useCallback(async (dir: string) => {
+    return window.ipcRenderer.invoke(
+      'mas:settings:set-general-output-dir',
+      dir,
+    ) as Promise<{ ok: boolean; error?: string }>;
+  }, []);
+
+  /** Save the Zillow Scraper folder (creates it if missing). */
+  const setZillowScraperDir = useCallback(async (dir: string) => {
+    return window.ipcRenderer.invoke(
+      'mas:settings:set-zillow-scraper-dir',
+      dir,
+    ) as Promise<{ ok: boolean; error?: string }>;
+  }, []);
+
+  /** Open a native folder picker, optionally starting at `defaultPath`. */
+  const pickFolder = useCallback(async (defaultPath?: string) => {
+    return window.ipcRenderer.invoke(
+      'mas:settings:pick-folder',
+      defaultPath,
+    ) as Promise<{ canceled: boolean; path?: string }>;
+  }, []);
+
   return {
     getSettingsStatus,
     setAIKey,
@@ -165,5 +196,9 @@ export function useMasIpc() {
     getElevenLabsStatus,
     setElevenLabsKey,
     disconnectElevenLabs,
+    getStoragePaths,
+    setGeneralOutputDir,
+    setZillowScraperDir,
+    pickFolder,
   };
 }

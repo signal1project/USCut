@@ -36,3 +36,4 @@ export {
   type ListingVideoOptions,
 } from './videoService';
 export { extractListingFromHtml, captureFromUrl } from './urlCapture';
+export { ListingFilesService, deriveFolderName } from './listingFiles';

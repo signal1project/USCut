@@ -40,6 +40,7 @@ import {
   TypeOrmListingStore,
   ListingAdService,
   ListingVideoService,
+  ListingFilesService,
   createListingsRouter,
 } from '../listings';
 import type { PropertyListingSummary } from '../listings/types';
@@ -90,6 +91,7 @@ export interface MasRuntime {
   capcut: CapCutPackageService;
   workflow: SocialEngineWorkflowService;
   listings: TypeOrmListingStore;
+  listingFiles: ListingFilesService;
   insights: InsightsService;
   /** Root directory for generated artifacts (bio pages, listing reels). */
   dataDir: string;
@@ -207,6 +209,7 @@ export function buildMasRuntime(deps: MasRuntimeDeps): MasRuntime {
   const research = new TrendingResearchService(dataSource, trendFetchers);
   const listings = new TypeOrmListingStore(dataSource);
   const listingAds = new ListingAdService(listings, content);
+  const listingFiles = new ListingFilesService(settings, listings);
   const listingVideos = new ListingVideoService(
     listings,
     path.join(dataDir, 'listing-reels'),
@@ -220,7 +223,7 @@ export function buildMasRuntime(deps: MasRuntimeDeps): MasRuntime {
     scheduler,
   });
   const clips = new ClipService({
-    outputDir: path.join(dataDir, 'clips'),
+    outputDir: path.join(settings.getGeneralOutputDir(), 'Clips'),
     resolveOpenAiKey: () =>
       settings.getProviderSettings('openai')?.apiKey ?? null,
     resolveProvider: () => {
@@ -285,6 +288,7 @@ export function buildMasRuntime(deps: MasRuntimeDeps): MasRuntime {
       router: createListingsRouter(listings, {
         adService: listingAds,
         videoService: listingVideos,
+        filesService: listingFiles,
         onCaptured: deps.notifyListingCaptured,
       }),
     },
@@ -294,7 +298,7 @@ export function buildMasRuntime(deps: MasRuntimeDeps): MasRuntime {
       router: createInsightsRouter({
         service: insights,
         settings,
-        outputDir: path.join(dataDir, 'bio-page'),
+        outputDir: path.join(settings.getGeneralOutputDir(), 'Bio Pages'),
       }),
     },
   ];
@@ -312,6 +316,7 @@ export function buildMasRuntime(deps: MasRuntimeDeps): MasRuntime {
     capcut,
     workflow,
     listings,
+    listingFiles,
     insights,
     dataDir,
   };

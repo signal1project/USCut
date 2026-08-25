@@ -103,4 +103,8 @@ export class PropertyListingModel {
   @Index()
   @Column({ type: 'datetime' })
   capturedAt!: Date;
+
+  /** Absolute path to this listing's on-disk folder (photos + description.docx), if synced. */
+  @Column({ type: 'varchar', nullable: true })
+  filesFolder!: string | null;
 }

@@ -7,6 +7,7 @@ import {
   ChevronRight,
   Cpu,
   ExternalLink,
+  FolderOpen,
   KeyRound,
   Link2,
   Loader2,
@@ -465,6 +466,128 @@ function BackgroundPrefsCard(): React.ReactElement {
   );
 }
 
+function StorageLocationsCard(): React.ReactElement {
+  const ipc = useMasIpc();
+  const [generalDir, setGeneralDir] = useState('');
+  const [zillowDir, setZillowDir] = useState('');
+  const [savingKey, setSavingKey] = useState<'general' | 'zillow' | null>(
+    null,
+  );
+
+  const load = useCallback(() => {
+    void ipc.getStoragePaths().then((paths) => {
+      setGeneralDir(paths.generalOutputDir);
+      setZillowDir(paths.zillowScraperDir);
+    });
+  }, [ipc]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const browse = async (
+    current: string,
+    setValue: (v: string) => void,
+  ) => {
+    const result = await ipc.pickFolder(current);
+    if (!result.canceled && result.path) setValue(result.path);
+  };
+
+  const save = async (
+    key: 'general' | 'zillow',
+    dir: string,
+  ) => {
+    if (!dir.trim()) return;
+    setSavingKey(key);
+    try {
+      const result =
+        key === 'general'
+          ? await ipc.setGeneralOutputDir(dir.trim())
+          : await ipc.setZillowScraperDir(dir.trim());
+      if (result.ok) {
+        toast.success('Storage location saved');
+      } else {
+        toast.error(result.error ?? 'Could not save that folder');
+      }
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <FolderOpen size={16} className="text-[#4d7cff]" /> Storage
+          Locations
+        </CardTitle>
+        <CardDescription>
+          Where USCut saves the things it creates. An{' '}
+          <code className="text-accent">Archive</code> folder is created
+          automatically inside your Zillow Scraper folder. New Zillow
+          captures use these immediately; other exports (clips, bio pages,
+          the editor's Save/Export dialogs) pick up a change the next time
+          you restart USCut.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div>
+          <label className="text-xs text-ink-muted">
+            General output folder
+          </label>
+          <div className="flex gap-2 mt-1">
+            <Input
+              value={generalDir}
+              onChange={(e) => setGeneralDir(e.target.value)}
+              className="text-xs flex-1"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void browse(generalDir, setGeneralDir)}
+            >
+              Browse
+            </Button>
+            <Button
+              size="sm"
+              disabled={savingKey !== null}
+              onClick={() => void save('general', generalDir)}
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+        <div>
+          <label className="text-xs text-ink-muted">
+            Zillow Scraper folder
+          </label>
+          <div className="flex gap-2 mt-1">
+            <Input
+              value={zillowDir}
+              onChange={(e) => setZillowDir(e.target.value)}
+              className="text-xs flex-1"
+            />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void browse(zillowDir, setZillowDir)}
+            >
+              Browse
+            </Button>
+            <Button
+              size="sm"
+              disabled={savingKey !== null}
+              onClick={() => void save('zillow', zillowDir)}
+            >
+              Save
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function SettingsPage(): React.ReactElement {
   const ipc = useMasIpc();
   const navigate = useNavigate();
@@ -585,6 +708,9 @@ export default function SettingsPage(): React.ReactElement {
 
       {/* App behavior (tray + login) */}
       <BackgroundPrefsCard />
+
+      {/* Storage locations */}
+      <StorageLocationsCard />
 
       {/* Local integrations (read-only info) */}
       <Card>

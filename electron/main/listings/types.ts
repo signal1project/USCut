@@ -65,4 +65,6 @@ export interface PropertyListingSummary {
     detail: string;
   }>;
   capturedAt: string;
+  /** Absolute path to this listing's on-disk folder (photos + description.docx), if synced. */
+  filesFolder: string | null;
 }

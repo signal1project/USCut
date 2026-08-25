@@ -1,5 +1,6 @@
 import { ipcMain, dialog, app } from 'electron';
 import path from 'path';
+import fs from 'node:fs';
 import {
   probeVideo,
   getThumbnail,
@@ -206,9 +207,11 @@ export function registerAiCutHandlers(win: Electron.BrowserWindow) {
       clips: TimelineClip[],
       opts: Omit<ExportOptions, 'onProgress'>,
     ) => {
+      const outputDir = settings.getGeneralOutputDir();
+      fs.mkdirSync(outputDir, { recursive: true });
       const result = await dialog.showSaveDialog(win, {
         title: 'Export Video',
-        defaultPath: path.join(app.getPath('videos'), 'aicuts-export.mp4'),
+        defaultPath: path.join(outputDir, 'aicuts-export.mp4'),
         filters: [
           { name: 'MP4', extensions: ['mp4'] },
           { name: 'MOV', extensions: ['mov'] },
@@ -334,14 +337,16 @@ export function registerAiCutHandlers(win: Electron.BrowserWindow) {
 
   // Show save project dialog
   ipcMain.handle('aicuts:save-project', async (_, projectData: unknown) => {
+    const outputDir = settings.getGeneralOutputDir();
+    fs.mkdirSync(outputDir, { recursive: true });
     const result = await dialog.showSaveDialog(win, {
       title: 'Save Project',
-      defaultPath: path.join(app.getPath('documents'), 'aicuts-project.json'),
+      defaultPath: path.join(outputDir, 'aicuts-project.json'),
       filters: [{ name: 'AICut Project', extensions: ['aicuts.json'] }],
     });
     if (result.canceled || !result.filePath) return { canceled: true };
-    const fs = await import('fs/promises');
-    await fs.writeFile(result.filePath, JSON.stringify(projectData, null, 2));
+    const fsp = await import('fs/promises');
+    await fsp.writeFile(result.filePath, JSON.stringify(projectData, null, 2));
     return { success: true, filePath: result.filePath };
   });
 

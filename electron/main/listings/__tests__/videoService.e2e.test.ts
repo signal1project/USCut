@@ -50,6 +50,7 @@ describe('ListingVideoService — real ffmpeg E2E', () => {
     complianceOk: true,
     complianceFlags: [],
     capturedAt: new Date().toISOString(),
+    filesFolder: null,
   };
 
   beforeAll(async () => {

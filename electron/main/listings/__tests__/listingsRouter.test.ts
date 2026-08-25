@@ -48,6 +48,7 @@ class InMemoryListingStore implements ListingStore {
       complianceOk: compliance.ok,
       complianceFlags: compliance.flags,
       capturedAt: new Date().toISOString(),
+      filesFolder: existing?.filesFolder ?? null,
     };
     this.rows.set(row.id, row);
     return row;
@@ -64,6 +65,11 @@ class InMemoryListingStore implements ListingStore {
 
   async remove(id: string) {
     return this.rows.delete(id);
+  }
+
+  async setFilesFolder(id: string, folder: string) {
+    const row = this.rows.get(id);
+    if (row) this.rows.set(id, { ...row, filesFolder: folder });
   }
 }
 
@@ -157,7 +163,8 @@ describe('listings router over HTTP', () => {
     };
     expect(body.provider).toBe('template');
     expect(body.items).toHaveLength(2);
-    expect(body.items[0].body).toContain('77 Lake View Dr');
+    expect(body.items[0].body).toContain('Houston, TX');
+    expect(body.items[0].body).not.toContain('77 Lake View Dr');
     expect(body.items[0].body).toContain('lake views');
     expect(body.items.every((i) => i.complianceOk)).toBe(true);
   });

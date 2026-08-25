@@ -36,6 +36,7 @@ const listing: PropertyListingSummary = {
   complianceOk: true,
   complianceFlags: [],
   capturedAt: new Date().toISOString(),
+  filesFolder: null,
 };
 
 const fullPhotoSet = [
@@ -161,7 +162,7 @@ describe('buildReelTimeline', () => {
     const ctaText = clips.find((c) => c.id === 'reel-cta-text')!;
     const lines = ctaText.captionText!.split('\n');
     expect(lines).toEqual([
-      '123 Main St',
+      'Yorkville, GA',
       '3 bd · 2 ba · 1,850 sqft',
       '$389,000',
       'Open house Saturday',

@@ -1,4 +1,5 @@
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, dialog } from 'electron';
+import fs from 'node:fs';
 import type { DataSource } from 'typeorm';
 import {
   AccountStatus,
@@ -164,6 +165,51 @@ export function registerMasIpc(deps: MasIpcDeps): void {
       providers,
     };
   });
+
+  // ── Storage locations ───────────────────────────────────────────────────────
+
+  ipcMain.handle('mas:settings:get-storage-paths', () => ({
+    generalOutputDir: settings.getGeneralOutputDir(),
+    zillowScraperDir: settings.getZillowScraperDir(),
+  }));
+
+  ipcMain.handle(
+    'mas:settings:set-general-output-dir',
+    (_e, dir: string) => {
+      try {
+        fs.mkdirSync(dir, { recursive: true });
+      } catch (err) {
+        return { ok: false, error: (err as Error).message };
+      }
+      settings.setGeneralOutputDir(dir);
+      return { ok: true };
+    },
+  );
+
+  ipcMain.handle(
+    'mas:settings:set-zillow-scraper-dir',
+    (_e, dir: string) => {
+      try {
+        fs.mkdirSync(dir, { recursive: true });
+      } catch (err) {
+        return { ok: false, error: (err as Error).message };
+      }
+      settings.setZillowScraperDir(dir);
+      return { ok: true };
+    },
+  );
+
+  ipcMain.handle(
+    'mas:settings:pick-folder',
+    async (_e, defaultPath?: string) => {
+      const result = await dialog.showOpenDialog({
+        properties: ['openDirectory', 'createDirectory'],
+        defaultPath,
+      });
+      if (result.canceled || !result.filePaths[0]) return { canceled: true };
+      return { canceled: false, path: result.filePaths[0] };
+    },
+  );
 
   // ── Ollama ─────────────────────────────────────────────────────────────────
 

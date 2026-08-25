@@ -19,6 +19,7 @@ export interface ListingStore {
   ): Promise<{ listings: PropertyListingSummary[]; total: number }>;
   get(id: string): Promise<PropertyListingSummary | null>;
   remove(id: string): Promise<boolean>;
+  setFilesFolder(id: string, folder: string): Promise<void>;
 }
 
 function toSummary(row: PropertyListingModel): PropertyListingSummary {
@@ -48,6 +49,7 @@ function toSummary(row: PropertyListingModel): PropertyListingSummary {
     listingUrl: row.listingUrl,
     complianceOk: row.complianceOk,
     complianceFlags: row.complianceFlags ?? [],
+    filesFolder: row.filesFolder ?? null,
     capturedAt:
       row.capturedAt instanceof Date
         ? row.capturedAt.toISOString()
@@ -136,5 +138,9 @@ export class TypeOrmListingStore implements ListingStore {
   async remove(id: string): Promise<boolean> {
     const result = await this.repo.delete({ id });
     return (result.affected ?? 0) > 0;
+  }
+
+  async setFilesFolder(id: string, folder: string): Promise<void> {
+    await this.repo.update({ id }, { filesFolder: folder });
   }
 }

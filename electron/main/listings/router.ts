@@ -4,6 +4,7 @@ import { PLATFORMS } from '@mas/types';
 import type { ListingStore } from './listingStore';
 import type { ListingAdService } from './adService';
 import type { ListingVideoService } from './videoService';
+import type { ListingFilesService } from './listingFiles';
 import type { PropertyListingSummary } from './types';
 import { captureFromUrl } from './urlCapture';
 
@@ -24,8 +25,10 @@ const capturePayloadSchema = z.object({
   status: z.string().optional(),
   daysOnMarket: z.number().int().nonnegative().optional(),
   description: z.string().optional(),
-  photoUrls: z.array(z.string()).max(20).optional(),
-  photoCaptions: z.array(z.string().nullable()).max(20).optional(),
+  // 250 covers residential (commonly 20-50+ photos) and leaves headroom for
+  // commercial listings, which tend to run much larger galleries.
+  photoUrls: z.array(z.string()).max(250).optional(),
+  photoCaptions: z.array(z.string().nullable()).max(250).optional(),
   agentName: z.string().optional(),
   agentPhone: z.string().optional(),
   agentEmail: z.string().optional(),
@@ -48,7 +51,9 @@ const generateVideoSchema = z.object({
   narration: z.boolean().optional(),
   ctaText: z.string().max(120).optional(),
   narrationScript: z.string().max(1000).optional(),
-  photoOrder: z.array(z.number().int().nonnegative()).max(20).optional(),
+  // Matches capturePayloadSchema's photoUrls cap above — the picker's
+  // default "all photos selected" state must fit within this.
+  photoOrder: z.array(z.number().int().nonnegative()).max(250).optional(),
   reelTemplate: z.enum(['legacy', 'reel-spec']).optional(),
   priceTier: z.enum(['auto', 'standard', 'luxury']).optional(),
   hookText: z.string().max(120).optional(),
@@ -85,6 +90,10 @@ export function createListingsRouter(
   opts: {
     adService?: ListingAdService;
     videoService?: ListingVideoService;
+    /** Syncs a per-listing photos/description folder on capture and archives
+     * it (never deletes) when a listing is removed. Fire-and-forget on both
+     * paths — a filesystem hiccup must never fail the capture/delete itself. */
+    filesService?: ListingFilesService;
     /** Fired after a successful capture on either path below — e.g. to push
      * a live "new listing" update to open renderer windows, since the
      * capture request comes from a Chrome extension or a paste-URL fetch,
@@ -94,11 +103,18 @@ export function createListingsRouter(
 ): Router {
   const router = Router();
 
+  const syncFiles = (listing: PropertyListingSummary) => {
+    opts.filesService
+      ?.syncListingFiles(listing)
+      .catch((err) => console.error('[listings] file sync failed', err));
+  };
+
   router.post('/capture', async (req, res, next) => {
     try {
       const payload = capturePayloadSchema.parse(req.body);
       const listing = await store.capture(payload);
       opts.onCaptured?.(listing);
+      syncFiles(listing);
       res.status(201).json({ listing });
     } catch (err) {
       next(err);
@@ -142,6 +158,7 @@ export function createListingsRouter(
       }
       const listing = await store.capture(payload);
       opts.onCaptured?.(listing);
+      syncFiles(listing);
       res.status(201).json({ listing });
     } catch (err) {
       next(err);
@@ -186,10 +203,18 @@ export function createListingsRouter(
 
   router.delete('/:id', async (req, res, next) => {
     try {
+      // Fetched before remove() — the row (and its filesFolder) is gone
+      // after a successful delete, so archiving needs it captured first.
+      const listing = await store.get(req.params.id);
       const removed = await store.remove(req.params.id);
       if (!removed) {
         res.status(404).json({ error: 'listing_not_found' });
         return;
+      }
+      if (listing) {
+        opts.filesService
+          ?.archiveListingFiles(listing)
+          .catch((err) => console.error('[listings] file archive failed', err));
       }
       res.json({ ok: true });
     } catch (err) {
