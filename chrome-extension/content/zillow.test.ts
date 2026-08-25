@@ -29,6 +29,21 @@ describe('Zillow extractor hydration parsing', () => {
   it('ignores unrelated hydration data', () => {
     expect(findZillowProperty({ viewer: { name: 'Test User' } })).toBeNull();
   });
+
+  it('finds a property nested under pageProps.componentProps.gdpClientCache (current Zillow schema)', () => {
+    // Zillow moved gdpClientCache from pageProps directly to
+    // pageProps.componentProps.gdpClientCache; extractZillow() passes both
+    // as array candidates, so findZillowProperty must still locate the
+    // property regardless of which shape is present.
+    const cache = JSON.stringify({ ForSaleBotsQuery: { property } });
+    const pageProps = { componentProps: { gdpClientCache: cache } };
+    expect(
+      findZillowProperty([
+        pageProps.componentProps.gdpClientCache,
+        pageProps,
+      ]),
+    ).toMatchObject(property);
+  });
 });
 
 describe('extractPhotoEntries', () => {
@@ -65,6 +80,31 @@ describe('extractPhotoEntries', () => {
     ]);
   });
 
+  it('prefers the largest mixedSources.jpeg variant over a small bare url', () => {
+    // Real Zillow shape: `.url` is a ~400x300 thumbnail ("p_d.jpg"); the
+    // last mixedSources.jpeg entry is the largest size actually served
+    // (~1024px wide) for the same photo — using `.url` directly produces
+    // visibly pixelated reels once upscaled to 1080px video.
+    const entries = extractPhotoEntries([
+      {
+        url: 'https://photos.zillowstatic.com/fp/abc-p_d.jpg',
+        mixedSources: {
+          jpeg: [
+            { url: 'https://photos.zillowstatic.com/fp/abc-cc_ft_768.jpg', width: 768 },
+            { url: 'https://photos.zillowstatic.com/fp/abc-cc_ft_1536.jpg', width: 1536 },
+          ],
+        },
+        caption: 'Kitchen',
+      },
+    ]);
+    expect(entries).toEqual([
+      {
+        url: 'https://photos.zillowstatic.com/fp/abc-cc_ft_1536.jpg',
+        caption: 'Kitchen',
+      },
+    ]);
+  });
+
   it('drops non-http entries and dedupes by url, keeping caption alignment', () => {
     const entries = extractPhotoEntries([
       { url: 'not-a-url', caption: 'Junk' },
@@ -76,11 +116,11 @@ describe('extractPhotoEntries', () => {
     ]);
   });
 
-  it('caps at 10 entries', () => {
-    const raw = Array.from({ length: 15 }, (_, i) => ({
+  it('caps at 250 entries', () => {
+    const raw = Array.from({ length: 300 }, (_, i) => ({
       url: `https://photos.zillowstatic.com/${i}.jpg`,
     }));
-    expect(extractPhotoEntries(raw)).toHaveLength(10);
+    expect(extractPhotoEntries(raw)).toHaveLength(250);
   });
 
   it('returns an empty array for missing/non-array input', () => {

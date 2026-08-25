@@ -88,20 +88,29 @@ export interface PhotoEntry {
 
 /**
  * Pairs each raw Zillow photo object with its url + caption (if any), then
- * filters to real http(s) image URLs, dedupes by url, and caps at 10 —
- * keeping url/caption paired through every step so a later split into
- * parallel photoUrls/photoCaptions arrays stays aligned by construction.
- * Exact caption key is unconfirmed as of writing, so several likely
- * candidates are checked rather than guessing a single one.
+ * filters to real http(s) image URLs, dedupes by url, and caps at 250 (the
+ * capture API's own max — see capturePayloadSchema in
+ * electron/main/listings/router.ts — covers residential and leaves headroom
+ * for commercial listings' larger galleries) — keeping url/caption paired
+ * through every step so a later split into parallel photoUrls/photoCaptions
+ * arrays stays aligned by construction. Exact caption key is unconfirmed as
+ * of writing, so several likely candidates are checked rather than guessing
+ * a single one.
  */
 export function extractPhotoEntries(rawPhotos: unknown): PhotoEntry[] {
   const list = Array.isArray(rawPhotos) ? rawPhotos : [];
   return list
     .map((p: any) => {
+      // Prefer the largest mixedSources.jpeg variant over the bare `.url`
+      // field — on responsivePhotos/originalPhotos entries, `.url` is the
+      // small "p_d" thumbnail (~400x300) while mixedSources.jpeg's last
+      // entry is Zillow's largest served size (~1024px wide) for the same
+      // photo. Falls back to `.url` only when mixedSources isn't present at
+      // all (older/simpler photo object shapes).
       const url =
         typeof p === 'string'
           ? p
-          : (p?.url ?? p?.mixedSources?.jpeg?.at(-1)?.url);
+          : (p?.mixedSources?.jpeg?.at(-1)?.url ?? p?.url);
       const rawCaption =
         p && typeof p === 'object'
           ? (p.caption ?? p.text ?? p.description ?? p.roomLabel ?? p.label)
@@ -120,7 +129,7 @@ export function extractPhotoEntries(rawPhotos: unknown): PhotoEntry[] {
       (e: PhotoEntry, i: number, all: PhotoEntry[]) =>
         all.findIndex((x) => x.url === e.url) === i,
     )
-    .slice(0, 10);
+    .slice(0, 250);
 }
 
 export function extractZillow(): ListingData | null {
@@ -132,9 +141,16 @@ export function extractZillow(): ListingData | null {
         : null;
     if (el) {
       const data = JSON.parse(el.textContent ?? '{}');
-      // Navigate to property details (path varies by page type)
+      // Navigate to property details (path varies by page type). Zillow has
+      // relocated gdpClientCache from pageProps directly to
+      // pageProps.componentProps.gdpClientCache — check that first so the
+      // property is found in a couple of hops instead of relying on the
+      // generic pageProps sweep to tunnel through unrelated, often-huge
+      // sibling trees (experiment treatments, search state, etc.) before the
+      // visited-node budget below runs out.
       const pageProps = data?.props?.pageProps;
       const detail = findZillowProperty([
+        pageProps?.componentProps?.gdpClientCache,
         pageProps?.gdpClientCache,
         pageProps?.initialData,
         pageProps?.initialReduxState,
@@ -143,7 +159,18 @@ export function extractZillow(): ListingData | null {
 
       if (detail?.address) {
         const address = detail.address;
-        const photoEntries = extractPhotoEntries(detail.photos ?? detail.images);
+        // responsivePhotos/originalPhotos are the current full-gallery
+        // fields (25+ photos); `photos`/`images` are kept as fallbacks for
+        // older cache shapes. Without this, the property object has no
+        // photo field at all and the caller falls through to the DOM
+        // scraper, which can't tell listing photos apart from MLS badge
+        // logos and "similar homes" thumbnails elsewhere on the page.
+        const photoEntries = extractPhotoEntries(
+          detail.responsivePhotos ??
+            detail.originalPhotos ??
+            detail.photos ??
+            detail.images,
+        );
         const photoUrls = photoEntries.map((e) => e.url);
         const photoCaptions = photoEntries.map((e) => e.caption);
         return {
@@ -207,21 +234,43 @@ export function extractZillow(): ListingData | null {
       parseInt(sqftEl?.textContent?.replace(/[^0-9]/g, '') ?? '', 10) ||
       undefined,
     listingUrl: window.location.href,
+    // Scoped to the hero photo carousel only — querying the whole document
+    // for any zillowstatic image also picks up MLS attribution badges
+    // (data-testid="listing-attribution-overview") and "similar homes"
+    // carousel thumbnails (data-testid="property-card") further down the
+    // page. The carousel typically only lazy-renders a handful of <img>
+    // tags at load time (the rest mount as the user scrolls it), so this is
+    // a low-count last resort — the __NEXT_DATA__ path above is what
+    // supplies the full gallery.
     photoUrls: Array.from(
-      document.querySelectorAll('img[src*="photos.zillowstatic"]'),
+      document
+        .querySelector('[data-testid="hollywood-photo-carousel"]')
+        ?.querySelectorAll('img[src*="photos.zillowstatic"]') ?? [],
     )
-      .slice(0, 10)
+      .slice(0, 250)
       .map((img) => (img as HTMLImageElement).src),
   };
+}
+
+/**
+ * True once the user has navigated (via Zillow's client-side router) away
+ * from the listing __NEXT_DATA__ was loaded for — see the loadedForUrl
+ * comment above. When true, extractZillow()'s primary path is skipped and
+ * the much weaker DOM fallback is all that's available (no description,
+ * only whatever photos happen to be mounted). injectCaptureButton uses this
+ * to trigger an auto-refresh instead of silently capturing incomplete data.
+ */
+function isZillowDataStale(): boolean {
+  return typeof window !== 'undefined' && window.location.href !== loadedForUrl;
 }
 
 // Inject capture button once DOM is ready
 if (typeof document !== 'undefined') {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () =>
-      injectCaptureButton(extractZillow),
+      injectCaptureButton(extractZillow, isZillowDataStale),
     );
   } else {
-    injectCaptureButton(extractZillow);
+    injectCaptureButton(extractZillow, isZillowDataStale);
   }
 }

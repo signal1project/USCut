@@ -31,7 +31,27 @@ export interface ListingData {
 
 const CAPTURE_PORT = 7474; // AICut listing capture server (AICUT_CAPTURE_PORT)
 
-export function injectCaptureButton(extractor: () => ListingData | null) {
+/** sessionStorage key: set right before an auto-refresh, read on the next
+ * load to resume the capture the user actually asked for. Scoped to the tab
+ * (sessionStorage), so it can't leak into a different tab/listing. */
+const AUTO_CAPTURE_KEY = 'aicut:autoCaptureUrl';
+
+/**
+ * @param extractor Pulls listing data from the current page.
+ * @param isStale Optional — when it returns true at capture time, the page's
+ * embedded data is known to be stale (see zillow.ts's isZillowDataStale for
+ * why: a client-routed site like Zillow can change the visible listing via
+ * history.pushState without a full page load, silently leaving the page's
+ * embedded JSON pointed at whichever listing was first loaded). Rather than
+ * capture whatever weaker fallback data is available, the button reloads the
+ * page and resumes the capture automatically once fresh data loads — so a
+ * user clicking through several listings in one browsing session (the normal
+ * workflow) always gets complete data, not just address/price.
+ */
+export function injectCaptureButton(
+  extractor: () => ListingData | null,
+  isStale?: () => boolean,
+) {
   // Avoid double-inject
   if (document.getElementById('aicut-capture-btn')) return;
 
@@ -76,7 +96,19 @@ export function injectCaptureButton(extractor: () => ListingData | null) {
     btn.style.transform  = 'scale(1)';
   });
 
-  btn.addEventListener('click', async () => {
+  async function performCapture(viaAutoRefresh: boolean) {
+    if (isStale?.()) {
+      // Don't capture incomplete data — refresh so the page's embedded JSON
+      // is for the listing actually on screen, then resume automatically.
+      btn.innerHTML = '<span>Refreshing…</span>';
+      btn.style.opacity = '0.7';
+      btn.style.cursor = 'default';
+      showToast('Refreshing page for a complete capture…', 'success');
+      sessionStorage.setItem(AUTO_CAPTURE_KEY, location.href);
+      location.reload();
+      return;
+    }
+
     btn.innerHTML = '<span>Capturing…</span>';
     btn.style.opacity = '0.7';
     btn.style.cursor = 'default';
@@ -95,14 +127,21 @@ export function injectCaptureButton(extractor: () => ListingData | null) {
         body:    JSON.stringify(listing),
       });
       if (!res.ok) throw new Error(`Server responded ${res.status}`);
-      showToast('✓ Listing captured! Open USCut to view it.', 'success');
+      showToast(
+        viaAutoRefresh
+          ? '✓ Complete listing captured (page refreshed for accuracy).'
+          : '✓ Listing captured! Open USCut to view it.',
+        'success',
+      );
       btn.innerHTML = '✓ Captured';
       btn.style.background = '#22c55e';
     } catch {
       showToast('USCut must be running. Please open the app.', 'error');
       resetButton();
     }
-  });
+  }
+
+  btn.addEventListener('click', () => void performCapture(false));
 
   function resetButton() {
     btn.innerHTML = `<span>Capture Listing</span>`;
@@ -113,6 +152,15 @@ export function injectCaptureButton(extractor: () => ListingData | null) {
 
   document.body.appendChild(btn);
   watchForNavigation(resetButton);
+
+  // Resume a capture that triggered its own refresh (see performCapture
+  // above) — only for the exact URL that asked for it, so navigating away
+  // during the reload (rare, but possible) doesn't fire a stale capture.
+  const pendingUrl = sessionStorage.getItem(AUTO_CAPTURE_KEY);
+  if (pendingUrl === location.href) {
+    sessionStorage.removeItem(AUTO_CAPTURE_KEY);
+    void performCapture(true);
+  }
 }
 
 /**
