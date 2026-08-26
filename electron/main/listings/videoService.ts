@@ -120,9 +120,18 @@ function drawtext(
 }
 
 /**
- * Ken Burns filter for one still photo → OUT_WxOUT_H video segment.
- * Even indexes slowly zoom in from center; odd indexes pan across at a fixed
- * zoom. Exported for tests.
+ * Ken Burns filter_complex graph for one still photo → OUT_WxOUT_H video
+ * segment. Even indexes slowly zoom in from center; odd indexes pan across
+ * at a fixed zoom. Exported for tests.
+ *
+ * Real estate photos are landscape; forcing one to fill a 1080x1920 portrait
+ * frame edge-to-edge (the old approach: scale-to-cover + crop) upscales it
+ * roughly 5-6x and throws away most of its width — badly pixelating even
+ * Zillow's largest served photo size. Instead this composites the full,
+ * uncropped photo — sharp, barely upscaled if at all — over a blurred,
+ * darkened, cover-cropped copy of the same photo filling the rest of the
+ * frame: the "echo pillarbox" technique CapCut and other short-form editors
+ * use for landscape source photos in vertical video.
  */
 export function buildKenBurnsFilter(
   index: number,
@@ -130,14 +139,20 @@ export function buildKenBurnsFilter(
   banner: string,
 ): string {
   const frames = Math.round(seconds * FPS);
-  // Oversample before zoompan to avoid jitter.
-  const pre = `scale=${OUT_W * 2}:${OUT_H * 2}:force_original_aspect_ratio=increase,crop=${OUT_W * 2}:${OUT_H * 2}`;
   const zoom =
     index % 2 === 0
       ? `zoompan=z='min(1.0015^on,1.13)':x='(iw-iw/zoom)/2':y='(ih-ih/zoom)/2':d=${frames}:s=${OUT_W}x${OUT_H}:fps=${FPS}`
       : `zoompan=z=1.13:x='(iw-iw/zoom)*on/${frames}':y='(ih-ih/zoom)/2':d=${frames}:s=${OUT_W}x${OUT_H}:fps=${FPS}`;
   const text = banner ? `,${drawtext(banner, 46, 'h-300')}` : '';
-  return `${pre},${zoom},format=yuv420p${text}`;
+  return [
+    `[0:v]split=2[bg][fg]`,
+    `[bg]scale=${OUT_W}:${OUT_H}:force_original_aspect_ratio=increase,crop=${OUT_W}:${OUT_H},gblur=sigma=30,eq=brightness=-0.15[bgblur]`,
+    `[fg]scale=${OUT_W}:${OUT_H}:force_original_aspect_ratio=decrease:flags=lanczos,unsharp=5:5:0.6:5:5:0.3[fgsharp]`,
+    `[bgblur][fgsharp]overlay=(W-w)/2:(H-h)/2[composite]`,
+    // Oversample the composite before zoompan to avoid jitter.
+    `[composite]scale=${OUT_W * 2}:${OUT_H * 2}[oversample]`,
+    `[oversample]${zoom},format=yuv420p${text}[outv]`,
+  ].join(';');
 }
 
 /** Short spoken narration script for the reel. Exported for tests. */
@@ -192,14 +207,14 @@ function synthesizeNarration(
 
 function renderPhotoSegment(
   photo: string,
-  filter: string,
+  filterComplex: string,
   seconds: number,
   out: string,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     ffmpeg(photo)
       .inputOptions(['-loop 1'])
-      .videoFilters(filter)
+      .complexFilter(filterComplex, 'outv')
       .duration(seconds)
       .videoCodec('libx264')
       .noAudio()

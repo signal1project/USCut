@@ -57,6 +57,19 @@ describe('buildKenBurnsFilter', () => {
   it('omits drawtext when no banner', () => {
     expect(buildKenBurnsFilter(0, 3, '')).not.toContain('drawtext');
   });
+
+  it('composites the sharp uncropped photo over a blurred cover-fill background (echo pillarbox)', () => {
+    const filter = buildKenBurnsFilter(0, 3, '');
+    // Splits the source into a blurred/darkened cover-fill background and a
+    // lanczos-scaled, sharpened, letterboxed (never force-cropped) foreground
+    // — landscape photos no longer get upscaled ~5-6x to fill the frame.
+    expect(filter).toContain('split=2[bg][fg]');
+    expect(filter).toContain('force_original_aspect_ratio=increase');
+    expect(filter).toContain('gblur=sigma=30');
+    expect(filter).toContain('force_original_aspect_ratio=decrease:flags=lanczos');
+    expect(filter).toContain('unsharp=');
+    expect(filter).toContain('overlay=(W-w)/2:(H-h)/2[composite]');
+  });
 });
 
 describe('buildNarrationScript', () => {
