@@ -47,6 +47,23 @@ describe('buildBrandAwareBrief', () => {
     };
     expect(buildBrandAwareBrief('hello', empty)).toBe('hello');
   });
+
+  it('reads the brand name from a BrandProfile-shaped kit (name, not brandName) — the actual shape Settings.getActiveBrandKit() returns for the multi-company system, per settings.ts', () => {
+    // No brandName field at all here, deliberately — a hand-built BrandKit
+    // with brandName already set (like the `kit` fixture above) would hide
+    // this exact bug, since getActiveBrandKit() never populates brandName
+    // for a profile created through the modern multi-company UI.
+    const profileShaped = {
+      voice: 'playful',
+      audience: 'renters',
+      hashtags: [],
+      bannedWords: [],
+      signature: '',
+      name: 'Company One',
+    };
+    const brief = buildBrandAwareBrief('post', profileShaped);
+    expect(brief).toContain('Brand/company: Company One');
+  });
 });
 
 describe('ContentService brand + variants', () => {

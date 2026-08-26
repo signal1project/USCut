@@ -66,10 +66,25 @@ export function buildAlgorithmAwareBrief(
   return `${algorithmHint}\n\n---\nContent brief: ${brief}`;
 }
 
+/**
+ * Settings.getActiveBrandKit() is typed as BrandKit but at runtime actually
+ * returns a BrandProfile (see settings.ts's getActiveBrandKit/
+ * getBrandProfiles) — profiles are created with a `name` field, not
+ * `brandName` (that's only ever populated on the legacy single-kit path,
+ * getBrandKit()/setBrandKit()). Every other BrandKit field is structurally
+ * guaranteed present on a BrandProfile since BrandProfile extends BrandKit
+ * without narrowing them — brandName is the one exception, since it stays
+ * optional in the base interface rather than being redeclared. Accept
+ * either shape so the brand name this function actually receives in
+ * practice (the .name one) makes it into the brief.
+ */
+type BrandKitLike = BrandKit & { name?: string };
+
 /** Append brand-kit constraints to a brief. Exported for tests. */
-export function buildBrandAwareBrief(brief: string, kit: BrandKit): string {
+export function buildBrandAwareBrief(brief: string, kit: BrandKitLike): string {
   const lines: string[] = [];
-  if (kit.brandName) lines.push(`- Brand/company: ${kit.brandName}`);
+  const brandName = kit.brandName || kit.name;
+  if (brandName) lines.push(`- Brand/company: ${brandName}`);
   if (kit.bio) lines.push(`- Brand bio and business context: ${kit.bio}`);
   if (kit.voice) lines.push(`- Brand voice: ${kit.voice}`);
   if (kit.audience) lines.push(`- Target audience: ${kit.audience}`);
