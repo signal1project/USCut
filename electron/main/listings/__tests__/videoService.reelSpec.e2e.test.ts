@@ -7,7 +7,14 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { ListingVideoService } from '../videoService';
 import { resolveFfmpegPath } from '../../../util/ffmpegBinary';
+import { Settings, type SettingsStore } from '../../settings/settings';
+import type { BrandProfile } from '../../settings/settings';
 import type { PropertyListingSummary } from '../types';
+
+function mapStore(): SettingsStore {
+  const m = new Map<string, unknown>();
+  return { get: (k) => m.get(k), set: (k, v) => void m.set(k, v) };
+}
 
 const run = promisify(execFile);
 
@@ -127,7 +134,7 @@ describe('ListingVideoService — reel-spec E2E (real ffmpeg)', () => {
   it('renders a standard-tier reel with 5 photo buckets + CTA and whip-cut transitions', async () => {
     const service = new ListingVideoService(store as any, outDir);
     const result = await service.generateVideo(listing.id, {
-      reelTemplate: 'reel-spec',
+      reelTemplate: 'room-flow',
       narration: false,
     });
 
@@ -157,7 +164,7 @@ describe('ListingVideoService — reel-spec E2E (real ffmpeg)', () => {
     };
     const service = new ListingVideoService(luxuryStore as any, outDir);
     const result = await service.generateVideo(luxuryListing.id, {
-      reelTemplate: 'reel-spec',
+      reelTemplate: 'luxury',
       narration: false,
     });
 
@@ -189,7 +196,7 @@ describe('ListingVideoService — reel-spec E2E (real ffmpeg)', () => {
     };
     const service = new ListingVideoService(sparseStore as any, outDir);
     const result = await service.generateVideo(sparseListing.id, {
-      reelTemplate: 'reel-spec',
+      reelTemplate: 'room-flow',
       narration: false,
     });
 
@@ -214,7 +221,7 @@ describe('ListingVideoService — reel-spec E2E (real ffmpeg)', () => {
     };
     const service = new ListingVideoService(noPhotoStore as any, outDir);
     const result = await service.generateVideo(noPhotoListing.id, {
-      reelTemplate: 'reel-spec',
+      reelTemplate: 'room-flow',
       narration: false,
     });
 
@@ -226,7 +233,7 @@ describe('ListingVideoService — reel-spec E2E (real ffmpeg)', () => {
   it('honors custom hookText and ctaText without breaking the render', async () => {
     const service = new ListingVideoService(store as any, outDir);
     const result = await service.generateVideo(listing.id, {
-      reelTemplate: 'reel-spec',
+      reelTemplate: 'room-flow',
       narration: false,
       hookText: 'your dream home awaits',
       ctaText: 'Open house Saturday 1-3pm',
@@ -238,7 +245,7 @@ describe('ListingVideoService — reel-spec E2E (real ffmpeg)', () => {
   it('produces a narrated file on win32 (SAPI path) with a real probed duration', async () => {
     const service = new ListingVideoService(store as any, outDir);
     const result = await service.generateVideo(listing.id, {
-      reelTemplate: 'reel-spec',
+      reelTemplate: 'room-flow',
       narration: process.platform === 'win32',
     });
     expect(result).not.toBeNull();
@@ -246,5 +253,43 @@ describe('ListingVideoService — reel-spec E2E (real ffmpeg)', () => {
     if (process.platform === 'win32') {
       expect(result!.narrated).toBe(true);
     }
+  }, 90_000);
+
+  it('prepends a branded intro card to a room-flow render (validates the exportGraph-output concat path)', async () => {
+    const settings = new Settings(mapStore());
+    settings.setBrandProfiles([
+      {
+        id: 'b1',
+        name: 'Dale Brown Real Estate',
+        bio: '',
+        voice: '',
+        audience: '',
+        hashtags: [],
+        bannedWords: [],
+        signature: '',
+      } satisfies BrandProfile,
+    ]);
+    const service = new ListingVideoService(
+      store as any,
+      outDir,
+      null,
+      null,
+      null,
+      settings,
+    );
+    const result = await service.generateVideo(listing.id, {
+      reelTemplate: 'room-flow',
+      narration: false,
+      includeBranding: true,
+    });
+
+    expect(result).not.toBeNull();
+    expect(fs.existsSync(result!.path)).toBe(true);
+    const probed = await probe(result!.path);
+    expect(probed.streams[0].width).toBe(1080);
+    expect(probed.streams[0].height).toBe(1920);
+    // Base render is ~27s (see the standard-tier test above); +3s brand intro.
+    const duration = Number(probed.format.duration);
+    expect(duration).toBeGreaterThan(27);
   }, 90_000);
 });

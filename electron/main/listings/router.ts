@@ -46,19 +46,23 @@ const captureUrlSchema = z.object({
 });
 
 const generateVideoSchema = z.object({
-  maxPhotos: z.number().int().min(1).max(8).optional(),
-  secondsPerPhoto: z.number().min(2).max(6).optional(),
+  // 20 max accommodates the 'gallery' template's full-photo-dump default;
+  // 0.6 min accommodates 'viral's fast pace.
+  maxPhotos: z.number().int().min(1).max(20).optional(),
+  secondsPerPhoto: z.number().min(0.6).max(6).optional(),
   narration: z.boolean().optional(),
   ctaText: z.string().max(120).optional(),
   narrationScript: z.string().max(1000).optional(),
   // Matches capturePayloadSchema's photoUrls cap above — the picker's
   // default "all photos selected" state must fit within this.
   photoOrder: z.array(z.number().int().nonnegative()).max(250).optional(),
-  reelTemplate: z.enum(['legacy', 'reel-spec']).optional(),
-  priceTier: z.enum(['auto', 'standard', 'luxury']).optional(),
+  reelTemplate: z
+    .enum(['just-listed', 'gallery', 'viral', 'room-flow', 'luxury'])
+    .optional(),
   hookText: z.string().max(120).optional(),
   narrationEngine: z.enum(['auto', 'kokoro', 'sapi', 'none']).optional(),
   narrationVoice: z.string().max(40).optional(),
+  includeBranding: z.boolean().optional(),
 });
 
 const listQuerySchema = z.object({

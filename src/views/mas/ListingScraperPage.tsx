@@ -222,20 +222,20 @@ export default function ListingScraperPage(): React.ReactElement {
   >({});
 
   interface ReelOptions {
-    template: 'legacy' | 'reel-spec';
-    priceTier: 'auto' | 'standard' | 'luxury';
+    template: 'just-listed' | 'gallery' | 'viral' | 'room-flow' | 'luxury';
     narrationOn: boolean;
     narrationEngine: 'auto' | 'kokoro' | 'sapi' | 'none';
     hookText: string;
     ctaText: string;
+    includeBranding: boolean;
   }
   const DEFAULT_REEL_OPTIONS: ReelOptions = {
-    template: 'legacy',
-    priceTier: 'auto',
+    template: 'just-listed',
     narrationOn: false,
     narrationEngine: 'none',
     hookText: '',
     ctaText: CTA_PRESETS[0],
+    includeBranding: false,
   };
   const [reelOpts, setReelOpts] = useState<Record<string, ReelOptions>>({});
   const getReelOpts = (id: string): ReelOptions =>
@@ -289,20 +289,21 @@ export default function ListingScraperPage(): React.ReactElement {
     try {
       const opts = getReelOpts(id);
       const selection = getPhotoSelection(listing);
+      const isRoomFlowFamily =
+        opts.template === 'room-flow' || opts.template === 'luxury';
       const result = await api.generateListingVideo(id, {
         reelTemplate: opts.template,
         ctaText: opts.ctaText.trim() || undefined,
-        narration:
-          opts.template === 'reel-spec'
-            ? opts.narrationEngine !== 'none'
-            : opts.narrationOn,
+        includeBranding: opts.includeBranding,
+        narration: isRoomFlowFamily
+          ? opts.narrationEngine !== 'none'
+          : opts.narrationOn,
         // Send whenever the user has actually touched the picker (even with
         // every photo still selected) — a full-but-reordered selection must
         // still override the raw scrape order, not just a trimmed subset.
         photoOrder: photoSelection[id] ? selection : undefined,
-        ...(opts.template === 'reel-spec'
+        ...(isRoomFlowFamily
           ? {
-              priceTier: opts.priceTier,
               narrationEngine: opts.narrationEngine,
               hookText: opts.hookText.trim() || undefined,
             }
@@ -657,11 +658,7 @@ export default function ListingScraperPage(): React.ReactElement {
                       variant="outline"
                       onClick={() => void createReel(l.id, l)}
                       disabled={!api || reelBusyId !== null}
-                      title={
-                        getReelOpts(l.id).template === 'reel-spec'
-                          ? 'Create a vertical reel using the room-bucketed reel-spec template'
-                          : 'Create a vertical video reel from the listing photos (ken burns + narration)'
-                      }
+                      title={`Create a vertical reel using the "${getReelOpts(l.id).template}" template`}
                     >
                       {reelBusyId === l.id ? (
                         <RefreshCw size={13} className="animate-spin" />
@@ -737,16 +734,60 @@ export default function ListingScraperPage(): React.ReactElement {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="legacy">
-                              Classic (Ken Burns)
+                            <SelectItem value="just-listed">
+                              Just Listed
                             </SelectItem>
-                            <SelectItem value="reel-spec">
-                              Reel Spec (room-bucketed, beta)
+                            <SelectItem value="gallery">
+                              Full Photo Gallery
+                            </SelectItem>
+                            <SelectItem value="viral">
+                              Fast-Paced / Viral
+                            </SelectItem>
+                            <SelectItem value="room-flow">
+                              Room-by-Room Flow
+                            </SelectItem>
+                            <SelectItem value="luxury">
+                              Luxury Listing
                             </SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-                      {getReelOpts(l.id).template === 'legacy' && (
+                      {getReelOpts(l.id).template === 'room-flow' ||
+                      getReelOpts(l.id).template === 'luxury' ? (
+                        <div>
+                          <label className="text-xs text-ink-muted">
+                            Narration
+                          </label>
+                          <Select
+                            value={getReelOpts(l.id).narrationEngine}
+                            onValueChange={(v) =>
+                              setReelOpt(
+                                l.id,
+                                'narrationEngine',
+                                v as ReelOptions['narrationEngine'],
+                              )
+                            }
+                          >
+                            <SelectTrigger className="mt-1 h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="auto">
+                                Auto (Kokoro → SAPI)
+                              </SelectItem>
+                              <SelectItem value="kokoro">
+                                Kokoro (neural voice)
+                              </SelectItem>
+                              <SelectItem value="sapi">
+                                Windows SAPI
+                              </SelectItem>
+                              <SelectItem value="none">
+                                No narration
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      ) : (
                         <div>
                           <label className="text-xs text-ink-muted">
                             Narration
@@ -803,84 +844,37 @@ export default function ListingScraperPage(): React.ReactElement {
                           }
                         />
                       </div>
-                      {getReelOpts(l.id).template === 'reel-spec' && (
-                        <>
-                          <div>
-                            <label className="text-xs text-ink-muted">
-                              Price tier
-                            </label>
-                            <Select
-                              value={getReelOpts(l.id).priceTier}
-                              onValueChange={(v) =>
-                                setReelOpt(
-                                  l.id,
-                                  'priceTier',
-                                  v as ReelOptions['priceTier'],
-                                )
-                              }
-                            >
-                              <SelectTrigger className="mt-1 h-8 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="auto">
-                                  Auto (by price)
-                                </SelectItem>
-                                <SelectItem value="standard">
-                                  Standard
-                                </SelectItem>
-                                <SelectItem value="luxury">Luxury</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <label className="text-xs text-ink-muted">
-                              Narration
-                            </label>
-                            <Select
-                              value={getReelOpts(l.id).narrationEngine}
-                              onValueChange={(v) =>
-                                setReelOpt(
-                                  l.id,
-                                  'narrationEngine',
-                                  v as ReelOptions['narrationEngine'],
-                                )
-                              }
-                            >
-                              <SelectTrigger className="mt-1 h-8 text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="auto">
-                                  Auto (Kokoro → SAPI)
-                                </SelectItem>
-                                <SelectItem value="kokoro">
-                                  Kokoro (neural voice)
-                                </SelectItem>
-                                <SelectItem value="sapi">
-                                  Windows SAPI
-                                </SelectItem>
-                                <SelectItem value="none">
-                                  No narration
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div>
-                            <label className="text-xs text-ink-muted">
-                              Hook text (optional)
-                            </label>
-                            <Input
-                              className="mt-1 h-8 text-xs"
-                              placeholder="Auto-generated from listing"
-                              value={getReelOpts(l.id).hookText}
-                              onChange={(e) =>
-                                setReelOpt(l.id, 'hookText', e.target.value)
-                              }
-                            />
-                          </div>
-                        </>
+                      {(getReelOpts(l.id).template === 'room-flow' ||
+                        getReelOpts(l.id).template === 'luxury') && (
+                        <div>
+                          <label className="text-xs text-ink-muted">
+                            Hook text (optional)
+                          </label>
+                          <Input
+                            className="mt-1 h-8 text-xs"
+                            placeholder="Auto-generated from listing"
+                            value={getReelOpts(l.id).hookText}
+                            onChange={(e) =>
+                              setReelOpt(l.id, 'hookText', e.target.value)
+                            }
+                          />
+                        </div>
                       )}
+                      <label className="flex items-center gap-2 text-xs text-ink-base cursor-pointer mt-1">
+                        <input
+                          type="checkbox"
+                          checked={getReelOpts(l.id).includeBranding}
+                          onChange={(e) =>
+                            setReelOpt(
+                              l.id,
+                              'includeBranding',
+                              e.target.checked,
+                            )
+                          }
+                          className="accent-accent"
+                        />
+                        Add branded intro (from Settings brand kit)
+                      </label>
                     </div>
                   </CollapsibleContent>
                 </Collapsible>

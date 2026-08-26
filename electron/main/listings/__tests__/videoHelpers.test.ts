@@ -3,6 +3,7 @@ import {
   escapeDrawtext,
   buildKenBurnsFilter,
   buildNarrationScript,
+  buildProgressBarFilter,
 } from '../videoService';
 import type { PropertyListingSummary } from '../types';
 
@@ -69,6 +70,39 @@ describe('buildKenBurnsFilter', () => {
     expect(filter).toContain('force_original_aspect_ratio=decrease:flags=lanczos');
     expect(filter).toContain('unsharp=');
     expect(filter).toContain('overlay=(W-w)/2:(H-h)/2[composite]');
+  });
+
+  it('uses a bold black-stroke banner instead of the boxed style when bannerStyle is stroke (viral template)', () => {
+    const boxed = buildKenBurnsFilter(0, 1, 'JUST LISTED');
+    const stroked = buildKenBurnsFilter(0, 1, 'JUST LISTED', {
+      bannerStyle: 'stroke',
+      bannerFontSize: 64,
+    });
+    expect(boxed).toContain('box=1');
+    expect(stroked).not.toContain('box=1');
+    expect(stroked).toContain('bordercolor=black');
+    expect(stroked).toContain('borderw=6');
+    expect(stroked).toContain('fontsize=64');
+  });
+
+  it('burns a progress bar into the frame only when requested (gallery template)', () => {
+    const withoutBar = buildKenBurnsFilter(0, 3, '');
+    const withBar = buildKenBurnsFilter(0, 3, '', {
+      progressBar: { index: 4, total: 20 },
+    });
+    expect(withoutBar).not.toContain('drawbox');
+    expect(withBar).toContain('drawbox');
+  });
+});
+
+describe('buildProgressBarFilter', () => {
+  it('fills proportionally to (index+1)/total', () => {
+    expect(buildProgressBarFilter(0, 4)).toContain('w=270'); // 1/4 of 1080
+    expect(buildProgressBarFilter(3, 4)).toContain('w=1080'); // last photo, full bar
+  });
+
+  it('never renders a zero-width bar even for a large total', () => {
+    expect(buildProgressBarFilter(0, 1000)).toContain('w=1');
   });
 });
 

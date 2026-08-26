@@ -608,11 +608,11 @@ export class MasApiClient {
       ctaText?: string;
       narrationScript?: string;
       photoOrder?: number[];
-      reelTemplate?: 'legacy' | 'reel-spec';
-      priceTier?: 'auto' | 'standard' | 'luxury';
+      reelTemplate?: 'just-listed' | 'gallery' | 'viral' | 'room-flow' | 'luxury';
       hookText?: string;
       narrationEngine?: 'auto' | 'kokoro' | 'sapi' | 'none';
       narrationVoice?: string;
+      includeBranding?: boolean;
     } = {},
   ): Promise<ListingVideoResult> {
     return this.req(

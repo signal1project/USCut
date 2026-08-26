@@ -216,6 +216,7 @@ export function buildMasRuntime(deps: MasRuntimeDeps): MasRuntime {
     getAssetPath('fonts'),
     path.join(dataDir, 'models', 'kokoro'),
     getAssetPath('music'),
+    settings,
   );
   const insights = new InsightsService({
     dataSource,
