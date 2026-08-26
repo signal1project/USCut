@@ -49,7 +49,7 @@ import {
 import type { ComposerPrefill } from './composerPrefill';
 import { ipc, hasIpc } from '@/lib/ipc';
 
-const AD_PLATFORMS = ['facebook', 'instagram', 'linkedin'] as const;
+const AD_PLATFORMS = ['facebook', 'instagram'] as const;
 
 const CTA_PRESETS = [
   "Comment 'TOUR' below to schedule a viewing",
