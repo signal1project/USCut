@@ -3,6 +3,7 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 import ffmpeg from 'fluent-ffmpeg';
+import ffprobeInstaller from '@ffprobe-installer/ffprobe';
 import { resolveFfmpegPath } from '../../util/ffmpegBinary';
 
 export interface TranscriptWord {
@@ -217,14 +218,19 @@ function attachWordsToSegments(
  * toAss()). ~25MB upload limit applies; larger files should be pre-extracted
  * to audio by the caller.
  */
-export async function transcribeViaOpenAI(
+async function uploadWhisperChunk(
   filePath: string,
   apiKey: string,
+  signal?: AbortSignal,
+  prompt?: string,
 ): Promise<TranscriptSegment[]> {
-  const buf = fs.readFileSync(filePath);
+  if (fs.statSync(filePath).size > 24_000_000)
+    throw new Error('Transcription audio chunk is too large.');
+  const buf = await fs.promises.readFile(filePath);
   const form = new FormData();
   form.append('file', new Blob([buf]), path.basename(filePath));
   form.append('model', 'whisper-1');
+  if (prompt) form.append('prompt', prompt);
   form.append('response_format', 'verbose_json');
   form.append('timestamp_granularities[]', 'segment');
   form.append('timestamp_granularities[]', 'word');
@@ -233,6 +239,7 @@ export async function transcribeViaOpenAI(
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}` },
     body: form,
+    signal,
   });
   if (!res.ok) throw new Error(`whisper_failed_${res.status}`);
   const data = (await res.json()) as {
@@ -252,13 +259,137 @@ export async function transcribeViaOpenAI(
       end: s.end,
       text: s.text.trim(),
     }));
-    return words.length
-      ? attachWordsToSegments(segments, words)
-      : segments;
+    return words.length ? attachWordsToSegments(segments, words) : segments;
   }
   if (data.text)
     return [{ start: 0, end: data.duration ?? 60, text: data.text.trim() }];
   return [];
+}
+
+export interface CloudTranscriptionOptions {
+  signal?: AbortSignal;
+  onProgress?: (completed: number, total: number) => void;
+  /** Bounded to ten minutes; smaller windows are useful for constrained jobs. */
+  chunkSeconds?: number;
+}
+
+/** Extract bounded audio windows, upload sequentially, restore source timestamps.
+ * Whisper requires uploads below 25 MB; 600s of mono 16kHz PCM is ~19.2 MB.
+ * https://developers.openai.com/api/docs/guides/speech-to-text
+ */
+export async function transcribeViaOpenAI(
+  filePath: string,
+  apiKey: string,
+  options: CloudTranscriptionOptions = {},
+): Promise<TranscriptSegment[]> {
+  const chunkSeconds = options.chunkSeconds ?? 600;
+  if (
+    !Number.isFinite(chunkSeconds) ||
+    chunkSeconds < 1 ||
+    chunkSeconds > 600
+  ) {
+    throw new Error(
+      'Transcription chunk duration must be between 1 and 600 seconds.',
+    );
+  }
+  options.signal?.throwIfAborted();
+  ffmpeg.setFfprobePath(
+    ffprobeInstaller.path.replace('app.asar', 'app.asar.unpacked'),
+  );
+  const duration = await new Promise<number>((resolve, reject) => {
+    ffmpeg.ffprobe(filePath, (err, metadata) => {
+      if (err) return reject(err);
+      if (!metadata.streams.some((s) => s.codec_type === 'audio'))
+        return reject(new Error('No audio track was found to transcribe.'));
+      const seconds = metadata.format.duration;
+      if (!seconds || !Number.isFinite(seconds) || seconds <= 0)
+        return reject(new Error('Unable to determine audio duration.'));
+      resolve(seconds);
+    });
+  });
+  const total = Math.ceil(duration / chunkSeconds);
+  const segments: TranscriptSegment[] = [];
+  let context = '';
+  options.onProgress?.(0, total);
+  for (let i = 0; i < total; i++) {
+    options.signal?.throwIfAborted();
+    const start = i * chunkSeconds;
+    const length = Math.min(chunkSeconds, duration - start);
+    const tmp = path.join(
+      os.tmpdir(),
+      `aicut-cloud-whisper-${crypto.randomUUID()}.wav`,
+    );
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const command = ffmpeg(filePath)
+          .setFfmpegPath(resolveFfmpegPath())
+          .seekInput(start)
+          .duration(length)
+          .noVideo()
+          .audioChannels(1)
+          .audioFrequency(16000)
+          .audioCodec('pcm_s16le')
+          .output(tmp);
+        const abort = () => {
+          command.kill('SIGKILL');
+        };
+        const cleanup = () =>
+          options.signal?.removeEventListener('abort', abort);
+        command.on('start', () => {
+          if (options.signal?.aborted) abort();
+        });
+        command.on('end', () => {
+          cleanup();
+          resolve();
+        });
+        command.on('error', (err) => {
+          cleanup();
+          reject(err);
+        });
+        options.signal?.addEventListener('abort', abort, { once: true });
+        command.run();
+      });
+      options.signal?.throwIfAborted();
+      const signal = options.signal
+        ? AbortSignal.any([options.signal, AbortSignal.timeout(10 * 60 * 1000)])
+        : AbortSignal.timeout(10 * 60 * 1000);
+      const chunk = await uploadWhisperChunk(tmp, apiKey, signal, context);
+      for (const segment of chunk) {
+        if (!Number.isFinite(segment.start) || !Number.isFinite(segment.end))
+          continue;
+        const localStart = Math.max(0, Math.min(length, segment.start));
+        const localEnd = Math.max(localStart, Math.min(length, segment.end));
+        if (localEnd <= localStart) continue;
+        segments.push({
+          ...segment,
+          start: start + localStart,
+          end: start + localEnd,
+          words: segment.words
+            ?.filter(
+              (w) =>
+                Number.isFinite(w.start) &&
+                Number.isFinite(w.end) &&
+                w.end > w.start &&
+                w.start < length &&
+                w.end > 0,
+            )
+            .map((w) => ({
+              ...w,
+              start: start + Math.max(0, w.start),
+              end: start + Math.min(length, w.end),
+            })),
+        });
+      }
+      context = chunk
+        .map((s) => s.text)
+        .join(' ')
+        .slice(-400);
+      options.onProgress?.(i + 1, total);
+    } finally {
+      await fs.promises.rm(tmp, { force: true });
+    }
+  }
+  return segments;
 }
 
 /** Convert to a 16kHz mono WAV via our bundled ffmpeg-static binary. Doing this

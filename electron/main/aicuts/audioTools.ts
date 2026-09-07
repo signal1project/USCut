@@ -17,28 +17,12 @@ import { probeVideo } from './ffmpegOps';
  * timeline. All best-effort and self-contained.
  */
 
-/** Extract mono 16kHz mp3 (small enough for Whisper's 25MB cap) and transcribe. */
+/** Shared cloud pipeline extracts bounded audio chunks before uploading. */
 export async function transcribeVideoAudio(
   videoPath: string,
   apiKey: string,
 ): Promise<TranscriptSegment[]> {
-  const tmp = path.join(os.tmpdir(), `aicut-whisper-${uuidv4()}.mp3`);
-  await new Promise<void>((resolve, reject) => {
-    ffmpeg(videoPath)
-      .noVideo()
-      .audioChannels(1)
-      .audioFrequency(16000)
-      .audioBitrate('48k')
-      .output(tmp)
-      .on('end', () => resolve())
-      .on('error', reject)
-      .run();
-  });
-  try {
-    return await transcribeViaOpenAI(tmp, apiKey);
-  } finally {
-    fs.unlink(tmp, () => {});
-  }
+  return transcribeViaOpenAI(videoPath, apiKey);
 }
 
 export interface VoiceoverResult {
