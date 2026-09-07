@@ -49,8 +49,8 @@
   },
   "publish": {
     "provider": "github",
-    "owner": "signal1-blkink",
-    "repo": "Master_AI_Social",
+    "owner": "signal1project",
+    "repo": "USCut",
     "channel": "latest"
   },
   "extraResources": [
