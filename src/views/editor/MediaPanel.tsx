@@ -55,6 +55,7 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
   const [captionsBusy, setCaptionsBusy] = useState(false);
   const [autoEditPrompt, setAutoEditPrompt] = useState('');
   const [autoEditBusy, setAutoEditBusy] = useState(false);
+  const [autoEditMessage, setAutoEditMessage] = useState('');
   const masApi = useMasApi();
   const [clipSrt, setClipSrt] = useState('');
   const [clipSourceId, setClipSourceId] = useState<string>('');
@@ -66,18 +67,15 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
   const [clipQuery, setClipQuery] = useState('');
   const [clipBusy, setClipBusy] = useState(false);
   const [clipStatus, setClipStatus] = useState<string | null>(null);
-  const [clipResults, setClipResults] = useState<
-    | {
-        pickedBy: string;
-        clips: Array<{
-          hook: string;
-          score: number;
-          tracked: boolean;
-          durationSeconds: number;
-        }>;
-      }
-    | null
-  >(null);
+  const [clipResults, setClipResults] = useState<{
+    pickedBy: string;
+    clips: Array<{
+      hook: string;
+      score: number;
+      tracked: boolean;
+      durationSeconds: number;
+    }>;
+  } | null>(null);
   const [whisperBusy, setWhisperBusy] = useState(false);
   const [whisperStatus, setWhisperStatus] = useState<string | null>(null);
   const [ttsText, setTtsText] = useState('');
@@ -170,7 +168,8 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
 
   const handleAutoClip = async () => {
     const sourceVideo =
-      clipVideoOptions.find((m) => m.id === clipSourceId) ?? clipVideoOptions[0];
+      clipVideoOptions.find((m) => m.id === clipSourceId) ??
+      clipVideoOptions[0];
     if (!masApi || !sourceVideo) return;
     setClipBusy(true);
     setClipStatus(null);
@@ -318,42 +317,44 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
   };
 
   const handleAutoEdit = async () => {
-    if (!autoEditPrompt.trim()) return;
+    if (!autoEditPrompt.trim() || autoEditBusy) return;
+    const before = useEditorStore.getState();
+    const clips = before.tracks
+      .filter((t) => !t.locked)
+      .flatMap((t) =>
+        t.clips.map((c) => ({
+          id: c.id,
+          name: c.name,
+          duration: c.duration,
+          src: c.src,
+        })),
+      );
+    if (!clips.length) {
+      setAutoEditMessage('Add clips to an unlocked track first.');
+      return;
+    }
     setAutoEditBusy(true);
-    const allClips = tracks.flatMap((t) =>
-      t.clips.map((c) => ({
-        id: c.id,
-        name: c.name,
-        duration: c.duration,
-        src: c.src,
-      })),
-    );
-    const result = (await ipc.invoke('aicuts:auto-edit', {
-      clips: allClips,
-      prompt: autoEditPrompt,
-    })) as
-      | {
-          decisions?: Array<{
-            clipId: string;
-            trimStart: number;
-            trimEnd: number;
-            startTime: number;
-          }>;
-          summary?: string;
-          error?: string;
-        }
-      | undefined;
-    setAutoEditBusy(false);
-    if (result?.decisions) {
-      const { updateClip } = useEditorStore.getState();
-      for (const d of result.decisions) {
-        updateClip(d.clipId, {
-          trimStart: d.trimStart,
-          trimEnd: d.trimEnd,
-          startTime: d.startTime,
-        });
-      }
+    setAutoEditMessage('');
+    try {
+      const result = (await ipc.invoke('aicuts:auto-edit', {
+        clips,
+        prompt: autoEditPrompt,
+      })) as { error?: string } | undefined;
+      if (result?.error) throw new Error(result.error);
+      const summary = useEditorStore
+        .getState()
+        .applyAutoEdit(result, before.tracks, before.projectId);
+      setAutoEditMessage(
+        summary ||
+          'AI edit applied. Use Undo to restore the previous timeline.',
+      );
       setAutoEditPrompt('');
+    } catch (err) {
+      setAutoEditMessage(
+        err instanceof Error ? err.message : 'Auto-Edit failed. Try again.',
+      );
+    } finally {
+      setAutoEditBusy(false);
     }
   };
 
@@ -612,8 +613,9 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
                 </span>
               </div>
               <p className="text-[10px] text-[#71717f] mb-2.5">
-                Describe your edit — Claude Sonnet applies trim decisions across
-                all clips.
+                Describe your edit. Your selected AI provider trims, reorders,
+                and removes clips on unlocked tracks. Undo restores the whole
+                edit.
               </p>
               <textarea
                 value={autoEditPrompt}
@@ -636,6 +638,12 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
                 )}
               </button>
             </div>
+
+            {autoEditMessage && (
+              <p role="status" className="text-[11px] text-ink-base p-2">
+                {autoEditMessage}
+              </p>
+            )}
 
             {/* Auto-Clip (Opus-Clip-style repurposing) */}
             <div className="p-3 rounded-xl bg-[#1d1d22] border border-[#26262d]">
@@ -713,7 +721,10 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
                     value={clipSeconds}
                     onChange={(e) =>
                       setClipSeconds(
-                        Math.min(90, Math.max(10, Number(e.target.value) || 10)),
+                        Math.min(
+                          90,
+                          Math.max(10, Number(e.target.value) || 10),
+                        ),
                       )
                     }
                     className="w-full bg-[#0c0c0f] text-[10px] text-ink-base rounded-lg p-2 border border-[#303039] focus:outline-none focus:border-[#34d399]"

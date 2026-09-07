@@ -1,3 +1,4 @@
+import { validateAutoEditResult } from '../../commont/autoEdit';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { original } from 'immer';
@@ -142,6 +143,11 @@ export interface EditorState {
   ) => string;
   removeClip: (clipId: string) => void;
   updateClip: (clipId: string, patch: Partial<Clip>) => void;
+  applyAutoEdit: (
+    result: unknown,
+    expectedTracks: Track[],
+    projectId: string,
+  ) => string;
   moveClip: (clipId: string, newStartTime: number, newTrackId?: string) => void;
   trimClip: (clipId: string, trimStart: number, trimEnd: number) => void;
   splitClip: (clipId: string, atTime: number) => void;
@@ -425,6 +431,50 @@ export const useEditorStore = create<EditorState>()(
         s.duration = calcDuration(s.tracks);
         s.saveState = 'dirty';
       }),
+
+    applyAutoEdit: (result, expectedTracks, projectId) => {
+      const current = get();
+      if (
+        current.projectId !== projectId ||
+        current.tracks !== expectedTracks
+      ) {
+        throw new Error(
+          'The timeline changed while AI was editing. Run Auto-Edit again to use your latest changes.',
+        );
+      }
+      const editable = current.tracks
+        .filter((t) => !t.locked)
+        .flatMap((t) => t.clips);
+      const validated = validateAutoEditResult(result, editable);
+      if (!validated.decisions.length) {
+        throw new Error(
+          'The AI did not select any clips. Your timeline has not changed. Try a different instruction.',
+        );
+      }
+      const decisions = new Map(validated.decisions.map((d) => [d.clipId, d]));
+      set((s) => {
+        s.historyKey = null;
+        pushHistory(s, 'autoEdit');
+        for (const track of s.tracks) {
+          if (track.locked) continue;
+          track.clips = track.clips.filter((c) => decisions.has(c.id));
+          for (const clip of track.clips) {
+            const d = decisions.get(clip.id)!;
+            clip.trimStart = d.trimStart;
+            clip.trimEnd = d.trimEnd;
+            clip.startTime = d.startTime;
+          }
+          track.clips.sort((a, b) => a.startTime - b.startTime);
+        }
+        s.historyKey = null;
+        s.selectedClipId = null;
+        s.isPlaying = false;
+        s.duration = calcDuration(s.tracks);
+        s.playhead = Math.min(s.playhead, s.duration);
+        s.saveState = 'dirty';
+      });
+      return validated.summary;
+    },
 
     moveClip: (clipId, newStartTime, newTrackId) =>
       set((s) => {

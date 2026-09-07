@@ -25,18 +25,11 @@ export interface AutoEditInput {
   trending?: string[];
 }
 
-export interface EditDecision {
-  clipId: string;
-  trimStart: number;
-  trimEnd: number;
-  startTime: number;
-  reason: string;
-}
-
-export interface AutoEditResult {
-  decisions: EditDecision[];
-  summary: string;
-}
+export type { EditDecision, AutoEditResult } from '../../../commont/autoEdit';
+import {
+  validateAutoEditResult,
+  type AutoEditResult,
+} from '../../../commont/autoEdit';
 
 const SYSTEM = `You are USCut's AI editor, optimizing for organic reach — not just fitting a
 duration. You receive video clips (with transcripts when available), a user instruction, and
@@ -128,27 +121,15 @@ export async function autoEdit(
     maxTokens: 1536,
   });
 
+  let parsed: unknown;
   try {
-    return JSON.parse(text) as AutoEditResult;
+    parsed = JSON.parse(text);
   } catch {
-    // Fallback: use all clips in order with no trimming
-    let cursor = 0;
-    const decisions: EditDecision[] = input.clips.map((c) => {
-      const d: EditDecision = {
-        clipId: c.id,
-        trimStart: 0,
-        trimEnd: 0,
-        startTime: cursor,
-        reason: 'Fallback: placed in original order',
-      };
-      cursor += c.duration;
-      return d;
-    });
-    return {
-      decisions,
-      summary: 'Auto-edit fallback: clips placed in original order.',
-    };
+    throw new Error(
+      'The AI returned an unreadable edit. Your timeline has not changed. Try again.',
+    );
   }
+  return validateAutoEditResult(parsed, input.clips);
 }
 
 export async function generateCaptionsFromTranscript(

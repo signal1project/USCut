@@ -54,21 +54,44 @@ describe('autoEdit', () => {
     expect(result.summary).toBe('from the fake provider');
   });
 
-  it('falls back to original clip order when the provider returns invalid JSON', async () => {
-    const provider = fakeProvider('not json');
-    const result = await autoEdit(
-      {
-        clips: [
-          { id: 'a', name: 'a.mp4', duration: 5, src: '/a.mp4' },
-          { id: 'b', name: 'b.mp4', duration: 3, src: '/b.mp4' },
-        ],
-        prompt: 'edit it',
-      },
-      provider,
-    );
-    expect(result.summary).toContain('fallback');
-    expect(result.decisions.map((d) => d.clipId)).toEqual(['a', 'b']);
-    expect(result.decisions[1].startTime).toBe(5);
+  it('rejects unreadable output without inventing a replacement edit', async () => {
+    await expect(
+      autoEdit(
+        {
+          clips: [{ id: 'a', name: 'a', duration: 5, src: '/a' }],
+          prompt: 'edit',
+        },
+        fakeProvider('not json'),
+      ),
+    ).rejects.toThrow('timeline has not changed');
+  });
+
+  it.each([
+    { trimStart: -1 },
+    { trimEnd: 10 },
+    { startTime: '0' },
+    { startTime: 1e309 },
+    { clipId: 'unknown' },
+  ])('rejects invalid AI decisions: %j', async (patch) => {
+    const decision = {
+      clipId: 'a',
+      trimStart: 0,
+      trimEnd: 0,
+      startTime: 0,
+      reason: 'cut',
+      ...patch,
+    };
+    await expect(
+      autoEdit(
+        {
+          clips: [{ id: 'a', name: 'a', duration: 10, src: '/a' }],
+          prompt: 'edit',
+        },
+        fakeProvider(
+          JSON.stringify({ decisions: [decision], summary: 'edit' }),
+        ),
+      ),
+    ).rejects.toThrow('invalid edit');
   });
 
   it('grounds the prompt in the real transcript when one is provided', async () => {
