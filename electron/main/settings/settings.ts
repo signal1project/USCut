@@ -10,7 +10,7 @@ export const DEFAULT_ELEVENLABS_VOICE_ID = '21m00Tcm4TlvDq8ikWAM';
 
 // Key/value seam (electron-store in production; faked in tests). Distinct from
 // the credential store — this holds non-secret-ish config (client ids, provider
-// selection). API keys live here too but are only ever read in the main process.
+// selection). Production routes secret values through SecureSettingsStore.
 export interface SettingsStore {
   get(key: string): unknown;
   set(key: string, value: unknown): void;

@@ -27,7 +27,7 @@ import {
   type AutoEditInput,
 } from './autoEdit';
 import { Settings } from '../settings/settings';
-import { store } from '../../global/store';
+import { settingsStore } from '../../global/store';
 import { logger } from '../../global/log';
 import { createProviderResolver } from '../ai';
 import { GoogleTrendsFetcher } from '../research/googleTrendsFetcher';
@@ -39,7 +39,7 @@ const AUTO_EDIT_MAX_TRANSCRIBED_CLIPS = 6;
 export function registerAiCutHandlers(win: Electron.BrowserWindow) {
   registerProjectHandlers();
 
-  const settings = new Settings(store);
+  const settings = new Settings(settingsStore);
 
   // Same provider-resolution the rest of the app uses (Settings → AI Providers)
   // — auto-edit and one-click captions must never talk to a hardcoded SDK.

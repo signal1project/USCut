@@ -31,7 +31,7 @@ import fs from 'node:fs';
 import { startApiServer } from './server';
 import { createAicutAgentRouter } from './aicuts/agentApi';
 import { initSqlite3Db, AppDataSource } from '../db';
-import { store } from '../global/store';
+import { store, settingsStore } from '../global/store';
 import { startMas } from './mas/startup';
 import { registerWebviewBridge } from './adapters/webviewBridge';
 import { Settings } from './settings/settings';
@@ -179,7 +179,7 @@ async function startAgentBridge() {
   try {
     const port = Number(process.env.AICUT_BRIDGE_PORT) || 4255;
     const token = process.env.AICUT_BRIDGE_TOKEN;
-    const resolveProvider = createProviderResolver(new Settings(store));
+    const resolveProvider = createProviderResolver(new Settings(settingsStore));
     const api = await startApiServer({
       port,
       token,
@@ -219,7 +219,7 @@ async function startMasBackend() {
       logger.error('[AICut] DB init failed — MAS backend disabled');
       return;
     }
-    await startMas(AppDataSource, store);
+    await startMas(AppDataSource, settingsStore);
     logger.log(
       '[AICut] MAS backend ready (publish, research, scheduling, OAuth)',
     );
@@ -230,6 +230,13 @@ async function startMasBackend() {
 
 app.whenReady().then(async () => {
   try {
+    try {
+      settingsStore.migrate();
+    } catch {
+      logger.error(
+        'AI credential migration is pending; secure storage must be available to access credentials.',
+      );
+    }
     registerMediaProtocolHandler();
     registerContextMenuListener();
     new App();
