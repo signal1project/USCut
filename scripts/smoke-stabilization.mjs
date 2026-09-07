@@ -6,17 +6,63 @@ import path from 'node:path';
 import net from 'node:net';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { execFileSync } from 'node:child_process';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const results = path.join(root, 'test-results');
 await fs.mkdir(results, { recursive: true });
 const run = await fs.mkdtemp(path.join(results, 'stabilization-'));
 const profile = path.join(run, 'profile');
+const requireCjs = createRequire(import.meta.url);
+const sourceVideo = path.join(run, 'smoke-video.mp4');
+execFileSync(
+  requireCjs('ffmpeg-static'),
+  [
+    '-f',
+    'lavfi',
+    '-i',
+    'color=c=blue:s=320x180:r=15:d=12',
+    '-c:v',
+    'libx264',
+    '-pix_fmt',
+    'yuv420p',
+    '-y',
+    sourceVideo,
+  ],
+  { windowsHide: true, stdio: 'ignore' },
+);
+const output = path.join(run, 'output');
+const music = path.join(run, 'music');
+await fs.mkdir(path.join(music, 'standard'), { recursive: true });
+await fs.mkdir(path.join(music, 'luxury'), { recursive: true });
+execFileSync(
+  requireCjs('ffmpeg-static'),
+  [
+    '-f',
+    'lavfi',
+    '-i',
+    'sine=frequency=440:duration=1',
+    '-y',
+    path.join(music, 'standard', 'test.wav'),
+  ],
+  { windowsHide: true, stdio: 'ignore' },
+);
+await fs.copyFile(
+  path.join(music, 'standard', 'test.wav'),
+  path.join(music, 'luxury', 'test.wav'),
+);
+await fs.mkdir(output, { recursive: true });
 await fs.mkdir(path.join(profile, 'projects'), { recursive: true });
 await fs.writeFile(
   path.join(profile, 'config.json'),
   JSON.stringify({
-    mas: { settings: { ai: { key: { openai: 'smoke-only-fake-key' } } } },
+    mas: {
+      settings: {
+        ai: { key: { openai: 'smoke-only-fake-key' } },
+        storage: { generalOutputDir: output, zillowScraperDir: output },
+      },
+    },
   }),
 );
 const fixture = {
@@ -44,8 +90,29 @@ const fixture = {
       })),
     },
   ],
-  mediaLibrary: [],
+  mediaLibrary: [
+    {
+      id: 'smoke-video',
+      src: sourceVideo,
+      name: 'smoke-video.mp4',
+      duration: 12,
+      type: 'video',
+    },
+  ],
 };
+const jobsDir = path.join(profile, 'jobs', 'auto-clip');
+await fs.mkdir(jobsDir, { recursive: true });
+await fs.writeFile(
+  path.join(jobsDir, 'interrupted-fixture.json'),
+  JSON.stringify({
+    id: 'interrupted-fixture',
+    label: 'Prior interrupted job',
+    status: 'running',
+    inputHash: 'fixture-hash',
+    progress: 42,
+    createdAt: new Date().toISOString(),
+  }),
+);
 const projectFile = path.join(profile, 'projects', 'smoke-project.json');
 await fs.writeFile(projectFile, JSON.stringify(fixture));
 
@@ -210,8 +277,117 @@ try {
     ['c', 'a'],
   );
   await page.screenshot({ path: path.join(run, 'editor.png') });
+  const jobsPanel = page.getByLabel('Auto-Clip jobs');
+  await expect(
+    jobsPanel.getByText('Prior interrupted job', { exact: true }),
+  ).toBeVisible();
+  await expect(jobsPanel).toContainText('interrupted');
+  await page
+    .getByPlaceholder(/Optional: paste SRT\/VTT/)
+    .fill(
+      '1\n00:00:00,000 --> 00:00:12,000\nHere are three surprising mistakes and the best way to fix them!',
+    );
+  await page
+    .getByRole('button', { name: 'Find & Cut Clips', exact: true })
+    .click();
+  await expect(
+    jobsPanel.getByRole('button', { name: 'Add clips to current project' }),
+  ).toBeVisible({ timeout: 60000 });
+  const beforeImport = JSON.parse(await fs.readFile(projectFile, 'utf8'))
+    .mediaLibrary.length;
+  assert.equal(beforeImport, 1);
+  await jobsPanel
+    .getByRole('button', { name: 'Add clips to current project' })
+    .click();
+  await expect
+    .poll(
+      async () =>
+        JSON.parse(await fs.readFile(projectFile, 'utf8')).mediaLibrary.length,
+    )
+    .toBeGreaterThan(1);
+  const afterImport = JSON.parse(await fs.readFile(projectFile, 'utf8'))
+    .mediaLibrary.length;
+  await jobsPanel
+    .getByRole('button', { name: 'Add clips to current project' })
+    .click();
+  await page
+    .getByTitle('Save project (Ctrl+S) — autosaves as you edit', {
+      exact: true,
+    })
+    .click();
+  await expect
+    .poll(
+      async () =>
+        JSON.parse(await fs.readFile(projectFile, 'utf8')).mediaLibrary.length,
+    )
+    .toBe(afterImport);
+  const cancelledJob = await page.evaluate(async (videoPath) => {
+    const info = await window.ipcRenderer.invoke('mas:api-info');
+    const headers = {
+      Authorization: `Bearer ${info.token}`,
+      'Content-Type': 'application/json',
+    };
+    const base = `${info.baseUrl}/api/clips/jobs`;
+    const requestId = crypto.randomUUID();
+    await fetch(base, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        requestId,
+        videoPath,
+        transcriptSrt:
+          '1\n00:00:00,000 --> 00:00:12,000\nThe best surprising mistake and how to fix it!',
+        maxClips: 1,
+      }),
+    });
+    const response = await fetch(`${base}/${requestId}/cancel`, {
+      method: 'POST',
+      headers,
+    });
+    return { id: requestId, status: (await response.json()).status };
+  }, sourceVideo);
+  assert.ok(['cancelling', 'cancelled'].includes(cancelledJob.status));
+  await expect
+    .poll(
+      async () =>
+        JSON.parse(
+          await fs.readFile(
+            path.join(jobsDir, `${cancelledJob.id}.json`),
+            'utf8',
+          ),
+        ).status,
+    )
+    .toBe('cancelled');
+  await page.screenshot({ path: path.join(run, 'jobs.png') });
+  await page.evaluate(() => {
+    location.hash = '#/mas/settings';
+  });
+  await expect(
+    page.getByText('Production readiness', { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Refresh readiness' }),
+  ).toBeEnabled({ timeout: 15000 });
+  await page
+    .getByLabel('Listing reel music folder', { exact: true })
+    .fill(music);
+  await page.getByRole('button', { name: 'Save music folder' }).click();
+  await expect(
+    page.getByText('Music folder saved. The next listing reel will use it.', {
+      exact: true,
+    }),
+  ).toBeVisible();
+  const readiness = await page.evaluate(() =>
+    window.ipcRenderer.invoke('mas:settings:readiness'),
+  );
+  assert.equal(readiness.checks.find((c) => c.id === 'ffmpeg').status, 'ready');
+  assert.equal(readiness.checks.find((c) => c.id === 'music').status, 'ready');
+  await page
+    .getByText('Production readiness', { exact: true })
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(run, 'readiness.png') });
   console.log(
-    'PASS: isolated app boot, Windows credential encryption/migration, protected IPC, browser CORS/API, Auto-Edit exclusions/reorder, undo/redo, rejection, autosave.',
+    'PASS: isolated app boot, credential migration, protected IPC, browser CORS/API, Auto-Edit/undo/redo/autosave, interrupted job recovery, real FFmpeg Auto-Clip job, explicit deduplicated import, job cancellation, readiness, music configuration.',
   );
   console.log(`Smoke artifacts: ${run}`);
 } finally {
