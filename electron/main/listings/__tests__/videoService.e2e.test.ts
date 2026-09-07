@@ -17,7 +17,10 @@ function mapStore(): SettingsStore {
 }
 
 async function probeStreams(filePath: string, select: string) {
-  const ffprobePath = resolveFfmpegPath().replace(/ffmpeg(\.exe)?$/, 'ffprobe$1');
+  const ffprobePath = resolveFfmpegPath().replace(
+    /ffmpeg(\.exe)?$/,
+    'ffprobe$1',
+  );
   const probeBin = fs.existsSync(ffprobePath) ? ffprobePath : 'ffprobe';
   const { stdout } = await run(probeBin, [
     '-v',
@@ -307,7 +310,7 @@ describe('ListingVideoService — real ffmpeg E2E', () => {
     expect(fs.existsSync(result!.path)).toBe(true);
   }, 60_000);
 
-  it('mixes in background music when a track is available under musicDir/standard', async () => {
+  it('uses a music folder selected after the service starts without restarting', async () => {
     const musicDir = path.join(workDir, 'music');
     fs.mkdirSync(path.join(musicDir, 'standard'), { recursive: true });
     const track = path.join(musicDir, 'standard', 'track.wav');
@@ -320,13 +323,16 @@ describe('ListingVideoService — real ffmpeg E2E', () => {
       track,
     ]);
 
+    const settings = new Settings(mapStore());
     const service = new ListingVideoService(
       store as any,
       outDir,
       null,
       null,
-      musicDir,
+      path.join(workDir, 'empty-bundled-music'),
+      settings,
     );
+    settings.setMusicDir(musicDir);
     const result = await service.generateVideo(listing.id, {
       maxPhotos: 2,
       secondsPerPhoto: 2,
@@ -336,8 +342,10 @@ describe('ListingVideoService — real ffmpeg E2E', () => {
     expect(result).not.toBeNull();
     expect(fs.existsSync(result!.path)).toBe(true);
     const probe = await probeStreams(result!.path, 'a:0');
-    expect(probe.streams.some((s: { codec_type: string }) => s.codec_type === 'audio')).toBe(
-      true,
-    );
+    expect(
+      probe.streams.some(
+        (s: { codec_type: string }) => s.codec_type === 'audio',
+      ),
+    ).toBe(true);
   }, 60_000);
 });

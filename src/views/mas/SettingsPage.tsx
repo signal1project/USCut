@@ -34,6 +34,7 @@ import {
 } from '@/components/ui';
 import { useMasIpc } from './useMasIpc';
 import ConnectAccounts from '../onboarding/ConnectAccounts';
+import { ProductionReadinessCard } from './ProductionReadinessCard';
 
 type ProviderStatus = SettingsStatus['providers'][number];
 
@@ -445,8 +446,8 @@ function BackgroundPrefsCard(): React.ReactElement {
             onChange={(e) => void update({ keepInTray: e.target.checked })}
             className="accent-[#4d7cff]"
           />
-          Keep running in the tray when the window is closed (off by
-          default — minimize always sends to tray regardless of this)
+          Keep running in the tray when the window is closed (off by default —
+          minimize always sends to tray regardless of this)
         </label>
         <label className="flex items-center gap-2.5 text-sm text-ink-base cursor-pointer">
           <input
@@ -470,9 +471,7 @@ function StorageLocationsCard(): React.ReactElement {
   const ipc = useMasIpc();
   const [generalDir, setGeneralDir] = useState('');
   const [zillowDir, setZillowDir] = useState('');
-  const [savingKey, setSavingKey] = useState<'general' | 'zillow' | null>(
-    null,
-  );
+  const [savingKey, setSavingKey] = useState<'general' | 'zillow' | null>(null);
 
   const load = useCallback(() => {
     void ipc.getStoragePaths().then((paths) => {
@@ -485,18 +484,12 @@ function StorageLocationsCard(): React.ReactElement {
     load();
   }, [load]);
 
-  const browse = async (
-    current: string,
-    setValue: (v: string) => void,
-  ) => {
+  const browse = async (current: string, setValue: (v: string) => void) => {
     const result = await ipc.pickFolder(current);
     if (!result.canceled && result.path) setValue(result.path);
   };
 
-  const save = async (
-    key: 'general' | 'zillow',
-    dir: string,
-  ) => {
+  const save = async (key: 'general' | 'zillow', dir: string) => {
     if (!dir.trim()) return;
     setSavingKey(key);
     try {
@@ -518,16 +511,14 @@ function StorageLocationsCard(): React.ReactElement {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <FolderOpen size={16} className="text-[#4d7cff]" /> Storage
-          Locations
+          <FolderOpen size={16} className="text-[#4d7cff]" /> Storage Locations
         </CardTitle>
         <CardDescription>
           Where USCut saves the things it creates. An{' '}
           <code className="text-accent">Archive</code> folder is created
-          automatically inside your Zillow Scraper folder. New Zillow
-          captures use these immediately; other exports (clips, bio pages,
-          the editor's Save/Export dialogs) pick up a change the next time
-          you restart USCut.
+          automatically inside your Zillow Scraper folder. New Zillow captures
+          use these immediately; other exports (clips, bio pages, the editor's
+          Save/Export dialogs) pick up a change the next time you restart USCut.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -711,6 +702,7 @@ export default function SettingsPage(): React.ReactElement {
 
       {/* Storage locations */}
       <StorageLocationsCard />
+      <ProductionReadinessCard />
 
       {/* Local integrations (read-only info) */}
       <Card>

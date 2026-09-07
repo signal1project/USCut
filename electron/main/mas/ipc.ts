@@ -1,5 +1,7 @@
 import { ipcMain, BrowserWindow, dialog } from 'electron';
 import fs from 'node:fs';
+import path from 'node:path';
+import { checkReadiness } from '../settings/readiness';
 import type { DataSource } from 'typeorm';
 import {
   AccountStatus,
@@ -168,36 +170,55 @@ export function registerMasIpc(deps: MasIpcDeps): void {
 
   // ── Storage locations ───────────────────────────────────────────────────────
 
+  ipcMain.handle('mas:settings:readiness', () => checkReadiness(settings));
+  ipcMain.handle(
+    'mas:settings:get-music-dir',
+    () => settings.getMusicDir() ?? '',
+  );
+  ipcMain.handle('mas:settings:set-music-dir', (_e, directory: unknown) => {
+    if (typeof directory !== 'string')
+      return { ok: false, error: 'Choose a music folder.' };
+    const dir = directory.trim();
+    if (dir) {
+      try {
+        if (!path.isAbsolute(dir) || !fs.statSync(dir).isDirectory())
+          throw new Error('invalid');
+        fs.accessSync(dir, fs.constants.R_OK);
+      } catch {
+        return {
+          ok: false,
+          error: 'Choose an existing, readable music folder.',
+        };
+      }
+    }
+    settings.setMusicDir(dir);
+    return { ok: true };
+  });
+
   ipcMain.handle('mas:settings:get-storage-paths', () => ({
     generalOutputDir: settings.getGeneralOutputDir(),
     zillowScraperDir: settings.getZillowScraperDir(),
   }));
 
-  ipcMain.handle(
-    'mas:settings:set-general-output-dir',
-    (_e, dir: string) => {
-      try {
-        fs.mkdirSync(dir, { recursive: true });
-      } catch (err) {
-        return { ok: false, error: (err as Error).message };
-      }
-      settings.setGeneralOutputDir(dir);
-      return { ok: true };
-    },
-  );
+  ipcMain.handle('mas:settings:set-general-output-dir', (_e, dir: string) => {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+    } catch (err) {
+      return { ok: false, error: (err as Error).message };
+    }
+    settings.setGeneralOutputDir(dir);
+    return { ok: true };
+  });
 
-  ipcMain.handle(
-    'mas:settings:set-zillow-scraper-dir',
-    (_e, dir: string) => {
-      try {
-        fs.mkdirSync(dir, { recursive: true });
-      } catch (err) {
-        return { ok: false, error: (err as Error).message };
-      }
-      settings.setZillowScraperDir(dir);
-      return { ok: true };
-    },
-  );
+  ipcMain.handle('mas:settings:set-zillow-scraper-dir', (_e, dir: string) => {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+    } catch (err) {
+      return { ok: false, error: (err as Error).message };
+    }
+    settings.setZillowScraperDir(dir);
+    return { ok: true };
+  });
 
   ipcMain.handle(
     'mas:settings:pick-folder',

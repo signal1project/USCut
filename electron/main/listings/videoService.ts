@@ -290,7 +290,9 @@ function renderCardSegment(
     )
     .join(',');
   return new Promise((resolve, reject) => {
-    let cmd = ffmpeg(`color=c=0x0c0c0f:s=${OUT_W}x${OUT_H}:d=${seconds}:r=${FPS}`)
+    let cmd = ffmpeg(
+      `color=c=0x0c0c0f:s=${OUT_W}x${OUT_H}:d=${seconds}:r=${FPS}`,
+    )
       .inputFormat('lavfi')
       .videoFilters(`format=yuv420p${texts ? `,${texts}` : ''}`)
       .videoCodec('libx264');
@@ -485,7 +487,12 @@ export class ListingVideoService {
           work,
         );
       }
-      return await this.generateLegacyFamilyVideo(listing, opts, template, work);
+      return await this.generateLegacyFamilyVideo(
+        listing,
+        opts,
+        template,
+        work,
+      );
     } finally {
       fs.rm(work, { recursive: true, force: true }, () => {});
     }
@@ -637,7 +644,10 @@ export class ListingVideoService {
 
     // 4b. Background music — 'standard' tier for all three of these
     // templates; resolves null (silent) until real files exist.
-    const musicTrack = selectMusicTrack('standard', this.musicDir);
+    const musicTrack = selectMusicTrack(
+      'standard',
+      this.settings?.getMusicDir() ?? this.musicDir,
+    );
 
     // 5. Concat
     const concatList = path.join(work, 'concat.txt');
@@ -738,7 +748,8 @@ export class ListingVideoService {
             this.kokoroModelCacheDir,
             opts.narrationVoice,
           );
-          if (kokoro) narration = { path: kokoro.path, durationSeconds: kokoro.duration };
+          if (kokoro)
+            narration = { path: kokoro.path, durationSeconds: kokoro.duration };
         }
       }
 
@@ -756,7 +767,10 @@ export class ListingVideoService {
 
     // 4. Build the timeline and render through the shared export pipeline.
     const captionStyle = resolveCaptionStyle(tier, this.fontsDir);
-    const musicTrack = selectMusicTrack(tier, this.musicDir);
+    const musicTrack = selectMusicTrack(
+      tier,
+      this.settings?.getMusicDir() ?? this.musicDir,
+    );
     const clips = buildReelTimeline(listing, assignment, {
       tier,
       hookText: opts.hookText,
@@ -795,7 +809,9 @@ export class ListingVideoService {
       if (brandLines) {
         try {
           const brandSeg = path.join(work, 'seg_brand.mp4');
-          await renderCardSegment(brandLines, 3, brandSeg, { silentAudio: true });
+          await renderCardSegment(brandLines, 3, brandSeg, {
+            silentAudio: true,
+          });
           const branded = path.join(work, 'branded.mp4');
           await concatWithFilter([brandSeg, outPath], branded);
           fs.copyFileSync(branded, outPath);

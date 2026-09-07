@@ -47,6 +47,7 @@ const K = {
   competitors: 'mas.settings.competitors',
   generalOutputDir: 'mas.settings.storage.generalOutputDir',
   zillowScraperDir: 'mas.settings.storage.zillowScraperDir',
+  musicDir: 'mas.settings.storage.musicDir',
 };
 
 /** OAuth token bundle for ChatGPT sign-in (main-process only, like API keys). */
@@ -355,6 +356,14 @@ export class Settings {
       (this.store.get(K.generalOutputDir) as string | undefined) ??
       path.join(os.homedir(), 'USCut')
     );
+  }
+
+  getMusicDir(): string | null {
+    return (this.store.get(K.musicDir) as string | undefined) || null;
+  }
+
+  setMusicDir(dir: string): void {
+    this.store.set(K.musicDir, dir.trim());
   }
 
   setGeneralOutputDir(dir: string): void {
