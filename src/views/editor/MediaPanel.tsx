@@ -1,3 +1,5 @@
+import { ClipJobsPanel } from './ClipJobsPanel';
+import type { AutoClipResult } from '@mas/ui';
 import React, { useState } from 'react';
 import {
   Plus,
@@ -66,6 +68,7 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
   const [clipTrackSubject, setClipTrackSubject] = useState(true);
   const [clipQuery, setClipQuery] = useState('');
   const [clipBusy, setClipBusy] = useState(false);
+  const [clipJobsVersion, setClipJobsVersion] = useState(0);
   const [clipStatus, setClipStatus] = useState<string | null>(null);
   const [clipResults, setClipResults] = useState<{
     pickedBy: string;
@@ -166,6 +169,38 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
 
   const clipVideoOptions = mediaLibrary.filter((m) => m.type === 'video');
 
+  const importClipResults = (result: AutoClipResult) => {
+    // Clips already come back ranked highest-score first (see
+    // ClipService.autoClip) — add them to the library in that order.
+    for (const clip of result.clips) {
+      if (
+        useEditorStore.getState().mediaLibrary.some((m) => m.src === clip.path)
+      )
+        continue;
+      addMediaItem({
+        id: uuidv4(),
+        name: clip.hook
+          ? `Clip: ${clip.hook.slice(0, 40)}`
+          : `Clip ${clip.start}s`,
+        src: clip.path,
+        duration: clip.durationSeconds,
+        type: 'video',
+      } as MediaItem);
+    }
+    setClipResults({
+      pickedBy: result.pickedBy,
+      clips: result.clips.map((c) => ({
+        hook: c.hook,
+        score: c.score,
+        tracked: c.tracked,
+        durationSeconds: c.durationSeconds,
+      })),
+    });
+    setClipStatus(
+      `✓ ${result.clips.length} clip${result.clips.length === 1 ? '' : 's'} added to library`,
+    );
+  };
+
   const handleAutoClip = async () => {
     const sourceVideo =
       clipVideoOptions.find((m) => m.id === clipSourceId) ??
@@ -175,7 +210,8 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
     setClipStatus(null);
     setClipResults(null);
     try {
-      const result = await masApi.autoClip({
+      await masApi.startAutoClip({
+        requestId: uuidv4(),
         videoPath: sourceVideo.src,
         transcriptSrt: clipSrt.trim() || undefined,
         maxClips: clipMaxClips,
@@ -185,31 +221,8 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
         trackSubject: clipTrackSubject,
         query: clipQuery.trim() || undefined,
       });
-      // Clips already come back ranked highest-score first (see
-      // ClipService.autoClip) — add them to the library in that order.
-      for (const clip of result.clips) {
-        addMediaItem({
-          id: uuidv4(),
-          name: clip.hook
-            ? `Clip: ${clip.hook.slice(0, 40)}`
-            : `Clip ${clip.start}s`,
-          src: clip.path,
-          duration: clip.durationSeconds,
-          type: 'video',
-        } as MediaItem);
-      }
-      setClipResults({
-        pickedBy: result.pickedBy,
-        clips: result.clips.map((c) => ({
-          hook: c.hook,
-          score: c.score,
-          tracked: c.tracked,
-          durationSeconds: c.durationSeconds,
-        })),
-      });
-      setClipStatus(
-        `✓ ${result.clips.length} clip${result.clips.length === 1 ? '' : 's'} added to library`,
-      );
+      setClipStatus('Job queued. Follow its progress below.');
+      setClipJobsVersion((v) => v + 1);
       setClipSrt('');
       setClipQuery('');
     } catch (err) {
@@ -772,12 +785,17 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
                 {clipBusy ? (
                   <>
                     <Loader2 size={11} className="animate-spin" />
-                    Clipping…
+                    Starting…
                   </>
                 ) : (
                   'Find & Cut Clips'
                 )}
               </button>
+              <ClipJobsPanel
+                api={masApi}
+                refreshKey={clipJobsVersion}
+                onImport={importClipResults}
+              />
               {clipStatus && (
                 <p className="text-[10px] text-[#a1a1ab] mt-1.5">
                   {clipStatus}

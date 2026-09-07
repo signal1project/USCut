@@ -1,4 +1,9 @@
-import type { Platform, PubType, AIProviderName } from '@mas/types';
+import type {
+  Platform,
+  PubType,
+  AIProviderName,
+  ProductionJob,
+} from '@mas/types';
 
 export interface AgentAdapterInfo {
   id: string;
@@ -608,7 +613,12 @@ export class MasApiClient {
       ctaText?: string;
       narrationScript?: string;
       photoOrder?: number[];
-      reelTemplate?: 'just-listed' | 'gallery' | 'viral' | 'room-flow' | 'luxury';
+      reelTemplate?:
+        | 'just-listed'
+        | 'gallery'
+        | 'viral'
+        | 'room-flow'
+        | 'luxury';
       hookText?: string;
       narrationEngine?: 'auto' | 'kokoro' | 'sapi' | 'none';
       narrationVoice?: string;
@@ -627,6 +637,20 @@ export class MasApiClient {
   }
 
   // ── Clips ───────────────────────────────────────────────────────────────────
+
+  startAutoClip(
+    body: Parameters<MasApiClient['autoClip']>[0] & { requestId: string },
+  ): Promise<ProductionJob<AutoClipResult>> {
+    return this.req('POST', '/api/clips/jobs', body);
+  }
+
+  listAutoClipJobs(): Promise<{ jobs: ProductionJob<AutoClipResult>[] }> {
+    return this.req('GET', '/api/clips/jobs');
+  }
+
+  cancelAutoClipJob(id: string): Promise<ProductionJob<AutoClipResult>> {
+    return this.req('POST', `/api/clips/jobs/${encodeURIComponent(id)}/cancel`);
+  }
 
   autoClip(body: {
     videoPath: string;

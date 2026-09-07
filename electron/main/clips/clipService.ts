@@ -4,7 +4,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
 import crypto from 'node:crypto';
-import type { AIProvider } from '@mas/types';
+import type { AIProvider, JobExecution } from '@mas/types';
 import {
   parseSrtOrVtt,
   toAss,
@@ -72,6 +72,7 @@ function cutClip(
   captionsPath: string | null,
   vertical: boolean,
   track: TrackPoint[] | null,
+  signal?: AbortSignal,
 ): Promise<void> {
   const vf: string[] = [];
   if (vertical) {
@@ -91,7 +92,8 @@ function cutClip(
     );
   }
   return new Promise((resolve, reject) => {
-    ffmpeg(src)
+    signal?.throwIfAborted();
+    const command = ffmpeg(src)
       .seekInput(win.start)
       .duration(win.end - win.start)
       .videoFilters(vf.length ? vf.join(',') : 'null')
@@ -99,9 +101,22 @@ function cutClip(
       .audioCodec('aac')
       .outputOptions(['-preset fast', '-crf 20', '-movflags +faststart'])
       .output(outPath)
-      .on('end', () => resolve())
-      .on('error', reject)
-      .run();
+      .on('start', () => {
+        if (signal?.aborted) command.kill('SIGKILL');
+      })
+      .on('end', () => {
+        signal?.removeEventListener('abort', abort);
+        resolve();
+      })
+      .on('error', (err) => {
+        signal?.removeEventListener('abort', abort);
+        reject(err);
+      });
+    const abort = () => {
+      command.kill('SIGKILL');
+    };
+    signal?.addEventListener('abort', abort, { once: true });
+    command.run();
   });
 }
 
@@ -116,7 +131,15 @@ function cutClip(
 export class ClipService {
   constructor(private readonly deps: ClipServiceDeps) {}
 
-  async autoClip(input: AutoClipInput): Promise<AutoClipResult> {
+  async autoClip(
+    input: AutoClipInput,
+    context?: JobExecution,
+  ): Promise<AutoClipResult> {
+    const report = (stage: string, progress: number) => {
+      context?.signal.throwIfAborted();
+      context?.report(stage, progress);
+    };
+    report('Preparing transcript', 1);
     if (!fs.existsSync(input.videoPath)) throw new Error('video_not_found');
 
     // 1. Transcript
@@ -128,16 +151,28 @@ export class ClipService {
     } else {
       const key = this.deps.resolveOpenAiKey();
       if (key) {
-        segments = await transcribeViaOpenAI(input.videoPath, key);
+        segments = await transcribeViaOpenAI(input.videoPath, key, {
+          signal: context?.signal,
+          onProgress: (completed, total) =>
+            report(
+              `Transcribing audio ${completed}/${total}`,
+              5 + (completed / total) * 30,
+            ),
+        });
         transcriptSource = 'whisper';
       } else {
         // No key configured — fall back to local whisper.cpp (no upload, no
         // cost). Its own error message already explains the toolchain
         // prerequisite and the alternatives, so surface it as-is.
+        report(
+          'Transcribing locally; cancellation waits for this operation',
+          5,
+        );
         segments = await transcribeViaLocalWhisper(input.videoPath);
         transcriptSource = 'whisper-local';
       }
     }
+    report('Finding highlights', 38);
     if (segments.length === 0) throw new Error('transcript_empty');
 
     // 2. Pick highlights — sample frames across the whole video first (when
@@ -164,12 +199,14 @@ export class ClipService {
         curationFrames = undefined;
       }
     }
+    report('Ranking highlights', 45);
     const { windows, pickedBy } = await pickHighlights(
       segments,
       opts,
       provider,
       curationFrames,
     );
+    report('Preparing clips', 55);
     if (windows.length === 0) throw new Error('no_highlights_found');
 
     // 3. Cut
@@ -178,11 +215,17 @@ export class ClipService {
     fs.mkdirSync(work, { recursive: true });
     const burn = input.burnCaptions ?? true;
     const vertical = input.vertical ?? true;
-    const wantTracking = (input.trackSubject ?? true) && !!provider?.analyzeFrames;
+    const wantTracking =
+      (input.trackSubject ?? true) && !!provider?.analyzeFrames;
 
     const clips: AutoClipResult['clips'] = [];
+    const createdPaths: string[] = [];
     try {
       for (const [i, win] of windows.entries()) {
+        report(
+          `Preparing clip ${i + 1}/${windows.length}`,
+          55 + (i / windows.length) * 40,
+        );
         let captionsPath: string | null = null;
         if (burn) {
           const winSegs = segments.filter(
@@ -199,9 +242,23 @@ export class ClipService {
             : null;
         const outPath = path.join(
           this.deps.outputDir,
-          `clip-${Date.now()}-${i + 1}.mp4`,
+          `clip-${crypto.randomUUID()}-${i + 1}.mp4`,
         );
-        await cutClip(input.videoPath, win, outPath, captionsPath, vertical, track);
+        report(
+          `Rendering clip ${i + 1}/${windows.length}`,
+          57 + (i / windows.length) * 40,
+        );
+        createdPaths.push(outPath);
+        await cutClip(
+          input.videoPath,
+          win,
+          outPath,
+          captionsPath,
+          vertical,
+          track,
+          context?.signal,
+        );
+        context?.signal.throwIfAborted();
         clips.push({
           path: outPath,
           start: win.start,
@@ -212,6 +269,12 @@ export class ClipService {
           score: win.score,
         });
       }
+      report('Finishing clips', 99);
+    } catch (err) {
+      await Promise.all(
+        createdPaths.map((file) => fs.promises.rm(file, { force: true })),
+      );
+      throw err;
     } finally {
       fs.rm(work, { recursive: true, force: true }, () => {});
     }

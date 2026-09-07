@@ -45,7 +45,13 @@ import {
 } from '../listings';
 import type { PropertyListingSummary } from '../listings/types';
 import { InsightsService, createInsightsRouter } from '../insights';
-import { ClipService, createClipsRouter } from '../clips';
+import {
+  ClipService,
+  createClipsRouter,
+  type AutoClipInput,
+  type AutoClipResult,
+} from '../clips';
+import { JobManager } from '../jobs/jobManager';
 import path from 'node:path';
 import os from 'node:os';
 import { createDefaultAgentRegistry, createAgentRouter } from '../agent';
@@ -293,7 +299,16 @@ export function buildMasRuntime(deps: MasRuntimeDeps): MasRuntime {
         onCaptured: deps.notifyListingCaptured,
       }),
     },
-    { path: '/clips', router: createClipsRouter(clips) },
+    {
+      path: '/clips',
+      router: createClipsRouter(
+        clips,
+        new JobManager<AutoClipInput, AutoClipResult>(
+          path.join(dataDir, 'jobs', 'auto-clip'),
+          (input, context) => clips.autoClip(input, context),
+        ),
+      ),
+    },
     {
       path: '/insights',
       router: createInsightsRouter({
