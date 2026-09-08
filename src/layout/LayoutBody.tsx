@@ -18,6 +18,7 @@ import { ipc } from '@/lib/ipc';
 import { useEditorStore } from '@/store/editorStore';
 
 const MAS_NAV = [
+  { path: '/mas/studio', label: 'Studio', icon: Wand2 },
   { path: '/mas/publish', label: 'Publish', icon: Send },
   { path: '/mas/scheduler', label: 'Schedule', icon: Calendar },
   { path: '/mas/content', label: 'Generate', icon: Wand2 },

@@ -10,6 +10,7 @@ import {
 } from './ffmpegOps';
 import { ensurePreviewMedia } from './previewProxy';
 import { registerProjectHandlers } from './projects';
+import { registerStudioHandlers } from './studio';
 import {
   transcribeVideoAudio,
   synthesizeVoiceover,
@@ -44,6 +45,7 @@ export function registerAiCutHandlers(win: Electron.BrowserWindow) {
   // Same provider-resolution the rest of the app uses (Settings → AI Providers)
   // — auto-edit and one-click captions must never talk to a hardcoded SDK.
   const resolveProvider = createProviderResolver(settings);
+  registerStudioHandlers(resolveProvider);
   const proxyCacheDir = path.join(app.getPath('userData'), 'preview-proxies');
   const thumbsDir = path.join(app.getPath('userData'), 'thumbs');
   const voiceoverDir = path.join(app.getPath('userData'), 'voiceovers');

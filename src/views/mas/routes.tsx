@@ -11,10 +11,12 @@ import PipelinePage from './PipelinePage';
 import OmobonoPage from './OmobonoPage';
 import SchedulerPage from './SchedulerPage';
 import SettingsPage from './SettingsPage';
+import StudioPage from './StudioPage';
 
 // MAS feature routes, namespaced under /mas to coexist with the inherited
 // (legacy) routes. Spread into the main router's children.
 export const masRoutes = [
+  { path: '/mas/studio', element: <StudioPage />, meta: { name: 'Studio' } },
   {
     path: '/mas/onboarding',
     element: <OnboardingWizard />,

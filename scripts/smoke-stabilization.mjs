@@ -386,6 +386,116 @@ try {
     .getByText('Production readiness', { exact: true })
     .scrollIntoViewIfNeeded();
   await page.screenshot({ path: path.join(run, 'readiness.png') });
+  await page.evaluate((src) => {
+    localStorage.setItem(
+      'uscut-studio-draft-v1',
+      JSON.stringify({
+        title: 'Studio smoke',
+        brief: 'A clear introduction',
+        assets: [
+          {
+            id: 'source',
+            src,
+            name: 'Blue footage',
+            type: 'video',
+            duration: 12,
+          },
+        ],
+        scenes: [
+          {
+            assetId: 'source',
+            sourceStart: 1,
+            duration: 4,
+            headline: 'Welcome',
+            narration: 'Welcome to our studio.',
+          },
+        ],
+      }),
+    );
+    location.hash = '#/mas/studio';
+  }, sourceVideo);
+  await expect(
+    page.getByRole('heading', { name: 'Production Studio', exact: true }),
+  ).toBeVisible();
+  await page
+    .getByLabel('Generate local Windows narration from scene scripts')
+    .check();
+  await page
+    .getByRole('button', { name: 'Build editable video', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Open a copy in editor' }),
+  ).toBeVisible({ timeout: 60000 });
+  await page.screenshot({ path: path.join(run, 'studio.png') });
+  const studioJobs = await page.evaluate(() =>
+    window.ipcRenderer.invoke('aicuts:studio-jobs'),
+  );
+  const built = studioJobs.find(
+    (job) => job.status === 'completed' && job.result?.kind === 'build',
+  ).result.project;
+  assert.equal(built.tracks[0].clips[0].trimStart, 1);
+  assert.equal(built.tracks[1].clips[0].captionText, 'Welcome');
+  assert.equal(built.tracks[2].clips.length, 1);
+  assert.ok(built.tracks[2].clips[0].duration > 0);
+  await fs.access(built.tracks[2].clips[0].src);
+  await page.getByRole('button', { name: 'Open a copy in editor' }).click();
+  await expect(
+    page.getByText('Studio smoke', { exact: true }).first(),
+  ).toBeVisible();
+  const savedFiles = await fs.readdir(path.join(profile, 'projects'));
+  const savedStudio = [];
+  for (const file of savedFiles.filter((f) => f.endsWith('.json'))) {
+    const saved = JSON.parse(
+      await fs.readFile(path.join(profile, 'projects', file), 'utf8'),
+    );
+    if (saved.name === 'Studio smoke') savedStudio.push(saved);
+  }
+  assert.equal(savedStudio.length, 1);
+  assert.notEqual(savedStudio[0].id, built.id);
+  for (const aspect of ['9:16', '16:9']) {
+    const exported = await page.evaluate(
+      async ({ project, aspect }) => {
+        const clips = project.tracks.flatMap((track, trackIndex) =>
+          track.clips.map((clip) => ({
+            ...clip,
+            trackIndex,
+            trackMuted: !!track.muted,
+          })),
+        );
+        return window.ipcRenderer.invoke('aicuts:export-for-share', clips, {
+          resolution: '720p',
+          aspect,
+          format: 'mp4',
+          fps: 24,
+        });
+      },
+      { project: savedStudio[0], aspect },
+    );
+    assert.equal(exported.success, true, exported.error);
+    const probe = JSON.parse(
+      execFileSync(
+        requireCjs('@ffprobe-installer/ffprobe').path,
+        [
+          '-v',
+          'quiet',
+          '-show_streams',
+          '-show_format',
+          '-of',
+          'json',
+          exported.outputPath,
+        ],
+        { windowsHide: true, encoding: 'utf8' },
+      ),
+    );
+    const video = probe.streams.find((s) => s.codec_type === 'video');
+    assert.equal(video.width, aspect === '9:16' ? 720 : 1280);
+    assert.equal(video.height, aspect === '9:16' ? 1280 : 720);
+    assert.ok(probe.streams.some((s) => s.codec_type === 'audio'));
+    assert.ok(Number(probe.format.duration) >= 3.9);
+  }
+  console.log(
+    'PASS: Studio real media validation, local Windows narration, separate editable tracks, durable job result, opening a saved project copy.',
+  );
   console.log(
     'PASS: isolated app boot, credential migration, protected IPC, browser CORS/API, Auto-Edit/undo/redo/autosave, interrupted job recovery, real FFmpeg Auto-Clip job, explicit deduplicated import, job cancellation, readiness, music configuration.',
   );
