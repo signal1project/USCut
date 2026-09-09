@@ -13,8 +13,8 @@ Owner direction: USCut, subscription based (2026-09-09). The complete AI video p
 | Customer installation | NSIS configuration and previous packaged-app smoke | Required: fresh package, clean machine install/update/uninstall tests, bundled native engines/models verification |
 | Release authenticity | GitHub updater configured | Required: signing credentials, signed installer/update validation, controlled release publication |
 | Live workflows | Existing social adapters and Zillow pipeline | Required: controlled real capture and supported delivery checks; assisted posting remains a human final action |
-| Customer documentation | Technical docs and diagnostics exist | Required: onboarding, supported feature matrix, troubleshooting, support contact, release notes |
-| Distribution rights | Repository currently declares MIT | Required: ownership and dependency/font/model/media inventory; preserve third-party notices and obtain release review |
+| Customer documentation | `docs/ONBOARDING.md`, `docs/FEATURE-MATRIX.md`, technical docs, in-app diagnostics paths | Support email + release notes still to add |
+| Distribution rights | `docs/LICENSE-INVENTORY.md` complete | ⚠️ **`ffmpeg-static` is GPL-3.0** — Dale must choose an LGPL build or a compliant-aggregation path; replace the MIT `LICENSE`/`package.json` with a proprietary EULA; bundle a NOTICES set (fonts OFL, Apache NOTICEs, Chromium) |
 | Billing/support business details | Product name USCut; subscription selected; licence keypair generated (public key bundled, private key at projects/_secrets/, outside the repo) | Price/currency, Stripe account, support email, seller details, code-signing cert remain to be supplied |
 
 ## Working order
