@@ -16,7 +16,14 @@
   "directories": {
     "output": "release/${version}"
   },
-  "files": ["dist-electron", "dist"],
+  "files": [
+    "dist-electron",
+    "dist",
+    "!**/node_modules/nodejs-whisper/cpp/whisper.cpp/build/bin/**/*.exe",
+    "**/node_modules/nodejs-whisper/cpp/whisper.cpp/build/bin/Release/whisper-cli.exe",
+    "!**/node_modules/nodejs-whisper/cpp/whisper.cpp/build/CMakeFiles/**/CompilerId*/**",
+    "!**/node_modules/nodejs-whisper/cpp/whisper.cpp/**/*.{o,obj,lib,pdb,ilk,idb}"
+  ],
   "mac": {
     "gatekeeperAssess": false,
     "hardenedRuntime": true,
