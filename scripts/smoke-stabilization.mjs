@@ -414,34 +414,38 @@ try {
     .getByText('Production readiness', { exact: true })
     .scrollIntoViewIfNeeded();
   await page.screenshot({ path: path.join(run, 'readiness.png') });
-  await page.evaluate((src) => {
-    localStorage.setItem(
-      'uscut-studio-draft-v1',
-      JSON.stringify({
-        title: 'Studio smoke',
-        brief: 'A clear introduction',
-        assets: [
-          {
-            id: 'source',
-            src,
-            name: 'Blue footage',
-            type: 'video',
-            duration: 12,
-          },
-        ],
-        scenes: [
-          {
-            assetId: 'source',
-            sourceStart: 1,
-            duration: 4,
-            headline: 'Welcome',
-            narration: 'Welcome to our studio.',
-          },
-        ],
-      }),
-    );
-    location.hash = '#/mas/studio';
-  }, sourceVideo);
+  await page.evaluate(
+    ({ src, musicSrc }) => {
+      localStorage.setItem(
+        'uscut-studio-draft-v1',
+        JSON.stringify({
+          title: 'Studio smoke',
+          brief: 'A clear introduction',
+          music: { src: musicSrc, name: 'standard/test.wav', volume: 0.18 },
+          assets: [
+            {
+              id: 'source',
+              src,
+              name: 'Blue footage',
+              type: 'video',
+              duration: 12,
+            },
+          ],
+          scenes: [
+            {
+              assetId: 'source',
+              sourceStart: 1,
+              duration: 4,
+              headline: 'Welcome',
+              narration: 'Welcome to our studio.',
+            },
+          ],
+        }),
+      );
+      location.hash = '#/mas/studio';
+    },
+    { src: sourceVideo, musicSrc: path.join(music, 'standard', 'test.wav') },
+  );
   await expect(
     page.getByRole('heading', { name: 'Production Studio', exact: true }),
   ).toBeVisible();
@@ -466,6 +470,19 @@ try {
   assert.equal(built.tracks[2].clips.length, 1);
   assert.ok(built.tracks[2].clips[0].duration > 0);
   await fs.access(built.tracks[2].clips[0].src);
+  const musicTrack = built.tracks.find((t) => t.label === 'Music');
+  assert.ok(musicTrack, 'Studio build produced no Music track');
+  assert.equal(musicTrack.clips.length, 1);
+  assert.ok(musicTrack.clips[0].duration > 0);
+  assert.ok(musicTrack.clips[0].volume > 0 && musicTrack.clips[0].volume < 1);
+  await fs.access(musicTrack.clips[0].src); // real prepared bed on disk
+  const musicList = await page.evaluate(() =>
+    window.ipcRenderer.invoke('aicuts:studio-music-list'),
+  );
+  assert.ok(
+    musicList.some((m) => m.name === 'standard/test.wav'),
+    'configured music folder not listed in Studio',
+  );
   const localTranscript = await page.evaluate(async (voicePath) => {
     await window.ipcRenderer.invoke('mas:settings:set-ai-key', 'openai', '');
     return window.ipcRenderer.invoke('aicuts:transcribe-video', voicePath);

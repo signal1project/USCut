@@ -10,15 +10,18 @@ import {
   studioRevisionSchema,
   validateStudioDraft,
   assembleStudioProject,
+  studioTimelineDuration,
   buildStoryboardPrompt,
   parseStoryboardScenes,
   buildRevisionPrompt,
   applySceneRevision,
   type StudioDraft,
   type StudioVoice,
+  type StudioMusicBed,
   type StudioAssetInsight,
 } from '../../../commont/studio';
 import { describeStudioAssets } from './studioVision';
+import { listStudioMusic, prepareMusicBed } from './studioMusic';
 import { synthesizeVoiceover } from './audioTools';
 import { probeVideo } from './ffmpegOps';
 
@@ -37,7 +40,10 @@ type Input =
       instruction: string;
     };
 
-export function registerStudioHandlers(resolveProvider: () => AIProvider) {
+export function registerStudioHandlers(
+  resolveProvider: () => AIProvider,
+  resolveMusicDir: () => string | null = () => null,
+) {
   const jobs = new JobManager<Input, unknown>(
     path.join(app.getPath('userData'), 'jobs', 'studio'),
     async (input, context) => {
@@ -137,9 +143,26 @@ export function registerStudioHandlers(resolveProvider: () => AIProvider) {
           }
         }
         context.signal.throwIfAborted();
+        let musicBed: StudioMusicBed | null = null;
+        if (draft.music) {
+          context.report('Preparing the music bed', 92);
+          const bed = await prepareMusicBed(
+            draft.music.src,
+            studioTimelineDuration(draft, voices),
+            path.join(app.getPath('userData'), 'studio-music'),
+            context.signal,
+          );
+          created.push(bed.path);
+          musicBed = {
+            src: bed.path,
+            name: draft.music.name,
+            volume: draft.music.volume,
+            duration: bed.duration,
+          };
+        }
         return {
           kind: 'build',
-          project: assembleStudioProject(draft, randomUUID(), voices),
+          project: assembleStudioProject(draft, randomUUID(), voices, musicBed),
         };
       } catch (error) {
         await Promise.all(
@@ -151,6 +174,9 @@ export function registerStudioHandlers(resolveProvider: () => AIProvider) {
   );
   ipcMain.handle('aicuts:studio-jobs', () => jobs.list());
   ipcMain.handle('aicuts:studio-cancel', (_, id: string) => jobs.cancel(id));
+  ipcMain.handle('aicuts:studio-music-list', () =>
+    listStudioMusic(resolveMusicDir()),
+  );
   ipcMain.handle('aicuts:studio-start', (_, request: unknown) => {
     const base = z
       .object({

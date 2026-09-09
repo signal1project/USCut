@@ -21,17 +21,32 @@ export const studioSceneSchema = z.object({
   narration: z.string().max(2000).default(''),
   headline: z.string().max(180).default(''),
 });
+export const studioMusicSchema = z.object({
+  src: z.string().min(1),
+  name: z.string().min(1).max(300),
+  /** Bed level relative to narration (1.0). Default sits under a voice. */
+  volume: z.number().finite().min(0).max(1).default(0.18),
+});
 export const studioDraftSchema = z.object({
   title: z.string().trim().min(1).max(150),
   brief: z.string().max(12000),
   assets: z.array(studioAssetSchema).min(1).max(100),
   scenes: z.array(studioSceneSchema).min(1).max(60),
+  music: studioMusicSchema.nullable().default(null),
 });
 export type StudioDraft = z.infer<typeof studioDraftSchema>;
 export type StudioAsset = z.infer<typeof studioAssetSchema>;
 export type StudioScene = z.infer<typeof studioSceneSchema>;
+export type StudioMusic = z.infer<typeof studioMusicSchema>;
 export interface StudioVoice {
   src: string;
+  duration: number;
+}
+/** A music bed already rendered to timeline length by the build job. */
+export interface StudioMusicBed {
+  src: string;
+  name: string;
+  volume: number;
   duration: number;
 }
 
@@ -161,11 +176,24 @@ export function validateStudioDraft(value: unknown): StudioDraft {
   return draft;
 }
 
+/** Pure: total timeline length, accounting for narration that extends a scene. */
+export function studioTimelineDuration(
+  draft: StudioDraft,
+  voices: Record<number, StudioVoice> = {},
+): number {
+  return draft.scenes.reduce(
+    (total, scene, index) =>
+      total + Math.max(scene.duration, voices[index]?.duration ?? 0),
+    0,
+  );
+}
+
 /** Pure assembly: source durations and trims retain their native editor meaning. */
 export function assembleStudioProject(
   value: unknown,
   id: string,
   voices: Record<number, StudioVoice> = {},
+  music: StudioMusicBed | null = null,
 ): ProjectSnapshot {
   const draft = validateStudioDraft(value);
   const visual: Track = {
@@ -248,11 +276,42 @@ export function assembleStudioProject(
     }
     startTime += duration;
   });
+
+  const tracks: Track[] = [visual, text, audio];
+  if (music) {
+    if (!Number.isFinite(music.duration) || music.duration <= 0)
+      throw new Error('Invalid music bed duration');
+    const bed: MediaItem = {
+      id: `${id}-music`,
+      src: music.src,
+      name: music.name,
+      type: 'audio',
+      duration: music.duration,
+    };
+    mediaLibrary.push(bed);
+    tracks.push({
+      id: `${id}-music`,
+      type: 'audio',
+      label: 'Music',
+      clips: [
+        {
+          ...bed,
+          trackId: `${id}-music`,
+          startTime: 0,
+          trimStart: 0,
+          trimEnd: Math.max(0, music.duration - startTime),
+          volume: Math.min(1, Math.max(0, music.volume)),
+          fadeOut: Math.min(2, music.duration),
+        },
+      ],
+    });
+  }
+
   return {
     version: 1,
     id,
     name: draft.title,
-    tracks: [visual, text, audio],
+    tracks,
     mediaLibrary,
     zoom: 40,
   };

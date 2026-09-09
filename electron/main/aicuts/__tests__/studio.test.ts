@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   assembleStudioProject,
   validateStudioDraft,
+  studioTimelineDuration,
   buildStoryboardPrompt,
   parseStoryboardScenes,
   buildRevisionPrompt,
@@ -12,6 +13,7 @@ import {
 const draft: StudioDraft = {
   title: 'Launch',
   brief: 'A short introduction',
+  music: null,
   assets: [
     { id: 'v', src: 'video.mp4', name: 'Video', type: 'video', duration: 12 },
     { id: 'i', src: 'image.png', name: 'Image', type: 'image', duration: 5 },
@@ -162,5 +164,56 @@ describe('Studio single-scene revision', () => {
         narration: '',
       }),
     ).toThrow('no longer exists');
+  });
+});
+
+describe('Studio music bed', () => {
+  it('measures the timeline including narration that extends a scene', () => {
+    expect(studioTimelineDuration(draft)).toBe(7); // 4 + 3
+    expect(
+      studioTimelineDuration(draft, { 0: { src: 'v.wav', duration: 9 } }),
+    ).toBe(12); // 9 + 3
+  });
+  it('adds a single music track trimmed to the timeline with a tail fade', () => {
+    const project = assembleStudioProject(
+      draft,
+      'p',
+      {},
+      {
+        src: '/beds/bed.m4a',
+        name: 'Calm bed',
+        volume: 0.2,
+        duration: 30,
+      },
+    );
+    const music = project.tracks.find((t) => t.label === 'Music')!;
+    expect(music.clips).toHaveLength(1);
+    expect(music.clips[0]).toMatchObject({
+      startTime: 0,
+      volume: 0.2,
+      trimEnd: 23, // 30 - 7s timeline
+      fadeOut: 2,
+    });
+    expect(project.mediaLibrary.some((m) => m.src === '/beds/bed.m4a')).toBe(
+      true,
+    );
+  });
+  it('has no music track when none is chosen and rejects a bad bed duration', () => {
+    expect(
+      assembleStudioProject(draft, 'p').tracks.some((t) => t.label === 'Music'),
+    ).toBe(false);
+    expect(() =>
+      assembleStudioProject(
+        draft,
+        'p',
+        {},
+        {
+          src: '/b.m4a',
+          name: 'x',
+          volume: 0.2,
+          duration: 0,
+        },
+      ),
+    ).toThrow('music bed duration');
   });
 });

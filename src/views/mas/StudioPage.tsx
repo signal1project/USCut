@@ -21,6 +21,7 @@ const empty: StudioDraft = {
   brief: '',
   assets: [],
   scenes: [],
+  music: null,
 };
 const storageKey = 'uscut-studio-draft-v1';
 const field =
@@ -48,6 +49,15 @@ export default function StudioPage() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [reviseText, setReviseText] = useState<Record<number, string>>({});
+  const [musicChoices, setMusicChoices] = useState<
+    { name: string; src: string }[]
+  >([]);
+  useEffect(() => {
+    void ipc
+      .invoke('aicuts:studio-music-list')
+      .then((list) => Array.isArray(list) && setMusicChoices(list))
+      .catch(() => {});
+  }, []);
   useEffect(() => {
     try {
       localStorage.setItem(storageKey, JSON.stringify(draft));
@@ -378,6 +388,88 @@ export default function StudioPage() {
             </div>
           </article>
         ))}
+      </section>
+      <section className="space-y-2">
+        <h2 className="text-lg font-semibold">Music bed</h2>
+        <div className="flex flex-wrap gap-3 items-center">
+          <select
+            aria-label="Music bed"
+            className={field + ' max-w-sm'}
+            value={draft.music?.src ?? ''}
+            onChange={(e) => {
+              const src = e.target.value;
+              if (!src) return setDraft((d) => ({ ...d, music: null }));
+              const found = musicChoices.find((m) => m.src === src);
+              setDraft((d) => ({
+                ...d,
+                music: {
+                  src,
+                  name: found?.name ?? src.split(/[\\/]/).pop() ?? 'Music',
+                  volume: d.music?.volume ?? 0.18,
+                },
+              }));
+            }}
+          >
+            <option value="">No music</option>
+            {draft.music &&
+              !musicChoices.some((m) => m.src === draft.music!.src) && (
+                <option value={draft.music.src}>{draft.music.name}</option>
+              )}
+            {musicChoices.map((m) => (
+              <option key={m.src} value={m.src}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+          <button
+            className={button}
+            disabled={busy}
+            onClick={() =>
+              void act(async () => {
+                const items = await ipc.invoke('aicuts:import-video');
+                const audio = Array.isArray(items)
+                  ? items.find((i) => i.type === 'audio')
+                  : null;
+                if (!audio) throw new Error('Choose an audio file');
+                setDraft((d) => ({
+                  ...d,
+                  music: {
+                    src: audio.src,
+                    name: audio.name,
+                    volume: d.music?.volume ?? 0.18,
+                  },
+                }));
+              })
+            }
+          >
+            Add music file…
+          </button>
+          {draft.music && (
+            <label className="text-sm">
+              Volume {Math.round(draft.music.volume * 100)}%
+              <input
+                type="range"
+                min={0}
+                max={0.6}
+                step={0.02}
+                value={draft.music.volume}
+                onChange={(e) =>
+                  setDraft((d) => ({
+                    ...d,
+                    music: d.music
+                      ? { ...d.music, volume: Number(e.target.value) }
+                      : null,
+                  }))
+                }
+              />
+            </label>
+          )}
+        </div>
+        <p className="text-sm text-ink-muted">
+          The bed is looped or trimmed to the finished length with a short
+          fade-out and sits under any narration. Configure a music folder in
+          Settings to see it listed here.
+        </p>
       </section>
       <label className="flex gap-2">
         <input
