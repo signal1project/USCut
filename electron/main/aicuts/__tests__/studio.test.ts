@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   assembleStudioProject,
   validateStudioDraft,
+  buildStoryboardPrompt,
+  parseStoryboardScenes,
+  buildRevisionPrompt,
+  applySceneRevision,
   type StudioDraft,
 } from '../../../../commont/studio';
 
@@ -80,5 +84,83 @@ describe('Production Studio assembly', () => {
     { ...draft, scenes: [] },
   ])('rejects invalid or hallucinated storyboard data', (value) => {
     expect(() => validateStudioDraft(value)).toThrow();
+  });
+});
+
+describe('Studio storyboard prompt grounding', () => {
+  const input = {
+    title: 'Launch',
+    brief: 'Sell the loft',
+    assets: draft.assets,
+  };
+  it('states media was not analysed when there are no frame insights', () => {
+    const prompt = buildStoryboardPrompt(input, []);
+    expect(prompt).toContain('NOT been visually analysed');
+    expect(prompt).not.toContain('"visual"');
+  });
+  it('injects each per-asset visual description and switches the guidance line', () => {
+    const prompt = buildStoryboardPrompt(input, [
+      { assetId: 'v', description: 'A sunlit kitchen with marble counters.' },
+    ]);
+    expect(prompt).toContain('automated frame analysis actually saw');
+    expect(prompt).toContain('A sunlit kitchen with marble counters.');
+    expect(prompt).toContain('"visual"');
+    // Assets without an insight are not given a fabricated one.
+    expect(prompt).not.toMatch(/"id":"i"[^}]*"visual"/);
+  });
+  it('parseStoryboardScenes strips code fences and requires a scenes array', () => {
+    expect(
+      parseStoryboardScenes('```json\n{"scenes":[{"assetId":"v"}]}\n```'),
+    ).toEqual([{ assetId: 'v' }]);
+    expect(() => parseStoryboardScenes('{"nope":1}')).toThrow('scenes array');
+  });
+});
+
+describe('Studio single-scene revision', () => {
+  it('builds a prompt scoped to one scene with its footage description', () => {
+    const prompt = buildRevisionPrompt(
+      draft,
+      { sceneIndex: 0, instruction: 'punchier headline' },
+      [{ assetId: 'v', description: 'Drone shot of the block.' }],
+    );
+    expect(prompt).toContain('punchier headline');
+    expect(prompt).toContain('Drone shot of the block.');
+    expect(prompt).toContain('"currentScene"');
+  });
+  it('replaces only the target scene and re-validates the whole draft', () => {
+    const revised = applySceneRevision(draft, 0, {
+      assetId: 'v',
+      sourceStart: 0,
+      duration: 6,
+      headline: 'Now leasing',
+      narration: '',
+    });
+    expect(revised.scenes[0]).toMatchObject({
+      duration: 6,
+      headline: 'Now leasing',
+    });
+    expect(revised.scenes[1]).toEqual(draft.scenes[1]);
+  });
+  it('rejects a revised scene that overruns its source video', () => {
+    expect(() =>
+      applySceneRevision(draft, 0, {
+        assetId: 'v',
+        sourceStart: 10,
+        duration: 8,
+        headline: '',
+        narration: '',
+      }),
+    ).toThrow();
+  });
+  it('rejects an out-of-range scene index', () => {
+    expect(() =>
+      applySceneRevision(draft, 9, {
+        assetId: 'v',
+        sourceStart: 0,
+        duration: 3,
+        headline: '',
+        narration: '',
+      }),
+    ).toThrow('no longer exists');
   });
 });

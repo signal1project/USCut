@@ -9,10 +9,12 @@ import {
   studioDraftSchema,
   type StudioDraft,
   type StudioScene,
+  type StudioAssetInsight,
 } from '../../../commont/studio';
 
 type Result =
-  | { kind: 'plan'; draft: StudioDraft }
+  | { kind: 'plan'; draft: StudioDraft; insights: StudioAssetInsight[] }
+  | { kind: 'revise'; draft: StudioDraft; sceneIndex: number }
   | { kind: 'build'; project: ProjectSnapshot };
 const empty: StudioDraft = {
   title: 'My production',
@@ -45,6 +47,7 @@ export default function StudioPage() {
   const [jobs, setJobs] = useState<ProductionJob<Result>[]>([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [reviseText, setReviseText] = useState<Record<number, string>>({});
   useEffect(() => {
     try {
       localStorage.setItem(storageKey, JSON.stringify(draft));
@@ -96,6 +99,22 @@ export default function StudioPage() {
         draft,
         narration,
       });
+      setJobs(
+        (await ipc.invoke('aicuts:studio-jobs')) as ProductionJob<Result>[],
+      );
+    });
+  const reviseScene = (index: number) =>
+    act(async () => {
+      const instruction = (reviseText[index] ?? '').trim();
+      if (!instruction) throw new Error('Describe the change you want first');
+      await ipc.invoke('aicuts:studio-start', {
+        requestId: crypto.randomUUID(),
+        kind: 'revise',
+        draft,
+        sceneIndex: index,
+        instruction,
+      });
+      setReviseText((t) => ({ ...t, [index]: '' }));
       setJobs(
         (await ipc.invoke('aicuts:studio-jobs')) as ProductionJob<Result>[],
       );
@@ -172,8 +191,9 @@ export default function StudioPage() {
           Add videos or images
         </button>
         <p className="text-sm text-ink-muted">
-          AI uses your brief and filenames; it has not viewed the footage. Keep
-          original files in place.
+          When a vision-capable AI provider is connected, the storyboard step
+          reviews sampled frames from each clip; otherwise it uses your brief
+          and filenames only. Keep original files in place.
         </p>
         {draft.assets.map((a) => (
           <div key={a.id} className="flex gap-3 items-center text-sm">
@@ -338,6 +358,24 @@ export default function StudioPage() {
                 onChange={(e) => scenePatch(i, { narration: e.target.value })}
               />
             </label>
+            <div className="flex gap-2">
+              <input
+                className={field}
+                placeholder="Revise this scene with AI (e.g. punchier headline, trim to 3s)"
+                maxLength={2000}
+                value={reviseText[i] ?? ''}
+                onChange={(e) =>
+                  setReviseText((t) => ({ ...t, [i]: e.target.value }))
+                }
+              />
+              <button
+                className={button}
+                disabled={busy || !(reviseText[i] ?? '').trim()}
+                onClick={() => void reviseScene(i)}
+              >
+                Revise with AI
+              </button>
+            </div>
           </article>
         ))}
       </section>
@@ -396,15 +434,46 @@ export default function StudioPage() {
               </button>
             )}
             {job.status === 'completed' && job.result?.kind === 'plan' && (
+              <div className="space-y-2">
+                {!!(job.result as Extract<Result, { kind: 'plan' }>).insights
+                  ?.length && (
+                  <details className="text-sm text-ink-muted">
+                    <summary>What the AI saw in your media</summary>
+                    <ul className="list-disc pl-5 pt-1">
+                      {(
+                        job.result as Extract<Result, { kind: 'plan' }>
+                      ).insights.map((insight) => (
+                        <li key={insight.assetId}>
+                          {draft.assets.find((a) => a.id === insight.assetId)
+                            ?.name ?? insight.assetId}
+                          : {insight.description}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
+                <button
+                  className={button}
+                  onClick={() =>
+                    setDraft(
+                      (job.result as Extract<Result, { kind: 'plan' }>).draft,
+                    )
+                  }
+                >
+                  Use storyboard (replaces draft)
+                </button>
+              </div>
+            )}
+            {job.status === 'completed' && job.result?.kind === 'revise' && (
               <button
                 className={button}
                 onClick={() =>
                   setDraft(
-                    (job.result as Extract<Result, { kind: 'plan' }>).draft,
+                    (job.result as Extract<Result, { kind: 'revise' }>).draft,
                   )
                 }
               >
-                Use storyboard (replaces draft)
+                Apply revised storyboard (replaces draft)
               </button>
             )}
             {job.status === 'completed' && job.result?.kind === 'build' && (
