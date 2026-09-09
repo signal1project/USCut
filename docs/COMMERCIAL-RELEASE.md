@@ -5,7 +5,7 @@ Owner direction: USCut, subscription based (2026-09-09). The complete AI video p
 | Requirement | Current evidence / required proof | Status |
 | --- | --- | --- |
 | Native editable production | Studio supplied-media storyboard, local narration, separate tracks; real Electron smoke builds and exports portrait/landscape | Implemented; broader customer footage coverage required |
-| Reliable exports | Background jobs (toolbar export AND the editor Share flow), cancellation, temporary-file commit; real FFmpeg cancellation test; real Electron queued + share renders verified | Implemented; crash-time temp cleanup and installer coverage remain |
+| Reliable exports | Background jobs (toolbar export AND the editor Share flow), cancellation, temporary-file commit, startup GC of crash-orphaned partial renders; real FFmpeg cancellation test; real Electron queued + share renders verified | Implemented; installer coverage remains |
 | Full AI workflow | Provider resolver, AI storyboard generation, frame-grounded planning (vision-capable providers), single-scene AI revision | Generated footage + usage/spending controls, one-click caption job remain |
 | Subscription checkout and access | No subscription service or entitlement verification found | Required: hosted checkout, verified webhooks, activation, refresh/revocation, offline policy, billing management, test-mode lifecycle tests |
 | Project recovery | Serialized writes, previous valid save, corrupt-primary fallback; stale renderer save completions cannot mark newer edits saved; portable `.uscut.zip` backup (project + all referenced media) and self-contained restore | Implemented; crash-time job cleanup and signed-update validation remain |

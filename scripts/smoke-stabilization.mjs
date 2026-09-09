@@ -57,6 +57,13 @@ await fs.copyFile(
 );
 await fs.mkdir(output, { recursive: true });
 await fs.mkdir(path.join(profile, 'projects'), { recursive: true });
+// Plant a crash-orphaned partial render + a finished share; startup cleanup
+// must remove the first and keep the second.
+await fs.mkdir(path.join(profile, 'shares'), { recursive: true });
+const orphanPartial = path.join(profile, 'shares', '.uscut-render-0a1b2c3d-4e5f.mp4');
+const keptShare = path.join(profile, 'shares', 'share-earlier.mp4');
+await fs.writeFile(orphanPartial, 'partial');
+await fs.writeFile(keptShare, 'done');
 await fs.writeFile(
   path.join(profile, 'config.json'),
   JSON.stringify({
@@ -174,6 +181,16 @@ try {
   }));
   assert.equal(path.resolve(launched.profile), path.resolve(profile));
   if (packagedExecutable) assert.equal(launched.packaged, true);
+  const exists = (f) => fs.access(f).then(() => true, () => false);
+  await expect.poll(() => exists(orphanPartial), { timeout: 15000 }).toBe(false);
+  assert.equal(
+    await exists(keptShare),
+    true,
+    'startup cleanup deleted a finished share',
+  );
+  console.log(
+    'PASS: startup cleanup removed a crash-orphaned partial render and kept finished output.',
+  );
   let page;
   await expect
     .poll(

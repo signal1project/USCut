@@ -1,6 +1,7 @@
 import './profile';
 import { app, BrowserWindow, shell, ipcMain, nativeTheme } from 'electron';
 import { registerAiCutHandlers } from './aicuts';
+import { cleanupOrphanArtifacts } from './aicuts/startupCleanup';
 import {
   registerMediaScheme,
   registerMediaProtocolHandler,
@@ -244,6 +245,7 @@ app.whenReady().then(async () => {
     }
     registerMediaProtocolHandler();
     registerContextMenuListener();
+    void cleanupOrphanArtifacts(app.getPath('userData'));
     new App();
     const bWin = await createWindow();
     registerAiCutHandlers(bWin);
