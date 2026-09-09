@@ -557,6 +557,44 @@ try {
   }
   assert.equal(savedStudio.length, 1);
   assert.notEqual(savedStudio[0].id, built.id);
+
+  // Portable backup + restore round trip through the real IPC + PowerShell zip.
+  const backupZip = path.join(output, 'studio-smoke.uscut.zip');
+  await app.evaluate(({ dialog }, filePath) => {
+    dialog.showSaveDialog = async () => ({ canceled: false, filePath });
+    dialog.showOpenDialog = async () => ({
+      canceled: false,
+      filePaths: [filePath],
+    });
+  }, backupZip);
+  const archived = await page.evaluate(async (projectId) => {
+    const exported = await window.ipcRenderer.invoke(
+      'aicuts:project-archive-export',
+      projectId,
+    );
+    const restored = await window.ipcRenderer.invoke(
+      'aicuts:project-archive-import',
+    );
+    const list = await window.ipcRenderer.invoke('aicuts:project-list');
+    const doc = await window.ipcRenderer.invoke(
+      'aicuts:project-load',
+      restored.id,
+    );
+    return { exported, restored, listed: list.length, doc };
+  }, savedStudio[0].id);
+  assert.equal(archived.exported.canceled, false);
+  await fs.access(backupZip);
+  assert.ok(archived.restored.id && archived.restored.id !== savedStudio[0].id);
+  assert.match(archived.doc.project.name, / \(restored\)$/);
+  assert.equal(archived.doc.missing.length, 0); // restored copy is self-contained
+  for (const src of archived.doc.project.mediaLibrary
+    .map((m) => m.src)
+    .filter(Boolean))
+    await fs.access(src);
+  console.log(
+    'PASS: project backup zips media + project and restores a self-contained copy on a clean path.',
+  );
+
   const queuedOutput = path.join(output, 'queued-export.mp4');
   await app.evaluate(({ dialog }, filePath) => {
     dialog.showSaveDialog = async () => ({ canceled: false, filePath });

@@ -18,7 +18,10 @@ import {
   Building2,
   Clock,
   Trash2,
+  Archive,
+  Upload,
 } from 'lucide-react';
+import { ipc } from '@/lib/ipc';
 import { useEditorStore } from '@/store/editorStore';
 import {
   listProjects,
@@ -157,6 +160,40 @@ const HomePage: React.FC = () => {
     setProjects(await listProjects());
   };
 
+  const handleBackup = async (e: React.MouseEvent, p: ProjectMeta) => {
+    e.stopPropagation();
+    try {
+      const r = (await ipc.invoke('aicuts:project-archive-export', p.id)) as {
+        canceled?: boolean;
+        path?: string;
+        missing?: string[];
+      };
+      if (r.canceled) return;
+      if (r.missing?.length)
+        toast.warning(
+          `Backup saved, but ${r.missing.length} missing media file(s) could not be included.`,
+        );
+      else toast.success(`Backup saved to ${r.path}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Backup failed');
+    }
+  };
+
+  const handleRestore = async () => {
+    try {
+      const r = (await ipc.invoke('aicuts:project-archive-import')) as {
+        canceled?: boolean;
+        id?: string;
+        name?: string;
+      };
+      if (r.canceled) return;
+      setProjects(await listProjects());
+      toast.success(`Restored "${r.name}". Open it from Recent projects.`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Restore failed');
+    }
+  };
+
   return (
     <div className="flex flex-col h-full overflow-y-auto bg-[#0c0c0f] text-[#f4f4f6]">
       {/* Hero */}
@@ -189,11 +226,21 @@ const HomePage: React.FC = () => {
       </div>
 
       {/* Recent projects */}
-      {projects.length > 0 && (
-        <div className="px-8 pb-8">
-          <p className="text-[11px] text-[#5a5a66] uppercase tracking-widest font-medium mb-4">
+      <div className="px-8 pb-8">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[11px] text-[#5a5a66] uppercase tracking-widest font-medium">
             Recent projects
           </p>
+          <button
+            onClick={() => void handleRestore()}
+            className="flex items-center gap-1.5 text-[11px] text-[#9a9aa8] hover:text-[#e8e8f0] transition-colors"
+            title="Restore a project from a .uscut.zip backup"
+          >
+            <Upload size={12} />
+            Restore from backup
+          </button>
+        </div>
+        {projects.length > 0 && (
           <div className="grid grid-cols-3 gap-3">
             {projects.map((p) => (
               <button
@@ -220,6 +267,15 @@ const HomePage: React.FC = () => {
                 <span
                   role="button"
                   tabIndex={0}
+                  onClick={(e) => void handleBackup(e, p)}
+                  className="absolute top-3 right-9 p-1.5 rounded-md text-[#4a4a55] opacity-0 group-hover:opacity-100 hover:text-[#4d7cff] hover:bg-[#1a2033] transition-all"
+                  title="Back up project with media"
+                >
+                  <Archive size={13} />
+                </span>
+                <span
+                  role="button"
+                  tabIndex={0}
                   onClick={(e) => void handleDelete(e, p)}
                   className="absolute top-3 right-3 p-1.5 rounded-md text-[#4a4a55] opacity-0 group-hover:opacity-100 hover:text-[#f0556a] hover:bg-[#3a1a1f] transition-all"
                   title="Delete project"
@@ -229,8 +285,8 @@ const HomePage: React.FC = () => {
               </button>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Feature grid */}
       <div className="px-8 pb-8">
