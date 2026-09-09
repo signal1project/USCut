@@ -65,6 +65,7 @@ export interface TimelineClip {
 }
 
 export interface ExportOptions {
+  signal?: AbortSignal;
   outputPath: string;
   resolution: Resolution;
   aspect?: AspectRatio;
@@ -140,6 +141,7 @@ export async function exportProject(
   clips: TimelineClip[],
   options: ExportOptions,
 ): Promise<void> {
+  options.signal?.throwIfAborted();
   const visual = clips.filter((c) => c.type === 'video' || c.type === 'image');
   if (visual.length === 0) throw new Error('No video clips to export');
 
@@ -152,6 +154,7 @@ export async function exportProject(
     clips.filter((c) => c.type === 'video').map((c) => c.src),
   );
   for (const src of videoSrcs) {
+    options.signal?.throwIfAborted();
     try {
       hasAudioBySrc[src] = (await probeVideo(src)).hasAudio;
     } catch {
@@ -199,46 +202,68 @@ export async function exportProject(
     videoLabel = 'vsub';
   }
 
-  await new Promise<void>((resolve, reject) => {
-    const cmd = ffmpeg();
-    for (const input of graph.inputs) {
-      cmd.input(input.path);
-      if (input.options.length > 0) cmd.inputOptions(input.options);
-    }
-    cmd
-      .complexFilter(filters)
-      .outputOptions([
-        '-map',
-        `[${videoLabel}]`,
-        '-map',
-        `[${graph.audioLabel}]`,
-        '-c:v',
-        'libx264',
-        '-preset',
-        'fast',
-        '-crf',
-        '18',
-        '-c:a',
-        'aac',
-        '-b:a',
-        '192k',
-        '-movflags',
-        '+faststart',
-        '-t',
-        graph.durationSeconds.toFixed(3),
-      ])
-      .output(options.outputPath)
-      .on('progress', (prog) => {
-        if (options.onProgress && prog.percent != null) {
-          options.onProgress(
-            Math.max(0, Math.min(100, Math.round(prog.percent))),
-          );
-        }
-      })
-      .on('end', () => resolve())
-      .on('error', reject)
-      .run();
-  });
-
-  if (assPath) fs.unlink(assPath, () => {});
+  try {
+    options.signal?.throwIfAborted();
+    await new Promise<void>((resolve, reject) => {
+      const cmd = ffmpeg();
+      const abort = () => {
+        cmd.kill('SIGKILL');
+      };
+      const finish = (error?: Error | null) => {
+        options.signal?.removeEventListener('abort', abort);
+        if (options.signal?.aborted) reject(new Error('Export cancelled'));
+        else if (error) reject(error);
+        else resolve();
+      };
+      for (const input of graph.inputs) {
+        cmd.input(input.path);
+        if (input.options.length > 0) cmd.inputOptions(input.options);
+      }
+      cmd
+        .complexFilter(filters)
+        .outputOptions([
+          '-map',
+          `[${videoLabel}]`,
+          '-map',
+          `[${graph.audioLabel}]`,
+          '-c:v',
+          'libx264',
+          '-preset',
+          'fast',
+          '-crf',
+          '18',
+          '-c:a',
+          'aac',
+          '-b:a',
+          '192k',
+          '-movflags',
+          '+faststart',
+          '-t',
+          graph.durationSeconds.toFixed(3),
+        ])
+        .output(options.outputPath)
+        .on('progress', (prog) => {
+          if (
+            !options.signal?.aborted &&
+            options.onProgress &&
+            prog.percent != null
+          ) {
+            options.onProgress(
+              Math.max(0, Math.min(100, Math.round(prog.percent))),
+            );
+          }
+        })
+        .on('start', () => {
+          if (options.signal?.aborted) abort();
+        })
+        .on('end', () => finish())
+        .on('error', finish)
+        .on('start', () =>
+          options.signal?.addEventListener('abort', abort, { once: true }),
+        )
+        .run();
+    });
+  } finally {
+    if (assPath) fs.unlink(assPath, () => {});
+  }
 }

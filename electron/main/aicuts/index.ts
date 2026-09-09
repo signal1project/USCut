@@ -11,6 +11,7 @@ import {
 import { ensurePreviewMedia } from './previewProxy';
 import { registerProjectHandlers } from './projects';
 import { registerStudioHandlers } from './studio';
+import { registerExportJobHandlers } from './exportJobs';
 import {
   transcribeVideoAudio,
   synthesizeVoiceover,
@@ -41,6 +42,7 @@ export function registerAiCutHandlers(win: Electron.BrowserWindow) {
   registerProjectHandlers();
 
   const settings = new Settings(settingsStore);
+  registerExportJobHandlers(win, () => settings.getGeneralOutputDir());
 
   // Same provider-resolution the rest of the app uses (Settings → AI Providers)
   // — auto-edit and one-click captions must never talk to a hardcoded SDK.

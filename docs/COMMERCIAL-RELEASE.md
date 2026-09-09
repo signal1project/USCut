@@ -1,0 +1,29 @@
+# USCut commercial release gates
+
+Owner direction: USCut, subscription based (2026-09-09). The complete AI video production scope remains active. Passing a subset of tests does not authorize representing the entire product as finished.
+
+| Requirement | Current evidence / required proof | Status |
+| --- | --- | --- |
+| Native editable production | Studio supplied-media storyboard, local narration, separate tracks; real Electron smoke builds and exports portrait/landscape | Implemented; broader customer footage coverage required |
+| Reliable exports | Background jobs, cancellation, temporary-file commit; real FFmpeg cancellation test | Final application verification in progress |
+| Full AI workflow | Existing provider resolver and AI storyboard generation | Generated footage, usage/spending controls, visual grounding, scene revision remain |
+| Subscription checkout and access | No subscription service or entitlement verification found | Required: hosted checkout, verified webhooks, activation, refresh/revocation, offline policy, billing management, test-mode lifecycle tests |
+| Project recovery | JSON autosave exists | Required: concurrent save protection, recoverable backups, restore validation |
+| Database upgrades | TypeORM migration files exist | Required: audit runtime migration mode, backup and real upgrade verification |
+| Customer installation | NSIS configuration and previous packaged-app smoke | Required: fresh package, clean machine install/update/uninstall tests, bundled native engines/models verification |
+| Release authenticity | GitHub updater configured | Required: signing credentials, signed installer/update validation, controlled release publication |
+| Live workflows | Existing social adapters and Zillow pipeline | Required: controlled real capture and supported delivery checks; assisted posting remains a human final action |
+| Customer documentation | Technical docs and diagnostics exist | Required: onboarding, supported feature matrix, troubleshooting, support contact, release notes |
+| Distribution rights | Repository currently declares MIT | Required: ownership and dependency/font/model/media inventory; preserve third-party notices and obtain release review |
+| Billing/support business details | Product name USCut; subscription selected | Price/currency, payment account, support email, seller details remain to be supplied |
+
+## Working order
+
+1. Verify and push export reliability.
+2. Protect customer projects and validate installer/runtime dependencies.
+3. Implement subscription service and activation against a test payment environment, then connect the owner's account and chosen prices.
+4. Complete the AI production workflow and usage controls.
+5. Run an end-to-end release candidate audit on installation, paid access, production, export, recovery, upgrades, and supported delivery. Record specific evidence and unresolved limitations.
+6. Prepare the signed distribution and customer materials. Publish only after release gates are satisfied.
+
+No production payment, social post, signing purchase, or release publication has been performed by this checklist.

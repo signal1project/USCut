@@ -23,6 +23,7 @@ import { useEditorStore } from '@/store/editorStore';
 import { ipc } from '@/lib/ipc';
 import { saveCurrentProject, saveProjectAs } from '@/lib/projectPersistence';
 import ShareDialog from './ShareDialog';
+import ExportJobsPanel from './ExportJobsPanel';
 
 const RESOLUTIONS = ['1080p', '4k', '720p'] as const;
 const ASPECTS = [
@@ -85,6 +86,7 @@ const Toolbar: React.FC = () => {
   const [saveAsName, setSaveAsName] = useState('');
   const [savingAs, setSavingAs] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showExportJobs, setShowExportJobs] = useState(false);
 
   const openSaveAs = () => {
     setSaveAsName(`${useEditorStore.getState().projectName} copy`);
@@ -168,21 +170,26 @@ const Toolbar: React.FC = () => {
     });
     if (allClips.length === 0) return;
     setExportProgress(0);
-    const result = (await ipc.invoke('aicuts:export', allClips, {
-      resolution,
-      aspect,
-      duckMusic,
-      format: 'mp4',
-      fps: 30,
-    })) as
-      | { success?: boolean; outputPath?: string; error?: string }
-      | undefined;
-    setExportProgress(null);
-    setShowExport(false);
-    if (result?.success) {
-      toast.success(`Exported to: ${result.outputPath}`);
-    } else if (result?.error) {
-      toast.error(`Export failed: ${result.error}`);
+    try {
+      const result = (await ipc.invoke('aicuts:export-job-start', {
+        clips: allClips,
+        name: useEditorStore.getState().projectName,
+        options: {
+          resolution,
+          aspect,
+          duckMusic,
+          format: 'mp4',
+          fps: 30,
+        },
+      })) as { job?: unknown; canceled?: boolean } | undefined;
+      if (result?.job) setShowExportJobs(true);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Could not start export',
+      );
+    } finally {
+      setExportProgress(null);
+      setShowExport(false);
     }
   };
 
@@ -510,6 +517,15 @@ const Toolbar: React.FC = () => {
         )}
       </div>
 
+      <button
+        className="text-xs text-ink-muted px-2"
+        onClick={() => setShowExportJobs(true)}
+      >
+        Export jobs
+      </button>
+      {showExportJobs && (
+        <ExportJobsPanel onClose={() => setShowExportJobs(false)} />
+      )}
       {showShare && <ShareDialog onClose={() => setShowShare(false)} />}
 
       <style>{`

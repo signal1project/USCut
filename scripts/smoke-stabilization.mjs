@@ -452,6 +452,41 @@ try {
   }
   assert.equal(savedStudio.length, 1);
   assert.notEqual(savedStudio[0].id, built.id);
+  const queuedOutput = path.join(output, 'queued-export.mp4');
+  await app.evaluate(({ dialog }, filePath) => {
+    dialog.showSaveDialog = async () => ({ canceled: false, filePath });
+  }, queuedOutput);
+  await page.getByRole('button', { name: 'Export', exact: true }).click();
+  await page.getByRole('button', { name: '720p', exact: true }).click();
+  await page.getByRole('button', { name: 'Export MP4', exact: true }).click();
+  const exportPanel = page.getByRole('dialog', {
+    name: 'Export jobs',
+    exact: true,
+  });
+  await expect(exportPanel).toBeVisible();
+  await expect(
+    exportPanel.getByRole('button', { name: 'Show exported file' }),
+  ).toBeVisible({ timeout: 60000 });
+  const exportJobs = await page.evaluate(() =>
+    window.ipcRenderer.invoke('aicuts:export-jobs'),
+  );
+  assert.equal(exportJobs[0].status, 'completed');
+  assert.equal(exportJobs[0].result.outputPath, queuedOutput);
+  await fs.access(queuedOutput);
+  const persistedExport = JSON.parse(
+    await fs.readFile(
+      path.join(profile, 'jobs', 'exports', `${exportJobs[0].id}.json`),
+      'utf8',
+    ),
+  );
+  assert.equal(persistedExport.status, 'completed');
+  await page.screenshot({ path: path.join(run, 'export-jobs.png') });
+  await exportPanel.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByRole('button', { name: 'Export jobs', exact: true }).click();
+  await expect(
+    exportPanel.getByRole('button', { name: 'Show exported file' }),
+  ).toBeVisible();
+  await exportPanel.getByRole('button', { name: 'Close', exact: true }).click();
   for (const aspect of ['9:16', '16:9']) {
     const exported = await page.evaluate(
       async ({ project, aspect }) => {
