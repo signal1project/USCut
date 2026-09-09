@@ -35,6 +35,7 @@ import {
 import { useMasIpc } from './useMasIpc';
 import ConnectAccounts from '../onboarding/ConnectAccounts';
 import { ProductionReadinessCard } from './ProductionReadinessCard';
+import { SubscriptionCard } from './SubscriptionCard';
 
 type ProviderStatus = SettingsStatus['providers'][number];
 
@@ -699,6 +700,9 @@ export default function SettingsPage(): React.ReactElement {
 
       {/* App behavior (tray + login) */}
       <BackgroundPrefsCard />
+
+      {/* Subscription / licence */}
+      <SubscriptionCard />
 
       {/* Storage locations */}
       <StorageLocationsCard />

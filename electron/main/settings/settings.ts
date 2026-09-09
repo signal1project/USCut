@@ -48,6 +48,8 @@ const K = {
   generalOutputDir: 'mas.settings.storage.generalOutputDir',
   zillowScraperDir: 'mas.settings.storage.zillowScraperDir',
   musicDir: 'mas.settings.storage.musicDir',
+  licenseToken: 'mas.settings.license.token',
+  licenseSeenAt: 'mas.settings.license.lastVerifiedAt',
 };
 
 /** OAuth token bundle for ChatGPT sign-in (main-process only, like API keys). */
@@ -364,6 +366,28 @@ export class Settings {
 
   setMusicDir(dir: string): void {
     this.store.set(K.musicDir, dir.trim());
+  }
+
+  /** Subscription entitlement token (signed; not a secret). */
+  getLicenseToken(): string | null {
+    return (this.store.get(K.licenseToken) as string | undefined) || null;
+  }
+  setLicenseToken(token: string): void {
+    this.store.set(K.licenseToken, token.trim());
+    this.store.set(K.licenseSeenAt, Math.floor(Date.now() / 1000));
+  }
+  clearLicense(): void {
+    this.store.set(K.licenseToken, null);
+    this.store.set(K.licenseSeenAt, null);
+  }
+  /** Epoch-seconds of the last successful online-fresh verification — the
+   * anchor for the offline grace window. */
+  getLicenseLastVerified(): number | null {
+    const value = this.store.get(K.licenseSeenAt) as number | undefined;
+    return typeof value === 'number' ? value : null;
+  }
+  markLicenseVerified(): void {
+    this.store.set(K.licenseSeenAt, Math.floor(Date.now() / 1000));
   }
 
   setGeneralOutputDir(dir: string): void {

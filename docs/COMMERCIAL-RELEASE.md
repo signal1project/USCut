@@ -7,7 +7,7 @@ Owner direction: USCut, subscription based (2026-09-09). The complete AI video p
 | Native editable production | Studio supplied-media storyboard, local narration, separate tracks; real Electron smoke builds and exports portrait/landscape | Implemented; broader customer footage coverage required |
 | Reliable exports | Background jobs (toolbar export AND the editor Share flow), cancellation, temporary-file commit, startup GC of crash-orphaned partial renders; real FFmpeg cancellation test; real Electron queued + share renders verified | Implemented; installer coverage remains |
 | Full AI workflow | Provider resolver, AI storyboard generation, frame-grounded planning (vision-capable providers), single-scene AI revision | Generated footage + usage/spending controls, one-click caption job remain |
-| Subscription checkout and access | No subscription service or entitlement verification found | Required: hosted checkout, verified webhooks, activation, refresh/revocation, offline policy, billing management, test-mode lifecycle tests |
+| Subscription checkout and access | Offline-verifiable ed25519 entitlement tokens: app-side verify + 14-day offline grace + Settings activate/deactivate; `services/licensing` scaffold (sign path, webhook + activate endpoints, lifecycle test) | Blocked on Dale: Stripe account + price, private signing key deployed to the service, seller identity + support email, hosted checkout wiring, datastore; feature gating not yet enforced |
 | Project recovery | Serialized writes, previous valid save, corrupt-primary fallback; stale renderer save completions cannot mark newer edits saved; portable `.uscut.zip` backup (project + all referenced media) and self-contained restore | Implemented; crash-time job cleanup and signed-update validation remain |
 | Database upgrades | Explicit additive baseline migration; verified online SQLite backup; transactional upgrades; old/synchronized-profile and rollback tests under Electron ABI | Implemented and real-app startup verified; customer restore UI remains |
 | Customer installation | NSIS configuration and previous packaged-app smoke | Required: fresh package, clean machine install/update/uninstall tests, bundled native engines/models verification |
@@ -15,7 +15,7 @@ Owner direction: USCut, subscription based (2026-09-09). The complete AI video p
 | Live workflows | Existing social adapters and Zillow pipeline | Required: controlled real capture and supported delivery checks; assisted posting remains a human final action |
 | Customer documentation | Technical docs and diagnostics exist | Required: onboarding, supported feature matrix, troubleshooting, support contact, release notes |
 | Distribution rights | Repository currently declares MIT | Required: ownership and dependency/font/model/media inventory; preserve third-party notices and obtain release review |
-| Billing/support business details | Product name USCut; subscription selected | Price/currency, payment account, support email, seller details remain to be supplied |
+| Billing/support business details | Product name USCut; subscription selected; licence keypair generated (public key bundled, private key at projects/_secrets/, outside the repo) | Price/currency, Stripe account, support email, seller details, code-signing cert remain to be supplied |
 
 ## Working order
 

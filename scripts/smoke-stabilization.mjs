@@ -239,6 +239,23 @@ try {
     }
   });
   assert.equal(protectedRead, true);
+  const licence = await page.evaluate(async () => {
+    const fresh = await window.ipcRenderer.invoke('license:status');
+    let rejected = false;
+    try {
+      await window.ipcRenderer.invoke('license:activate', 'not-a-real-key');
+    } catch {
+      rejected = true;
+    }
+    const afterBadActivate = await window.ipcRenderer.invoke('license:status');
+    return { fresh, rejected, afterBadActivate };
+  });
+  assert.equal(licence.fresh.state, 'unlicensed');
+  assert.equal(licence.rejected, true);
+  assert.equal(licence.afterBadActivate.state, 'unlicensed');
+  console.log(
+    'PASS: subscription status reports unlicensed on a fresh profile and rejects an invalid licence key.',
+  );
   const browserApi = await page.evaluate(async () => {
     const info = await window.ipcRenderer.invoke('mas:api-info');
     const response = await fetch(`${info.baseUrl}/api/accounts`, {

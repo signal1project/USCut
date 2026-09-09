@@ -2,6 +2,7 @@ import './profile';
 import { app, BrowserWindow, shell, ipcMain, nativeTheme } from 'electron';
 import { registerAiCutHandlers } from './aicuts';
 import { cleanupOrphanArtifacts } from './aicuts/startupCleanup';
+import { registerLicenseHandlers } from './licensing';
 import {
   registerMediaScheme,
   registerMediaProtocolHandler,
@@ -249,6 +250,7 @@ app.whenReady().then(async () => {
     new App();
     const bWin = await createWindow();
     registerAiCutHandlers(bWin);
+    registerLicenseHandlers(new Settings(settingsStore));
     registerWebviewBridge(bWin);
     await startAgentBridge();
     await startMasBackend();
