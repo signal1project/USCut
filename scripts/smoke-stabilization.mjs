@@ -535,6 +535,30 @@ try {
     'PASS: isolated app boot, credential migration, protected IPC, browser CORS/API, Auto-Edit/undo/redo/autosave, interrupted job recovery, real FFmpeg Auto-Clip job, explicit deduplicated import, job cancellation, readiness, music configuration.',
   );
   console.log(`Smoke artifacts: ${run}`);
+  await page.evaluate(async (project) => {
+    await window.ipcRenderer.invoke('aicuts:project-save', {
+      ...project,
+      id: 'recovery-smoke',
+      name: 'Previous valid version',
+    });
+    await window.ipcRenderer.invoke('aicuts:project-save', {
+      ...project,
+      id: 'recovery-smoke',
+      name: 'Latest version',
+    });
+  }, savedStudio[0]);
+  await fs.writeFile(
+    path.join(profile, 'projects', 'recovery-smoke.json'),
+    '{interrupted',
+  );
+  const recoveredProject = await page.evaluate(() =>
+    window.ipcRenderer.invoke('aicuts:project-load', 'recovery-smoke'),
+  );
+  assert.equal(recoveredProject.recovered, true);
+  assert.equal(recoveredProject.project.name, 'Previous valid version');
+  console.log(
+    'PASS: project recovery through real Electron persistence handlers after primary-file corruption.',
+  );
 } finally {
   if (app) await app.close();
 }

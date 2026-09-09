@@ -5,10 +5,10 @@ Owner direction: USCut, subscription based (2026-09-09). The complete AI video p
 | Requirement | Current evidence / required proof | Status |
 | --- | --- | --- |
 | Native editable production | Studio supplied-media storyboard, local narration, separate tracks; real Electron smoke builds and exports portrait/landscape | Implemented; broader customer footage coverage required |
-| Reliable exports | Background jobs, cancellation, temporary-file commit; real FFmpeg cancellation test | Final application verification in progress |
+| Reliable exports | Background jobs, cancellation, temporary-file commit; real FFmpeg cancellation test; real Electron queued export and saved results verified | Implemented; crash/installer coverage remains |
 | Full AI workflow | Existing provider resolver and AI storyboard generation | Generated footage, usage/spending controls, visual grounding, scene revision remain |
 | Subscription checkout and access | No subscription service or entitlement verification found | Required: hosted checkout, verified webhooks, activation, refresh/revocation, offline policy, billing management, test-mode lifecycle tests |
-| Project recovery | JSON autosave exists | Required: concurrent save protection, recoverable backups, restore validation |
+| Project recovery | Serialized writes, previous valid save, corrupt-primary fallback; stale renderer save completions cannot mark newer edits saved | Implemented for project metadata; portable media backup/restore remains |
 | Database upgrades | TypeORM migration files exist | Required: audit runtime migration mode, backup and real upgrade verification |
 | Customer installation | NSIS configuration and previous packaged-app smoke | Required: fresh package, clean machine install/update/uninstall tests, bundled native engines/models verification |
 | Release authenticity | GitHub updater configured | Required: signing credentials, signed installer/update validation, controlled release publication |

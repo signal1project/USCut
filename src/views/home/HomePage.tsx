@@ -171,8 +171,8 @@ const HomePage: React.FC = () => {
           Create & Publish AI-Powered Videos
         </h1>
         <p className="text-[14px] text-[#71717f] max-w-md mb-8">
-          Edit, caption, and publish to 8 social platforms — powered by Claude
-          AI and FFmpeg, running entirely on your machine.
+          Edit and render on your computer. Connect an AI provider for creative
+          assistance and prepare videos for your social accounts.
         </p>
         <button
           onClick={openNew}

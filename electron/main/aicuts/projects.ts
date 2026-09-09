@@ -1,6 +1,7 @@
 import { ipcMain, app } from 'electron';
 import path from 'path';
 import fs from 'fs/promises';
+import { saveProjectFile, readProjectFile } from './projectStorage';
 
 /**
  * Silent (no-dialog) project persistence backing autosave + the Home page
@@ -36,8 +37,9 @@ function projectsDir(): string {
 
 function projectPath(id: string): string {
   // ids are uuids we generate; strip anything path-like defensively
-  const safe = id.replace(/[^a-zA-Z0-9-]/g, '');
-  return path.join(projectsDir(), `${safe}.json`);
+  if (typeof id !== 'string' || !/^[a-zA-Z0-9-]{1,100}$/.test(id))
+    throw new Error('Invalid project ID');
+  return path.join(projectsDir(), `${id}.json`);
 }
 
 function countClips(tracks: unknown[]): number {
@@ -59,9 +61,7 @@ export function registerProjectHandlers(): void {
       savedAt: new Date().toISOString(),
     };
     const file = projectPath(project.id);
-    const tmp = `${file}.tmp`;
-    await fs.writeFile(tmp, JSON.stringify(data, null, 2));
-    await fs.rename(tmp, file);
+    await saveProjectFile(file, data);
     return { success: true, savedAt: data.savedAt };
   });
 
@@ -76,8 +76,9 @@ export function registerProjectHandlers(): void {
     for (const f of files) {
       if (!f.endsWith('.json')) continue;
       try {
-        const raw = await fs.readFile(path.join(projectsDir(), f), 'utf-8');
-        const p = JSON.parse(raw) as ProjectFileV1;
+        const { project: p } = await readProjectFile(
+          path.join(projectsDir(), f),
+        );
         if (!p?.id) continue;
         metas.push({
           id: p.id,
@@ -96,8 +97,7 @@ export function registerProjectHandlers(): void {
 
   ipcMain.handle('aicuts:project-load', async (_, id: string) => {
     try {
-      const raw = await fs.readFile(projectPath(id), 'utf-8');
-      const project = JSON.parse(raw) as ProjectFileV1;
+      const { project, recovered } = await readProjectFile(projectPath(id));
       // Flag media whose source files have moved/been deleted since last save.
       const missing: string[] = [];
       for (const m of project.mediaLibrary ?? []) {
@@ -109,7 +109,7 @@ export function registerProjectHandlers(): void {
           }
         }
       }
-      return { project, missing };
+      return { project, missing, recovered };
     } catch (err) {
       return {
         error: err instanceof Error ? err.message : 'Failed to load project',
@@ -120,6 +120,7 @@ export function registerProjectHandlers(): void {
   ipcMain.handle('aicuts:project-delete', async (_, id: string) => {
     try {
       await fs.rm(projectPath(id), { force: true });
+      await fs.rm(projectPath(id) + '.bak', { force: true });
       return { success: true };
     } catch (err) {
       return {

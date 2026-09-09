@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 import {
   useEditorStore,
   type ProjectSnapshot,
   type MediaItem,
-} from '@/store/editorStore';
-import { ipc, hasIpc } from '@/lib/ipc';
+} from '../store/editorStore';
+import { ipc, hasIpc } from './ipc';
 
 export interface ProjectMeta {
   id: string;
@@ -15,20 +16,39 @@ export interface ProjectMeta {
 }
 
 /** Persist the current editor state. Silent — no dialogs. */
+let saveAttempt = 0;
 export async function saveCurrentProject(): Promise<boolean> {
   if (!hasIpc()) return false;
+  const attempt = ++saveAttempt;
   const { snapshotProject, setSaveState } = useEditorStore.getState();
+  const snapshot = snapshotProject();
   setSaveState('saving');
-  const result = (await ipc.invoke(
-    'aicuts:project-save',
-    snapshotProject(),
-  )) as { success?: boolean; savedAt?: string } | undefined;
-  if (result?.success) {
-    setSaveState('saved', result.savedAt);
-    return true;
+  try {
+    const result = (await ipc.invoke('aicuts:project-save', snapshot)) as
+      | { success?: boolean; savedAt?: string }
+      | undefined;
+    const current = useEditorStore.getState();
+    if (attempt !== saveAttempt || current.projectId !== snapshot.id)
+      return false;
+    const unchanged =
+      current.tracks === snapshot.tracks &&
+      current.mediaLibrary === snapshot.mediaLibrary &&
+      current.projectName === snapshot.name &&
+      current.zoom === snapshot.zoom;
+    if (result?.success && unchanged) {
+      setSaveState('saved', result.savedAt);
+      return true;
+    }
+    setSaveState('dirty');
+    return false;
+  } catch {
+    if (
+      attempt === saveAttempt &&
+      useEditorStore.getState().projectId === snapshot.id
+    )
+      setSaveState('dirty');
+    return false;
   }
-  setSaveState('dirty');
-  return false;
 }
 
 /**
@@ -62,6 +82,7 @@ export async function openProject(
         project?: ProjectSnapshot & { savedAt?: string };
         missing?: string[];
         error?: string;
+        recovered?: boolean;
       }
     | undefined;
   if (!result?.project) {
@@ -80,6 +101,10 @@ export async function openProject(
     );
   }
   useEditorStore.getState().hydrateProject(snapshot);
+  if (result.recovered)
+    toast.warning(
+      'Recovered the previous saved version because the latest project file could not be read. Review it and save to keep this recovery.',
+    );
   return { ok: true, missing };
 }
 
