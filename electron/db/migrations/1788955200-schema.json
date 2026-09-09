@@ -1,0 +1,1485 @@
+[
+  {
+    "name": "account",
+    "sql": "CREATE TABLE \"account\" (\"createTime\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"updateTime\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"id\" integer PRIMARY KEY AUTOINCREMENT NOT NULL, \"userId\" varchar NOT NULL, \"type\" varchar CHECK( \"type\" IN ('douyin','xhs','wxSph','KWAI') ), \"loginCookie\" varchar NOT NULL, \"token\" varchar DEFAULT (''), \"loginTime\" datetime, \"uid\" varchar NOT NULL, \"account\" varchar NOT NULL, \"avatar\" varchar NOT NULL, \"nickname\" varchar NOT NULL, \"fansCount\" integer NOT NULL DEFAULT (0), \"readCount\" integer NOT NULL DEFAULT (0), \"likeCount\" integer NOT NULL DEFAULT (0), \"collectCount\" integer NOT NULL DEFAULT (0), \"forwardCount\" integer NOT NULL DEFAULT (0), \"commentCount\" integer NOT NULL DEFAULT (0), \"lastStatsTime\" datetime, \"workCount\" integer NOT NULL DEFAULT (0), \"income\" bigint NOT NULL DEFAULT (0), \"abnormalStatus\" json, \"status\" tinyint NOT NULL DEFAULT (0), \"groupId\" integer NOT NULL DEFAULT (1))",
+    "columns": [
+      {
+        "name": "createTime",
+        "primary": false,
+        "definition": "\"createTime\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "updateTime",
+        "primary": false,
+        "definition": "\"updateTime\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "id",
+        "primary": true,
+        "definition": "\"id\" INTEGER NOT NULL"
+      },
+      {
+        "name": "userId",
+        "primary": false,
+        "definition": "\"userId\" varchar NOT NULL"
+      },
+      {
+        "name": "type",
+        "primary": false,
+        "definition": "\"type\" varchar"
+      },
+      {
+        "name": "loginCookie",
+        "primary": false,
+        "definition": "\"loginCookie\" varchar NOT NULL"
+      },
+      {
+        "name": "token",
+        "primary": false,
+        "definition": "\"token\" varchar DEFAULT ''"
+      },
+      {
+        "name": "loginTime",
+        "primary": false,
+        "definition": "\"loginTime\" datetime"
+      },
+      {
+        "name": "uid",
+        "primary": false,
+        "definition": "\"uid\" varchar NOT NULL"
+      },
+      {
+        "name": "account",
+        "primary": false,
+        "definition": "\"account\" varchar NOT NULL"
+      },
+      {
+        "name": "avatar",
+        "primary": false,
+        "definition": "\"avatar\" varchar NOT NULL"
+      },
+      {
+        "name": "nickname",
+        "primary": false,
+        "definition": "\"nickname\" varchar NOT NULL"
+      },
+      {
+        "name": "fansCount",
+        "primary": false,
+        "definition": "\"fansCount\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "readCount",
+        "primary": false,
+        "definition": "\"readCount\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "likeCount",
+        "primary": false,
+        "definition": "\"likeCount\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "collectCount",
+        "primary": false,
+        "definition": "\"collectCount\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "forwardCount",
+        "primary": false,
+        "definition": "\"forwardCount\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "commentCount",
+        "primary": false,
+        "definition": "\"commentCount\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "lastStatsTime",
+        "primary": false,
+        "definition": "\"lastStatsTime\" datetime"
+      },
+      {
+        "name": "workCount",
+        "primary": false,
+        "definition": "\"workCount\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "income",
+        "primary": false,
+        "definition": "\"income\" bigint NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "abnormalStatus",
+        "primary": false,
+        "definition": "\"abnormalStatus\" json"
+      },
+      {
+        "name": "status",
+        "primary": false,
+        "definition": "\"status\" tinyint NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "groupId",
+        "primary": false,
+        "definition": "\"groupId\" INTEGER NOT NULL DEFAULT 1"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "user",
+    "sql": "CREATE TABLE \"user\" (\"createTime\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"updateTime\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"id\" varchar PRIMARY KEY NOT NULL, \"name\" varchar NOT NULL, \"phone\" varchar NOT NULL, \"wxOpenId\" varchar, \"loginTime\" datetime NOT NULL)",
+    "columns": [
+      {
+        "name": "createTime",
+        "primary": false,
+        "definition": "\"createTime\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "updateTime",
+        "primary": false,
+        "definition": "\"updateTime\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "id",
+        "primary": true,
+        "definition": "\"id\" varchar NOT NULL"
+      },
+      {
+        "name": "name",
+        "primary": false,
+        "definition": "\"name\" varchar NOT NULL"
+      },
+      {
+        "name": "phone",
+        "primary": false,
+        "definition": "\"phone\" varchar NOT NULL"
+      },
+      {
+        "name": "wxOpenId",
+        "primary": false,
+        "definition": "\"wxOpenId\" varchar"
+      },
+      {
+        "name": "loginTime",
+        "primary": false,
+        "definition": "\"loginTime\" datetime NOT NULL"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "pubRecord",
+    "sql": "CREATE TABLE \"pubRecord\" (\"createTime\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"updateTime\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"id\" integer PRIMARY KEY AUTOINCREMENT NOT NULL, \"userId\" varchar NOT NULL, \"type\" varchar CHECK( \"type\" IN ('video','article','image-text') ) NOT NULL, \"title\" varchar NOT NULL, \"desc\" varchar NOT NULL, \"videoPath\" varchar, \"timingTime\" datetime, \"coverPath\" varchar NOT NULL, \"commonCoverPath\" varchar, \"publishTime\" datetime NOT NULL, \"status\" tinyint NOT NULL DEFAULT (0))",
+    "columns": [
+      {
+        "name": "createTime",
+        "primary": false,
+        "definition": "\"createTime\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "updateTime",
+        "primary": false,
+        "definition": "\"updateTime\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "id",
+        "primary": true,
+        "definition": "\"id\" INTEGER NOT NULL"
+      },
+      {
+        "name": "userId",
+        "primary": false,
+        "definition": "\"userId\" varchar NOT NULL"
+      },
+      {
+        "name": "type",
+        "primary": false,
+        "definition": "\"type\" varchar NOT NULL"
+      },
+      {
+        "name": "title",
+        "primary": false,
+        "definition": "\"title\" varchar NOT NULL"
+      },
+      {
+        "name": "desc",
+        "primary": false,
+        "definition": "\"desc\" varchar NOT NULL"
+      },
+      {
+        "name": "videoPath",
+        "primary": false,
+        "definition": "\"videoPath\" varchar"
+      },
+      {
+        "name": "timingTime",
+        "primary": false,
+        "definition": "\"timingTime\" datetime"
+      },
+      {
+        "name": "coverPath",
+        "primary": false,
+        "definition": "\"coverPath\" varchar NOT NULL"
+      },
+      {
+        "name": "commonCoverPath",
+        "primary": false,
+        "definition": "\"commonCoverPath\" varchar"
+      },
+      {
+        "name": "publishTime",
+        "primary": false,
+        "definition": "\"publishTime\" datetime NOT NULL"
+      },
+      {
+        "name": "status",
+        "primary": false,
+        "definition": "\"status\" tinyint NOT NULL DEFAULT 0"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "video",
+    "sql": "CREATE TABLE \"video\" (\"createTime\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"updateTime\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"dataId\" varchar, \"id\" integer PRIMARY KEY AUTOINCREMENT NOT NULL, \"userId\" varchar NOT NULL, \"lastStatsTime\" datetime, \"previewVideoLink\" varchar, \"pubRecordId\" integer NOT NULL, \"accountId\" integer NOT NULL, \"type\" varchar CHECK( \"type\" IN ('douyin','xhs','wxSph','KWAI') ) NOT NULL, \"publishTime\" datetime, \"otherInfo\" json, \"failMsg\" varchar, \"status\" tinyint NOT NULL DEFAULT (0), \"readCount\" integer NOT NULL DEFAULT (0), \"likeCount\" integer NOT NULL DEFAULT (0), \"collectCount\" integer NOT NULL DEFAULT (0), \"forwardCount\" integer NOT NULL DEFAULT (0), \"commentCount\" integer NOT NULL DEFAULT (0), \"income\" bigint NOT NULL DEFAULT (0), \"title\" varchar, \"desc\" varchar, \"coverPath\" varchar, \"mixInfo\" json, \"topics\" json DEFAULT ('[]'), \"location\" json, \"diffParams\" json DEFAULT ('{}'), \"visibleType\" tinyint NOT NULL DEFAULT (1), \"timingTime\" datetime, \"mentionedUserInfo\" json DEFAULT ('[]'), \"videoPath\" varchar NOT NULL)",
+    "columns": [
+      {
+        "name": "createTime",
+        "primary": false,
+        "definition": "\"createTime\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "updateTime",
+        "primary": false,
+        "definition": "\"updateTime\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "dataId",
+        "primary": false,
+        "definition": "\"dataId\" varchar"
+      },
+      {
+        "name": "id",
+        "primary": true,
+        "definition": "\"id\" INTEGER NOT NULL"
+      },
+      {
+        "name": "userId",
+        "primary": false,
+        "definition": "\"userId\" varchar NOT NULL"
+      },
+      {
+        "name": "lastStatsTime",
+        "primary": false,
+        "definition": "\"lastStatsTime\" datetime"
+      },
+      {
+        "name": "previewVideoLink",
+        "primary": false,
+        "definition": "\"previewVideoLink\" varchar"
+      },
+      {
+        "name": "pubRecordId",
+        "primary": false,
+        "definition": "\"pubRecordId\" INTEGER NOT NULL"
+      },
+      {
+        "name": "accountId",
+        "primary": false,
+        "definition": "\"accountId\" INTEGER NOT NULL"
+      },
+      {
+        "name": "type",
+        "primary": false,
+        "definition": "\"type\" varchar NOT NULL"
+      },
+      {
+        "name": "publishTime",
+        "primary": false,
+        "definition": "\"publishTime\" datetime"
+      },
+      {
+        "name": "otherInfo",
+        "primary": false,
+        "definition": "\"otherInfo\" json"
+      },
+      {
+        "name": "failMsg",
+        "primary": false,
+        "definition": "\"failMsg\" varchar"
+      },
+      {
+        "name": "status",
+        "primary": false,
+        "definition": "\"status\" tinyint NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "readCount",
+        "primary": false,
+        "definition": "\"readCount\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "likeCount",
+        "primary": false,
+        "definition": "\"likeCount\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "collectCount",
+        "primary": false,
+        "definition": "\"collectCount\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "forwardCount",
+        "primary": false,
+        "definition": "\"forwardCount\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "commentCount",
+        "primary": false,
+        "definition": "\"commentCount\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "income",
+        "primary": false,
+        "definition": "\"income\" bigint NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "title",
+        "primary": false,
+        "definition": "\"title\" varchar"
+      },
+      {
+        "name": "desc",
+        "primary": false,
+        "definition": "\"desc\" varchar"
+      },
+      {
+        "name": "coverPath",
+        "primary": false,
+        "definition": "\"coverPath\" varchar"
+      },
+      {
+        "name": "mixInfo",
+        "primary": false,
+        "definition": "\"mixInfo\" json"
+      },
+      {
+        "name": "topics",
+        "primary": false,
+        "definition": "\"topics\" json DEFAULT '[]'"
+      },
+      {
+        "name": "location",
+        "primary": false,
+        "definition": "\"location\" json"
+      },
+      {
+        "name": "diffParams",
+        "primary": false,
+        "definition": "\"diffParams\" json DEFAULT '{}'"
+      },
+      {
+        "name": "visibleType",
+        "primary": false,
+        "definition": "\"visibleType\" tinyint NOT NULL DEFAULT 1"
+      },
+      {
+        "name": "timingTime",
+        "primary": false,
+        "definition": "\"timingTime\" datetime"
+      },
+      {
+        "name": "mentionedUserInfo",
+        "primary": false,
+        "definition": "\"mentionedUserInfo\" json DEFAULT '[]'"
+      },
+      {
+        "name": "videoPath",
+        "primary": false,
+        "definition": "\"videoPath\" varchar NOT NULL"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "autoRun",
+    "sql": "CREATE TABLE \"autoRun\" (\"createTime\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"updateTime\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"id\" integer PRIMARY KEY AUTOINCREMENT NOT NULL, \"userId\" varchar NOT NULL, \"accountId\" integer NOT NULL, \"data\" text NOT NULL, \"runCount\" integer NOT NULL DEFAULT (0), \"status\" tinyint NOT NULL DEFAULT (2), \"type\" tinyint NOT NULL, \"cycleType\" varchar NOT NULL)",
+    "columns": [
+      {
+        "name": "createTime",
+        "primary": false,
+        "definition": "\"createTime\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "updateTime",
+        "primary": false,
+        "definition": "\"updateTime\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "id",
+        "primary": true,
+        "definition": "\"id\" INTEGER NOT NULL"
+      },
+      {
+        "name": "userId",
+        "primary": false,
+        "definition": "\"userId\" varchar NOT NULL"
+      },
+      {
+        "name": "accountId",
+        "primary": false,
+        "definition": "\"accountId\" INTEGER NOT NULL"
+      },
+      {
+        "name": "data",
+        "primary": false,
+        "definition": "\"data\" TEXT NOT NULL"
+      },
+      {
+        "name": "runCount",
+        "primary": false,
+        "definition": "\"runCount\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "status",
+        "primary": false,
+        "definition": "\"status\" tinyint NOT NULL DEFAULT 2"
+      },
+      {
+        "name": "type",
+        "primary": false,
+        "definition": "\"type\" tinyint NOT NULL"
+      },
+      {
+        "name": "cycleType",
+        "primary": false,
+        "definition": "\"cycleType\" varchar NOT NULL"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "autoRunRecord",
+    "sql": "CREATE TABLE \"autoRunRecord\" (\"createTime\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"updateTime\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"id\" integer PRIMARY KEY AUTOINCREMENT NOT NULL, \"autoRunId\" integer NOT NULL, \"userId\" varchar NOT NULL, \"status\" tinyint NOT NULL DEFAULT (1), \"type\" tinyint NOT NULL, \"cycleType\" varchar NOT NULL, \"record\" varchar)",
+    "columns": [
+      {
+        "name": "createTime",
+        "primary": false,
+        "definition": "\"createTime\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "updateTime",
+        "primary": false,
+        "definition": "\"updateTime\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "id",
+        "primary": true,
+        "definition": "\"id\" INTEGER NOT NULL"
+      },
+      {
+        "name": "autoRunId",
+        "primary": false,
+        "definition": "\"autoRunId\" INTEGER NOT NULL"
+      },
+      {
+        "name": "userId",
+        "primary": false,
+        "definition": "\"userId\" varchar NOT NULL"
+      },
+      {
+        "name": "status",
+        "primary": false,
+        "definition": "\"status\" tinyint NOT NULL DEFAULT 1"
+      },
+      {
+        "name": "type",
+        "primary": false,
+        "definition": "\"type\" tinyint NOT NULL"
+      },
+      {
+        "name": "cycleType",
+        "primary": false,
+        "definition": "\"cycleType\" varchar NOT NULL"
+      },
+      {
+        "name": "record",
+        "primary": false,
+        "definition": "\"record\" varchar"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "imgText",
+    "sql": "CREATE TABLE \"imgText\" (\"createTime\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"updateTime\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"dataId\" varchar, \"id\" integer PRIMARY KEY AUTOINCREMENT NOT NULL, \"userId\" varchar NOT NULL, \"lastStatsTime\" datetime, \"previewVideoLink\" varchar, \"pubRecordId\" integer NOT NULL, \"accountId\" integer NOT NULL, \"type\" varchar CHECK( \"type\" IN ('douyin','xhs','wxSph','KWAI') ) NOT NULL, \"publishTime\" datetime, \"otherInfo\" json, \"failMsg\" varchar, \"status\" tinyint NOT NULL DEFAULT (0), \"readCount\" integer NOT NULL DEFAULT (0), \"likeCount\" integer NOT NULL DEFAULT (0), \"collectCount\" integer NOT NULL DEFAULT (0), \"forwardCount\" integer NOT NULL DEFAULT (0), \"commentCount\" integer NOT NULL DEFAULT (0), \"income\" bigint NOT NULL DEFAULT (0), \"title\" varchar, \"desc\" varchar, \"coverPath\" varchar, \"mixInfo\" json, \"topics\" json DEFAULT ('[]'), \"location\" json, \"diffParams\" json DEFAULT ('{}'), \"visibleType\" tinyint NOT NULL DEFAULT (1), \"timingTime\" datetime, \"mentionedUserInfo\" json DEFAULT ('[]'), \"imagesPath\" json NOT NULL)",
+    "columns": [
+      {
+        "name": "createTime",
+        "primary": false,
+        "definition": "\"createTime\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "updateTime",
+        "primary": false,
+        "definition": "\"updateTime\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "dataId",
+        "primary": false,
+        "definition": "\"dataId\" varchar"
+      },
+      {
+        "name": "id",
+        "primary": true,
+        "definition": "\"id\" INTEGER NOT NULL"
+      },
+      {
+        "name": "userId",
+        "primary": false,
+        "definition": "\"userId\" varchar NOT NULL"
+      },
+      {
+        "name": "lastStatsTime",
+        "primary": false,
+        "definition": "\"lastStatsTime\" datetime"
+      },
+      {
+        "name": "previewVideoLink",
+        "primary": false,
+        "definition": "\"previewVideoLink\" varchar"
+      },
+      {
+        "name": "pubRecordId",
+        "primary": false,
+        "definition": "\"pubRecordId\" INTEGER NOT NULL"
+      },
+      {
+        "name": "accountId",
+        "primary": false,
+        "definition": "\"accountId\" INTEGER NOT NULL"
+      },
+      {
+        "name": "type",
+        "primary": false,
+        "definition": "\"type\" varchar NOT NULL"
+      },
+      {
+        "name": "publishTime",
+        "primary": false,
+        "definition": "\"publishTime\" datetime"
+      },
+      {
+        "name": "otherInfo",
+        "primary": false,
+        "definition": "\"otherInfo\" json"
+      },
+      {
+        "name": "failMsg",
+        "primary": false,
+        "definition": "\"failMsg\" varchar"
+      },
+      {
+        "name": "status",
+        "primary": false,
+        "definition": "\"status\" tinyint NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "readCount",
+        "primary": false,
+        "definition": "\"readCount\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "likeCount",
+        "primary": false,
+        "definition": "\"likeCount\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "collectCount",
+        "primary": false,
+        "definition": "\"collectCount\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "forwardCount",
+        "primary": false,
+        "definition": "\"forwardCount\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "commentCount",
+        "primary": false,
+        "definition": "\"commentCount\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "income",
+        "primary": false,
+        "definition": "\"income\" bigint NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "title",
+        "primary": false,
+        "definition": "\"title\" varchar"
+      },
+      {
+        "name": "desc",
+        "primary": false,
+        "definition": "\"desc\" varchar"
+      },
+      {
+        "name": "coverPath",
+        "primary": false,
+        "definition": "\"coverPath\" varchar"
+      },
+      {
+        "name": "mixInfo",
+        "primary": false,
+        "definition": "\"mixInfo\" json"
+      },
+      {
+        "name": "topics",
+        "primary": false,
+        "definition": "\"topics\" json DEFAULT '[]'"
+      },
+      {
+        "name": "location",
+        "primary": false,
+        "definition": "\"location\" json"
+      },
+      {
+        "name": "diffParams",
+        "primary": false,
+        "definition": "\"diffParams\" json DEFAULT '{}'"
+      },
+      {
+        "name": "visibleType",
+        "primary": false,
+        "definition": "\"visibleType\" tinyint NOT NULL DEFAULT 1"
+      },
+      {
+        "name": "timingTime",
+        "primary": false,
+        "definition": "\"timingTime\" datetime"
+      },
+      {
+        "name": "mentionedUserInfo",
+        "primary": false,
+        "definition": "\"mentionedUserInfo\" json DEFAULT '[]'"
+      },
+      {
+        "name": "imagesPath",
+        "primary": false,
+        "definition": "\"imagesPath\" json NOT NULL"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "replyCommentRecord",
+    "sql": "CREATE TABLE \"replyCommentRecord\" (\"createTime\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"updateTime\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"id\" integer PRIMARY KEY AUTOINCREMENT NOT NULL, \"userId\" varchar NOT NULL, \"accountId\" integer NOT NULL, \"type\" varchar CHECK( \"type\" IN ('douyin','xhs','wxSph','KWAI') ), \"commentId\" varchar NOT NULL, \"commentContent\" varchar NOT NULL, \"replyContent\" varchar NOT NULL)",
+    "columns": [
+      {
+        "name": "createTime",
+        "primary": false,
+        "definition": "\"createTime\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "updateTime",
+        "primary": false,
+        "definition": "\"updateTime\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "id",
+        "primary": true,
+        "definition": "\"id\" INTEGER NOT NULL"
+      },
+      {
+        "name": "userId",
+        "primary": false,
+        "definition": "\"userId\" varchar NOT NULL"
+      },
+      {
+        "name": "accountId",
+        "primary": false,
+        "definition": "\"accountId\" INTEGER NOT NULL"
+      },
+      {
+        "name": "type",
+        "primary": false,
+        "definition": "\"type\" varchar"
+      },
+      {
+        "name": "commentId",
+        "primary": false,
+        "definition": "\"commentId\" varchar NOT NULL"
+      },
+      {
+        "name": "commentContent",
+        "primary": false,
+        "definition": "\"commentContent\" varchar NOT NULL"
+      },
+      {
+        "name": "replyContent",
+        "primary": false,
+        "definition": "\"replyContent\" varchar NOT NULL"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "interactionRecord",
+    "sql": "CREATE TABLE \"interactionRecord\" (\"createTime\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"updateTime\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"id\" integer PRIMARY KEY AUTOINCREMENT NOT NULL, \"userId\" varchar NOT NULL, \"accountId\" integer NOT NULL, \"type\" varchar CHECK( \"type\" IN ('douyin','xhs','wxSph','KWAI') ), \"worksId\" varchar NOT NULL, \"worksTitle\" varchar, \"commentRemark\" varchar, \"worksCover\" varchar, \"commentContent\" varchar NOT NULL, \"isLike\" tinyint NOT NULL, \"isCollect\" tinyint NOT NULL)",
+    "columns": [
+      {
+        "name": "createTime",
+        "primary": false,
+        "definition": "\"createTime\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "updateTime",
+        "primary": false,
+        "definition": "\"updateTime\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "id",
+        "primary": true,
+        "definition": "\"id\" INTEGER NOT NULL"
+      },
+      {
+        "name": "userId",
+        "primary": false,
+        "definition": "\"userId\" varchar NOT NULL"
+      },
+      {
+        "name": "accountId",
+        "primary": false,
+        "definition": "\"accountId\" INTEGER NOT NULL"
+      },
+      {
+        "name": "type",
+        "primary": false,
+        "definition": "\"type\" varchar"
+      },
+      {
+        "name": "worksId",
+        "primary": false,
+        "definition": "\"worksId\" varchar NOT NULL"
+      },
+      {
+        "name": "worksTitle",
+        "primary": false,
+        "definition": "\"worksTitle\" varchar"
+      },
+      {
+        "name": "commentRemark",
+        "primary": false,
+        "definition": "\"commentRemark\" varchar"
+      },
+      {
+        "name": "worksCover",
+        "primary": false,
+        "definition": "\"worksCover\" varchar"
+      },
+      {
+        "name": "commentContent",
+        "primary": false,
+        "definition": "\"commentContent\" varchar NOT NULL"
+      },
+      {
+        "name": "isLike",
+        "primary": false,
+        "definition": "\"isLike\" tinyint NOT NULL"
+      },
+      {
+        "name": "isCollect",
+        "primary": false,
+        "definition": "\"isCollect\" tinyint NOT NULL"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "accountGroup",
+    "sql": "CREATE TABLE \"accountGroup\" (\"createTime\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"updateTime\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"id\" integer PRIMARY KEY AUTOINCREMENT NOT NULL, \"name\" varchar NOT NULL, \"proxyIp\" varchar, \"rank\" integer NOT NULL DEFAULT (1), \"proxyOpen\" boolean NOT NULL DEFAULT (1))",
+    "columns": [
+      {
+        "name": "createTime",
+        "primary": false,
+        "definition": "\"createTime\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "updateTime",
+        "primary": false,
+        "definition": "\"updateTime\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "id",
+        "primary": true,
+        "definition": "\"id\" INTEGER NOT NULL"
+      },
+      {
+        "name": "name",
+        "primary": false,
+        "definition": "\"name\" varchar NOT NULL"
+      },
+      {
+        "name": "proxyIp",
+        "primary": false,
+        "definition": "\"proxyIp\" varchar"
+      },
+      {
+        "name": "rank",
+        "primary": false,
+        "definition": "\"rank\" INTEGER NOT NULL DEFAULT 1"
+      },
+      {
+        "name": "proxyOpen",
+        "primary": false,
+        "definition": "\"proxyOpen\" boolean NOT NULL DEFAULT 1"
+      }
+    ],
+    "indices": []
+  },
+  {
+    "name": "mas_connected_account",
+    "sql": "CREATE TABLE \"mas_connected_account\" (\"id\" varchar PRIMARY KEY NOT NULL, \"platform\" varchar NOT NULL, \"accountName\" varchar NOT NULL DEFAULT (''), \"externalId\" varchar NOT NULL DEFAULT (''), \"status\" varchar NOT NULL DEFAULT ('disconnected'), \"credentialRef\" varchar NOT NULL DEFAULT (''), \"tokenExpiresAt\" datetime, \"metadata\" text NOT NULL DEFAULT ('{}'), \"createdAt\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"updatedAt\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP))",
+    "columns": [
+      {
+        "name": "id",
+        "primary": true,
+        "definition": "\"id\" varchar NOT NULL"
+      },
+      {
+        "name": "platform",
+        "primary": false,
+        "definition": "\"platform\" varchar NOT NULL"
+      },
+      {
+        "name": "accountName",
+        "primary": false,
+        "definition": "\"accountName\" varchar NOT NULL DEFAULT ''"
+      },
+      {
+        "name": "externalId",
+        "primary": false,
+        "definition": "\"externalId\" varchar NOT NULL DEFAULT ''"
+      },
+      {
+        "name": "status",
+        "primary": false,
+        "definition": "\"status\" varchar NOT NULL DEFAULT 'disconnected'"
+      },
+      {
+        "name": "credentialRef",
+        "primary": false,
+        "definition": "\"credentialRef\" varchar NOT NULL DEFAULT ''"
+      },
+      {
+        "name": "tokenExpiresAt",
+        "primary": false,
+        "definition": "\"tokenExpiresAt\" datetime"
+      },
+      {
+        "name": "metadata",
+        "primary": false,
+        "definition": "\"metadata\" TEXT NOT NULL DEFAULT '{}'"
+      },
+      {
+        "name": "createdAt",
+        "primary": false,
+        "definition": "\"createdAt\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "updatedAt",
+        "primary": false,
+        "definition": "\"updatedAt\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "indices": [
+      "CREATE INDEX \"IDX_66325e1845fb18a9c98575ba60\" ON \"mas_connected_account\" (\"platform\") "
+    ]
+  },
+  {
+    "name": "mas_content_asset",
+    "sql": "CREATE TABLE \"mas_content_asset\" (\"id\" varchar PRIMARY KEY NOT NULL, \"platform\" varchar NOT NULL, \"pubType\" varchar NOT NULL DEFAULT ('image-text'), \"body\" text NOT NULL DEFAULT (''), \"hashtags\" text NOT NULL DEFAULT ('[]'), \"mediaRefs\" text NOT NULL DEFAULT ('[]'), \"status\" varchar NOT NULL DEFAULT ('draft'), \"createdAt\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"updatedAt\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP))",
+    "columns": [
+      {
+        "name": "id",
+        "primary": true,
+        "definition": "\"id\" varchar NOT NULL"
+      },
+      {
+        "name": "platform",
+        "primary": false,
+        "definition": "\"platform\" varchar NOT NULL"
+      },
+      {
+        "name": "pubType",
+        "primary": false,
+        "definition": "\"pubType\" varchar NOT NULL DEFAULT 'image-text'"
+      },
+      {
+        "name": "body",
+        "primary": false,
+        "definition": "\"body\" TEXT NOT NULL DEFAULT ''"
+      },
+      {
+        "name": "hashtags",
+        "primary": false,
+        "definition": "\"hashtags\" TEXT NOT NULL DEFAULT '[]'"
+      },
+      {
+        "name": "mediaRefs",
+        "primary": false,
+        "definition": "\"mediaRefs\" TEXT NOT NULL DEFAULT '[]'"
+      },
+      {
+        "name": "status",
+        "primary": false,
+        "definition": "\"status\" varchar NOT NULL DEFAULT 'draft'"
+      },
+      {
+        "name": "createdAt",
+        "primary": false,
+        "definition": "\"createdAt\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "updatedAt",
+        "primary": false,
+        "definition": "\"updatedAt\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "indices": [
+      "CREATE INDEX \"IDX_86d452ee89269c5a91427a7c59\" ON \"mas_content_asset\" (\"platform\") "
+    ]
+  },
+  {
+    "name": "mas_publish_history",
+    "sql": "CREATE TABLE \"mas_publish_history\" (\"id\" varchar PRIMARY KEY NOT NULL, \"accountId\" varchar NOT NULL, \"platform\" varchar NOT NULL, \"contentAssetId\" varchar, \"status\" varchar NOT NULL, \"externalPostId\" varchar NOT NULL DEFAULT (''), \"error\" text NOT NULL DEFAULT (''), \"attempts\" integer NOT NULL DEFAULT (0), \"publishedAt\" datetime, \"createdAt\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP))",
+    "columns": [
+      {
+        "name": "id",
+        "primary": true,
+        "definition": "\"id\" varchar NOT NULL"
+      },
+      {
+        "name": "accountId",
+        "primary": false,
+        "definition": "\"accountId\" varchar NOT NULL"
+      },
+      {
+        "name": "platform",
+        "primary": false,
+        "definition": "\"platform\" varchar NOT NULL"
+      },
+      {
+        "name": "contentAssetId",
+        "primary": false,
+        "definition": "\"contentAssetId\" varchar"
+      },
+      {
+        "name": "status",
+        "primary": false,
+        "definition": "\"status\" varchar NOT NULL"
+      },
+      {
+        "name": "externalPostId",
+        "primary": false,
+        "definition": "\"externalPostId\" varchar NOT NULL DEFAULT ''"
+      },
+      {
+        "name": "error",
+        "primary": false,
+        "definition": "\"error\" TEXT NOT NULL DEFAULT ''"
+      },
+      {
+        "name": "attempts",
+        "primary": false,
+        "definition": "\"attempts\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "publishedAt",
+        "primary": false,
+        "definition": "\"publishedAt\" datetime"
+      },
+      {
+        "name": "createdAt",
+        "primary": false,
+        "definition": "\"createdAt\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "indices": [
+      "CREATE INDEX \"IDX_02550e519496304d77caf47754\" ON \"mas_publish_history\" (\"accountId\") "
+    ]
+  },
+  {
+    "name": "mas_scheduled_post",
+    "sql": "CREATE TABLE \"mas_scheduled_post\" (\"id\" varchar PRIMARY KEY NOT NULL, \"accountId\" varchar NOT NULL, \"platform\" varchar NOT NULL, \"contentAssetId\" varchar NOT NULL, \"runAt\" datetime NOT NULL, \"status\" varchar NOT NULL DEFAULT ('queued'), \"createdAt\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP))",
+    "columns": [
+      {
+        "name": "id",
+        "primary": true,
+        "definition": "\"id\" varchar NOT NULL"
+      },
+      {
+        "name": "accountId",
+        "primary": false,
+        "definition": "\"accountId\" varchar NOT NULL"
+      },
+      {
+        "name": "platform",
+        "primary": false,
+        "definition": "\"platform\" varchar NOT NULL"
+      },
+      {
+        "name": "contentAssetId",
+        "primary": false,
+        "definition": "\"contentAssetId\" varchar NOT NULL"
+      },
+      {
+        "name": "runAt",
+        "primary": false,
+        "definition": "\"runAt\" datetime NOT NULL"
+      },
+      {
+        "name": "status",
+        "primary": false,
+        "definition": "\"status\" varchar NOT NULL DEFAULT 'queued'"
+      },
+      {
+        "name": "createdAt",
+        "primary": false,
+        "definition": "\"createdAt\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "indices": [
+      "CREATE INDEX \"IDX_f73ea5107ae5ae086c28a98c3c\" ON \"mas_scheduled_post\" (\"accountId\") ",
+      "CREATE INDEX \"IDX_291646d7d6cdd5186f298a3bdf\" ON \"mas_scheduled_post\" (\"runAt\") "
+    ]
+  },
+  {
+    "name": "mas_engagement_queue",
+    "sql": "CREATE TABLE \"mas_engagement_queue\" (\"id\" varchar PRIMARY KEY NOT NULL, \"accountId\" varchar NOT NULL, \"platform\" varchar NOT NULL, \"externalCommentId\" varchar NOT NULL, \"externalPostId\" varchar NOT NULL DEFAULT (''), \"authorHandle\" varchar NOT NULL DEFAULT (''), \"commentText\" text NOT NULL DEFAULT (''), \"draftReply\" text NOT NULL DEFAULT (''), \"highConversion\" boolean NOT NULL DEFAULT (0), \"status\" varchar NOT NULL DEFAULT ('pending'), \"createdAt\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP))",
+    "columns": [
+      {
+        "name": "id",
+        "primary": true,
+        "definition": "\"id\" varchar NOT NULL"
+      },
+      {
+        "name": "accountId",
+        "primary": false,
+        "definition": "\"accountId\" varchar NOT NULL"
+      },
+      {
+        "name": "platform",
+        "primary": false,
+        "definition": "\"platform\" varchar NOT NULL"
+      },
+      {
+        "name": "externalCommentId",
+        "primary": false,
+        "definition": "\"externalCommentId\" varchar NOT NULL"
+      },
+      {
+        "name": "externalPostId",
+        "primary": false,
+        "definition": "\"externalPostId\" varchar NOT NULL DEFAULT ''"
+      },
+      {
+        "name": "authorHandle",
+        "primary": false,
+        "definition": "\"authorHandle\" varchar NOT NULL DEFAULT ''"
+      },
+      {
+        "name": "commentText",
+        "primary": false,
+        "definition": "\"commentText\" TEXT NOT NULL DEFAULT ''"
+      },
+      {
+        "name": "draftReply",
+        "primary": false,
+        "definition": "\"draftReply\" TEXT NOT NULL DEFAULT ''"
+      },
+      {
+        "name": "highConversion",
+        "primary": false,
+        "definition": "\"highConversion\" boolean NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "status",
+        "primary": false,
+        "definition": "\"status\" varchar NOT NULL DEFAULT 'pending'"
+      },
+      {
+        "name": "createdAt",
+        "primary": false,
+        "definition": "\"createdAt\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "indices": [
+      "CREATE INDEX \"IDX_8413b9988c9789afddd0ec4e6d\" ON \"mas_engagement_queue\" (\"accountId\") ",
+      "CREATE INDEX \"IDX_6fc74cefdc83b8bdee48d037dc\" ON \"mas_engagement_queue\" (\"status\") "
+    ]
+  },
+  {
+    "name": "mas_analytics_snapshot",
+    "sql": "CREATE TABLE \"mas_analytics_snapshot\" (\"id\" varchar PRIMARY KEY NOT NULL, \"accountId\" varchar NOT NULL, \"platform\" varchar NOT NULL, \"externalPostId\" varchar NOT NULL, \"reach\" integer NOT NULL DEFAULT (0), \"impressions\" integer NOT NULL DEFAULT (0), \"engagements\" integer NOT NULL DEFAULT (0), \"clicks\" integer NOT NULL DEFAULT (0), \"capturedAt\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP))",
+    "columns": [
+      {
+        "name": "id",
+        "primary": true,
+        "definition": "\"id\" varchar NOT NULL"
+      },
+      {
+        "name": "accountId",
+        "primary": false,
+        "definition": "\"accountId\" varchar NOT NULL"
+      },
+      {
+        "name": "platform",
+        "primary": false,
+        "definition": "\"platform\" varchar NOT NULL"
+      },
+      {
+        "name": "externalPostId",
+        "primary": false,
+        "definition": "\"externalPostId\" varchar NOT NULL"
+      },
+      {
+        "name": "reach",
+        "primary": false,
+        "definition": "\"reach\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "impressions",
+        "primary": false,
+        "definition": "\"impressions\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "engagements",
+        "primary": false,
+        "definition": "\"engagements\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "clicks",
+        "primary": false,
+        "definition": "\"clicks\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "capturedAt",
+        "primary": false,
+        "definition": "\"capturedAt\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "indices": [
+      "CREATE INDEX \"IDX_05260048e41fc43c0a13f5b0ab\" ON \"mas_analytics_snapshot\" (\"accountId\") ",
+      "CREATE INDEX \"IDX_df47c30370eb6784e3e63e1734\" ON \"mas_analytics_snapshot\" (\"externalPostId\") ",
+      "CREATE INDEX \"IDX_6abfc5e2eb8beddb80e0f810db\" ON \"mas_analytics_snapshot\" (\"capturedAt\") "
+    ]
+  },
+  {
+    "name": "mas_audit_log",
+    "sql": "CREATE TABLE \"mas_audit_log\" (\"id\" varchar PRIMARY KEY NOT NULL, \"action\" varchar NOT NULL, \"entity\" varchar NOT NULL, \"entityId\" varchar NOT NULL, \"details\" text NOT NULL DEFAULT ('{}'), \"createdAt\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP))",
+    "columns": [
+      {
+        "name": "id",
+        "primary": true,
+        "definition": "\"id\" varchar NOT NULL"
+      },
+      {
+        "name": "action",
+        "primary": false,
+        "definition": "\"action\" varchar NOT NULL"
+      },
+      {
+        "name": "entity",
+        "primary": false,
+        "definition": "\"entity\" varchar NOT NULL"
+      },
+      {
+        "name": "entityId",
+        "primary": false,
+        "definition": "\"entityId\" varchar NOT NULL"
+      },
+      {
+        "name": "details",
+        "primary": false,
+        "definition": "\"details\" TEXT NOT NULL DEFAULT '{}'"
+      },
+      {
+        "name": "createdAt",
+        "primary": false,
+        "definition": "\"createdAt\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "indices": [
+      "CREATE INDEX \"IDX_d21839d983d31338dcede15d40\" ON \"mas_audit_log\" (\"action\") ",
+      "CREATE INDEX \"IDX_508bbbcc5adc8a6bf14de1486a\" ON \"mas_audit_log\" (\"createdAt\") "
+    ]
+  },
+  {
+    "name": "mas_trend_signal",
+    "sql": "CREATE TABLE \"mas_trend_signal\" (\"id\" varchar PRIMARY KEY NOT NULL, \"source\" varchar NOT NULL, \"keyword\" varchar NOT NULL, \"hashtags\" text NOT NULL DEFAULT ('[]'), \"trafficScore\" integer, \"nicheScore\" integer NOT NULL DEFAULT (0), \"niche\" varchar NOT NULL DEFAULT (''), \"fetchedAt\" datetime NOT NULL, \"expiresAt\" datetime NOT NULL)",
+    "columns": [
+      {
+        "name": "id",
+        "primary": true,
+        "definition": "\"id\" varchar NOT NULL"
+      },
+      {
+        "name": "source",
+        "primary": false,
+        "definition": "\"source\" varchar NOT NULL"
+      },
+      {
+        "name": "keyword",
+        "primary": false,
+        "definition": "\"keyword\" varchar NOT NULL"
+      },
+      {
+        "name": "hashtags",
+        "primary": false,
+        "definition": "\"hashtags\" TEXT NOT NULL DEFAULT '[]'"
+      },
+      {
+        "name": "trafficScore",
+        "primary": false,
+        "definition": "\"trafficScore\" INTEGER"
+      },
+      {
+        "name": "nicheScore",
+        "primary": false,
+        "definition": "\"nicheScore\" INTEGER NOT NULL DEFAULT 0"
+      },
+      {
+        "name": "niche",
+        "primary": false,
+        "definition": "\"niche\" varchar NOT NULL DEFAULT ''"
+      },
+      {
+        "name": "fetchedAt",
+        "primary": false,
+        "definition": "\"fetchedAt\" datetime NOT NULL"
+      },
+      {
+        "name": "expiresAt",
+        "primary": false,
+        "definition": "\"expiresAt\" datetime NOT NULL"
+      }
+    ],
+    "indices": [
+      "CREATE INDEX \"IDX_8c98451bcdd7b97ae1a0628293\" ON \"mas_trend_signal\" (\"source\") ",
+      "CREATE INDEX \"IDX_d2fb642dba6b9f050982126bc1\" ON \"mas_trend_signal\" (\"fetchedAt\") ",
+      "CREATE INDEX \"IDX_5fe62d2b85302ae8e5da00a44a\" ON \"mas_trend_signal\" (\"expiresAt\") "
+    ]
+  },
+  {
+    "name": "mas_campaign_package",
+    "sql": "CREATE TABLE \"mas_campaign_package\" (\"id\" varchar PRIMARY KEY NOT NULL, \"campaignId\" varchar NOT NULL, \"campaignTitle\" varchar NOT NULL, \"objective\" text NOT NULL DEFAULT (''), \"niche\" varchar NOT NULL DEFAULT (''), \"platforms\" text NOT NULL DEFAULT ('[]'), \"status\" varchar NOT NULL DEFAULT ('needs_approval'), \"payload\" text NOT NULL DEFAULT ('{}'), \"createdAt\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP), \"updatedAt\" datetime NOT NULL DEFAULT (CURRENT_TIMESTAMP))",
+    "columns": [
+      {
+        "name": "id",
+        "primary": true,
+        "definition": "\"id\" varchar NOT NULL"
+      },
+      {
+        "name": "campaignId",
+        "primary": false,
+        "definition": "\"campaignId\" varchar NOT NULL"
+      },
+      {
+        "name": "campaignTitle",
+        "primary": false,
+        "definition": "\"campaignTitle\" varchar NOT NULL"
+      },
+      {
+        "name": "objective",
+        "primary": false,
+        "definition": "\"objective\" TEXT NOT NULL DEFAULT ''"
+      },
+      {
+        "name": "niche",
+        "primary": false,
+        "definition": "\"niche\" varchar NOT NULL DEFAULT ''"
+      },
+      {
+        "name": "platforms",
+        "primary": false,
+        "definition": "\"platforms\" TEXT NOT NULL DEFAULT '[]'"
+      },
+      {
+        "name": "status",
+        "primary": false,
+        "definition": "\"status\" varchar NOT NULL DEFAULT 'needs_approval'"
+      },
+      {
+        "name": "payload",
+        "primary": false,
+        "definition": "\"payload\" TEXT NOT NULL DEFAULT '{}'"
+      },
+      {
+        "name": "createdAt",
+        "primary": false,
+        "definition": "\"createdAt\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      },
+      {
+        "name": "updatedAt",
+        "primary": false,
+        "definition": "\"updatedAt\" datetime NOT NULL DEFAULT CURRENT_TIMESTAMP"
+      }
+    ],
+    "indices": [
+      "CREATE INDEX \"IDX_c2a68783107c0be11f18dc45d3\" ON \"mas_campaign_package\" (\"campaignId\") ",
+      "CREATE INDEX \"IDX_4349e21e74741c959f36bafbe0\" ON \"mas_campaign_package\" (\"status\") "
+    ]
+  },
+  {
+    "name": "mas_property_listing",
+    "sql": "CREATE TABLE \"mas_property_listing\" (\"id\" varchar PRIMARY KEY NOT NULL, \"source\" varchar NOT NULL, \"mlsNumber\" varchar, \"address\" varchar NOT NULL, \"city\" varchar NOT NULL, \"state\" varchar NOT NULL, \"zip\" varchar NOT NULL DEFAULT (''), \"price\" integer, \"beds\" float, \"baths\" float, \"sqft\" integer, \"lotSqft\" integer, \"yearBuilt\" integer, \"propertyType\" varchar, \"status\" varchar NOT NULL DEFAULT ('active'), \"daysOnMarket\" integer, \"description\" text, \"photoUrls\" text NOT NULL DEFAULT ('[]'), \"photoCaptions\" text NOT NULL DEFAULT ('[]'), \"agentName\" varchar, \"agentPhone\" varchar, \"agentEmail\" varchar, \"listingUrl\" varchar, \"complianceOk\" boolean NOT NULL DEFAULT (1), \"complianceFlags\" text NOT NULL DEFAULT ('[]'), \"capturedAt\" datetime NOT NULL, \"filesFolder\" varchar)",
+    "columns": [
+      {
+        "name": "id",
+        "primary": true,
+        "definition": "\"id\" varchar NOT NULL"
+      },
+      {
+        "name": "source",
+        "primary": false,
+        "definition": "\"source\" varchar NOT NULL"
+      },
+      {
+        "name": "mlsNumber",
+        "primary": false,
+        "definition": "\"mlsNumber\" varchar"
+      },
+      {
+        "name": "address",
+        "primary": false,
+        "definition": "\"address\" varchar NOT NULL"
+      },
+      {
+        "name": "city",
+        "primary": false,
+        "definition": "\"city\" varchar NOT NULL"
+      },
+      {
+        "name": "state",
+        "primary": false,
+        "definition": "\"state\" varchar NOT NULL"
+      },
+      {
+        "name": "zip",
+        "primary": false,
+        "definition": "\"zip\" varchar NOT NULL DEFAULT ''"
+      },
+      {
+        "name": "price",
+        "primary": false,
+        "definition": "\"price\" INTEGER"
+      },
+      {
+        "name": "beds",
+        "primary": false,
+        "definition": "\"beds\" float"
+      },
+      {
+        "name": "baths",
+        "primary": false,
+        "definition": "\"baths\" float"
+      },
+      {
+        "name": "sqft",
+        "primary": false,
+        "definition": "\"sqft\" INTEGER"
+      },
+      {
+        "name": "lotSqft",
+        "primary": false,
+        "definition": "\"lotSqft\" INTEGER"
+      },
+      {
+        "name": "yearBuilt",
+        "primary": false,
+        "definition": "\"yearBuilt\" INTEGER"
+      },
+      {
+        "name": "propertyType",
+        "primary": false,
+        "definition": "\"propertyType\" varchar"
+      },
+      {
+        "name": "status",
+        "primary": false,
+        "definition": "\"status\" varchar NOT NULL DEFAULT 'active'"
+      },
+      {
+        "name": "daysOnMarket",
+        "primary": false,
+        "definition": "\"daysOnMarket\" INTEGER"
+      },
+      {
+        "name": "description",
+        "primary": false,
+        "definition": "\"description\" TEXT"
+      },
+      {
+        "name": "photoUrls",
+        "primary": false,
+        "definition": "\"photoUrls\" TEXT NOT NULL DEFAULT '[]'"
+      },
+      {
+        "name": "photoCaptions",
+        "primary": false,
+        "definition": "\"photoCaptions\" TEXT NOT NULL DEFAULT '[]'"
+      },
+      {
+        "name": "agentName",
+        "primary": false,
+        "definition": "\"agentName\" varchar"
+      },
+      {
+        "name": "agentPhone",
+        "primary": false,
+        "definition": "\"agentPhone\" varchar"
+      },
+      {
+        "name": "agentEmail",
+        "primary": false,
+        "definition": "\"agentEmail\" varchar"
+      },
+      {
+        "name": "listingUrl",
+        "primary": false,
+        "definition": "\"listingUrl\" varchar"
+      },
+      {
+        "name": "complianceOk",
+        "primary": false,
+        "definition": "\"complianceOk\" boolean NOT NULL DEFAULT 1"
+      },
+      {
+        "name": "complianceFlags",
+        "primary": false,
+        "definition": "\"complianceFlags\" TEXT NOT NULL DEFAULT '[]'"
+      },
+      {
+        "name": "capturedAt",
+        "primary": false,
+        "definition": "\"capturedAt\" datetime NOT NULL"
+      },
+      {
+        "name": "filesFolder",
+        "primary": false,
+        "definition": "\"filesFolder\" varchar"
+      }
+    ],
+    "indices": [
+      "CREATE INDEX \"IDX_68dd6c2bb963a61ea1037c1bfd\" ON \"mas_property_listing\" (\"source\") ",
+      "CREATE INDEX \"IDX_fe0902d658f8014de6480a3cbd\" ON \"mas_property_listing\" (\"city\") ",
+      "CREATE INDEX \"IDX_a7282b21e083b6dc47d1304f4f\" ON \"mas_property_listing\" (\"state\") ",
+      "CREATE INDEX \"IDX_ea9c498d5dcf6663dde6770815\" ON \"mas_property_listing\" (\"status\") ",
+      "CREATE INDEX \"IDX_e61abd00167c3842309c9e3d5d\" ON \"mas_property_listing\" (\"listingUrl\") ",
+      "CREATE INDEX \"IDX_9525072d84660557eee6d62a67\" ON \"mas_property_listing\" (\"capturedAt\") "
+    ]
+  }
+]

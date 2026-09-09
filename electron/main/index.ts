@@ -1,3 +1,4 @@
+import './profile';
 import { app, BrowserWindow, shell, ipcMain, nativeTheme } from 'electron';
 import { registerAiCutHandlers } from './aicuts';
 import {
@@ -30,7 +31,7 @@ import { dialog } from 'electron';
 import fs from 'node:fs';
 import { startApiServer } from './server';
 import { createAicutAgentRouter } from './aicuts/agentApi';
-import { initSqlite3Db, AppDataSource } from '../db';
+import { initSqlite3Db, AppDataSource, databaseStartupError } from '../db';
 import { store, settingsStore } from '../global/store';
 import { startMas } from './mas/startup';
 import { registerWebviewBridge } from './adapters/webviewBridge';
@@ -217,6 +218,10 @@ async function startMasBackend() {
     const ok = await initSqlite3Db();
     if (!ok) {
       logger.error('[AICut] DB init failed — MAS backend disabled');
+      dialog.showErrorBox(
+        'USCut could not open your database',
+        `${databaseStartupError ?? 'Database initialization failed.'}\n\nThe social tools could not start. Your video projects remain available. Keep any listed backup until recovery is complete.`,
+      );
       return;
     }
     await startMas(AppDataSource, settingsStore);

@@ -6,7 +6,7 @@ export class InitialMigration1707791500000 implements MigrationInterface {
   async up(queryRunner: QueryRunner): Promise<void> {
     // Create user table
     await queryRunner.query(`
-      CREATE TABLE "user" (
+      CREATE TABLE IF NOT EXISTS "user" (
         "id" varchar PRIMARY KEY NOT NULL,
         "name" varchar NOT NULL,
         "phone" varchar NOT NULL,
@@ -18,7 +18,7 @@ export class InitialMigration1707791500000 implements MigrationInterface {
 
     // Create account table
     await queryRunner.query(`
-      CREATE TABLE "account" (
+      CREATE TABLE IF NOT EXISTS "account" (
         "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
         "userId" varchar NOT NULL,
         "type" varchar NOT NULL,
@@ -46,7 +46,7 @@ export class InitialMigration1707791500000 implements MigrationInterface {
 
     // Create pubRecord table
     await queryRunner.query(`
-      CREATE TABLE "pubRecord" (
+      CREATE TABLE IF NOT EXISTS "pubRecord" (
         "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
         "userId" varchar NOT NULL,
         "type" varchar NOT NULL,
@@ -64,7 +64,7 @@ export class InitialMigration1707791500000 implements MigrationInterface {
 
     // Create video table
     await queryRunner.query(`
-      CREATE TABLE "video" (
+      CREATE TABLE IF NOT EXISTS "video" (
         "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
         "userId" varchar NOT NULL,
         "pubRecordId" integer NOT NULL,
@@ -96,7 +96,7 @@ export class InitialMigration1707791500000 implements MigrationInterface {
 
     // Create account_stats table
     await queryRunner.query(`
-      CREATE TABLE "account_stats" (
+      CREATE TABLE IF NOT EXISTS "account_stats" (
         "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
         "userId" varchar NOT NULL,
         "accountId" integer NOT NULL,
@@ -117,7 +117,7 @@ export class InitialMigration1707791500000 implements MigrationInterface {
 
     // Create video_stats table
     await queryRunner.query(`
-      CREATE TABLE "video_stats" (
+      CREATE TABLE IF NOT EXISTS "video_stats" (
         "id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
         "userId" varchar NOT NULL,
         "videoId" integer NOT NULL,

@@ -162,13 +162,13 @@ export class ClipService {
         transcriptSource = 'whisper';
       } else {
         // No key configured — fall back to local whisper.cpp (no upload, no
-        // cost). Its own error message already explains the toolchain
-        // prerequisite and the alternatives, so surface it as-is.
-        report(
-          'Transcribing locally; cancellation waits for this operation',
-          5,
+        // cost). Uses the bundled engine; no first-use compilation.
+        report('Transcribing locally', 5);
+        segments = await transcribeViaLocalWhisper(
+          input.videoPath,
+          'base.en',
+          context?.signal,
         );
-        segments = await transcribeViaLocalWhisper(input.videoPath);
         transcriptSource = 'whisper-local';
       }
     }

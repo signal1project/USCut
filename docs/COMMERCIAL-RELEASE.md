@@ -9,7 +9,7 @@ Owner direction: USCut, subscription based (2026-09-09). The complete AI video p
 | Full AI workflow | Existing provider resolver and AI storyboard generation | Generated footage, usage/spending controls, visual grounding, scene revision remain |
 | Subscription checkout and access | No subscription service or entitlement verification found | Required: hosted checkout, verified webhooks, activation, refresh/revocation, offline policy, billing management, test-mode lifecycle tests |
 | Project recovery | Serialized writes, previous valid save, corrupt-primary fallback; stale renderer save completions cannot mark newer edits saved | Implemented for project metadata; portable media backup/restore remains |
-| Database upgrades | TypeORM migration files exist | Required: audit runtime migration mode, backup and real upgrade verification |
+| Database upgrades | Explicit additive baseline migration; verified online SQLite backup; transactional upgrades; old/synchronized-profile and rollback tests under Electron ABI | Implemented and real-app startup verified; customer restore UI remains |
 | Customer installation | NSIS configuration and previous packaged-app smoke | Required: fresh package, clean machine install/update/uninstall tests, bundled native engines/models verification |
 | Release authenticity | GitHub updater configured | Required: signing credentials, signed installer/update validation, controlled release publication |
 | Live workflows | Existing social adapters and Zillow pipeline | Required: controlled real capture and supported delivery checks; assisted posting remains a human final action |

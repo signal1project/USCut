@@ -3,7 +3,9 @@
   "appId": "com.familyoffice.uscut",
   "productName": "USCut",
   "asar": true,
+  "afterPack": "scripts/verify-packaged-runtime.cjs",
   "asarUnpack": [
+    "**/node_modules/nodejs-whisper/**/*",
     "**/node_modules/sharp/**/*",
     "**/node_modules/@img/**/*",
     "**/node_modules/onnxruntime-node/**/*",

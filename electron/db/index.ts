@@ -6,34 +6,15 @@
  * @Description: 数据库
  */
 import { DataSource } from 'typeorm';
-import { AccountModel } from './models/account';
-import { UserModel } from './models/user';
-import { PubRecordModel } from './models/pubRecord';
-import { VideoModel } from './models/video';
 import * as migrations from './migrations';
 import path from 'path';
 import { app } from 'electron';
 import fs from 'fs/promises';
 import { logger } from '../global/log';
-import { AutoRunModel } from './models/autoRun';
-import { AutoRunRecordModel } from './models/autoRunRecord';
-import { ImgTextModel } from './models/imgText';
-import { ReplyCommentRecordModel } from './models/replyCommentRecord';
-import { InteractionRecordModel } from './models/interactionRecord';
 import { AccountGroupModel } from './models/accountGroup';
 import { defaultAccountGroupId } from '../../commont/AccountEnum';
-import {
-  ConnectedAccountModel,
-  ContentAssetModel,
-  PublishHistoryModel,
-  ScheduledPostModel,
-  EngagementQueueItemModel,
-  AnalyticsSnapshotModel,
-  AuditLogModel,
-  TrendSignalModel,
-  CampaignPackageModel,
-  PropertyListingModel,
-} from './models/mas';
+import { databaseEntities } from './entities';
+import { initializeDatabase } from './upgrade';
 
 const configPath = app.getPath('userData');
 const database = path.join(configPath, 'database.sqlite');
@@ -42,34 +23,13 @@ logger.log('att database path:', database);
 export const AppDataSource = new DataSource({
   type: 'better-sqlite3', // 设定链接的数据库类型
   database, // 数据库存放地址
-  synchronize: true, // 确保每次运行应用程序时实体都将与数据库同步
+  synchronize: false,
   logging: false, // 日志，默认在控制台中打印，数组列举错误类型枚举
-  entities: [
-    AccountModel,
-    UserModel,
-    PubRecordModel,
-    VideoModel,
-    AutoRunModel,
-    AutoRunRecordModel,
-    ImgTextModel,
-    ReplyCommentRecordModel,
-    InteractionRecordModel,
-    AccountGroupModel,
-    // MAS US-platform schema (see ./models/mas)
-    ConnectedAccountModel,
-    ContentAssetModel,
-    PublishHistoryModel,
-    ScheduledPostModel,
-    EngagementQueueItemModel,
-    AnalyticsSnapshotModel,
-    AuditLogModel,
-    TrendSignalModel,
-    CampaignPackageModel,
-    PropertyListingModel,
-  ], // 实体或模型表
+  entities: databaseEntities,
   migrations: Object.values(migrations), // 迁移类
-  migrationsRun: true, // 确保在连接时自动运行迁移
+  migrationsRun: false,
 });
+export let databaseStartupError: string | null = null;
 
 // 数据库默认数据添加
 async function sqliteDefaultDataInit() {
@@ -93,11 +53,17 @@ async function sqliteDefaultDataInit() {
 export async function initSqlite3Db() {
   if (!AppDataSource.isInitialized) {
     try {
-      await AppDataSource.initialize();
+      databaseStartupError = null;
+      await initializeDatabase(
+        AppDataSource,
+        database,
+        Object.values(migrations).map((Migration) => new Migration().name),
+      );
       await sqliteDefaultDataInit();
-      // await AppDataSource.runMigrations(); // 上面已经有自动迁移
       return true;
     } catch (error) {
+      databaseStartupError =
+        error instanceof Error ? error.message : String(error);
       logger.error('Error during database initialization:', error);
       return false;
     }

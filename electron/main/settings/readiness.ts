@@ -1,6 +1,6 @@
 import fs from 'node:fs';
-import path from 'node:path';
-import { createRequire } from 'node:module';
+import { resolveLocalWhisper } from '../clips/localWhisperRuntime';
+
 import { execFile } from 'node:child_process';
 import { safeStorage } from 'electron';
 import type { Settings } from './settings';
@@ -11,8 +11,6 @@ import type {
   ReadinessCheck,
   ReadinessReport,
 } from '../../../commont/readiness';
-
-const requireCjs = createRequire(import.meta.url);
 
 /** Local checks only: no provider requests, downloads, or credential disclosure. */
 export async function checkReadiness(
@@ -70,23 +68,8 @@ export async function checkReadiness(
   );
   let localWhisper = false;
   try {
-    const cpp = path
-      .resolve(
-        path.dirname(requireCjs.resolve('nodejs-whisper')),
-        '../cpp/whisper.cpp',
-      )
-      .replace('app.asar', 'app.asar.unpacked');
-    const exe =
-      process.platform === 'win32' ? 'whisper-cli.exe' : 'whisper-cli';
-    const binary = [
-      'build/bin',
-      'build/bin/Release',
-      'build/bin/Debug',
-      'build',
-      '',
-    ].some((dir) => fs.existsSync(path.join(cpp, dir, exe)));
-    localWhisper =
-      binary && fs.existsSync(path.join(cpp, 'models/ggml-base.en.bin'));
+    resolveLocalWhisper();
+    localWhisper = true;
   } catch {
     /* Optional dependency may not be installed. */
   }

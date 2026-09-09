@@ -10,6 +10,9 @@ import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const packagedExecutable = process.argv[2]
+  ? path.resolve(process.argv[2])
+  : undefined;
 const results = path.join(root, 'test-results');
 await fs.mkdir(results, { recursive: true });
 const run = await fs.mkdtemp(path.join(results, 'stabilization-'));
@@ -140,12 +143,37 @@ const env = {
   AICUT_CAPTURE_PORT: await freePort(),
   AICUT_BRIDGE_PORT: await freePort(),
   NODE_ENV: 'production',
+  ...(packagedExecutable
+    ? {
+        USCUT_PROFILE_DIR: profile,
+        PATH: [
+          path.join(process.env.SystemRoot || 'C:\\Windows', 'System32'),
+          path.join(
+            process.env.SystemRoot || 'C:\\Windows',
+            'System32',
+            'WindowsPowerShell',
+            'v1.0',
+          ),
+        ].join(path.delimiter),
+      }
+    : {}),
 };
 delete env.ELECTRON_RUN_AS_NODE;
 delete env.VITE_DEV_SERVER_URL;
 let app;
 try {
-  app = await electron.launch({ args: [bootstrap], cwd: root, env });
+  app = await electron.launch({
+    executablePath: packagedExecutable,
+    args: packagedExecutable ? [] : [bootstrap],
+    cwd: root,
+    env,
+  });
+  const launched = await app.evaluate(({ app }) => ({
+    packaged: app.isPackaged,
+    profile: app.getPath('userData'),
+  }));
+  assert.equal(path.resolve(launched.profile), path.resolve(profile));
+  if (packagedExecutable) assert.equal(launched.packaged, true);
   let page;
   await expect
     .poll(
@@ -438,6 +466,21 @@ try {
   assert.equal(built.tracks[2].clips.length, 1);
   assert.ok(built.tracks[2].clips[0].duration > 0);
   await fs.access(built.tracks[2].clips[0].src);
+  const localTranscript = await page.evaluate(async (voicePath) => {
+    await window.ipcRenderer.invoke('mas:settings:set-ai-key', 'openai', '');
+    return window.ipcRenderer.invoke('aicuts:transcribe-video', voicePath);
+  }, built.tracks[2].clips[0].src);
+  assert.ok(
+    localTranscript.segments?.length,
+    localTranscript.error ?? 'No local transcript',
+  );
+  assert.match(
+    localTranscript.segments.map((segment) => segment.text).join(' '),
+    /welcome|studio/i,
+  );
+  console.log(
+    'PASS: bundled local Whisper transcribes actual SAPI narration without cloud credentials.',
+  );
   await page.getByRole('button', { name: 'Open a copy in editor' }).click();
   await expect(
     page.getByText('Studio smoke', { exact: true }).first(),

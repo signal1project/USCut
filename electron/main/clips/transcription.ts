@@ -2,6 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
+import { spawn } from 'node:child_process';
+import { resolveLocalWhisper } from './localWhisperRuntime';
 import ffmpeg from 'fluent-ffmpeg';
 import ffprobeInstaller from '@ffprobe-installer/ffprobe';
 import { resolveFfmpegPath } from '../../util/ffmpegBinary';
@@ -416,27 +418,16 @@ function toWhisperWav(inputPath: string): Promise<string> {
 }
 
 /**
- * Transcribe locally with whisper.cpp (via nodejs-whisper) — no API key, no
- * upload, fully offline. `nodejs-whisper` is an optionalDependency: its
- * postinstall vendors whisper.cpp source but does NOT compile it, so it never
- * breaks `npm install`. Compiling whisper-cli + downloading the model both
- * happen lazily on first real use here, and both require a C++ build
- * toolchain (CMake + MSVC on Windows) — the same prerequisite already needed
- * for Mymo's virtual-camera phase. Absent that toolchain, this throws a clear,
- * actionable error rather than a stack trace.
+ * Runs the bundled whisper.cpp executable/model directly. Customer machines
+ * need no compiler, download step, shell command, or system FFmpeg.
  */
 export async function transcribeViaLocalWhisper(
   filePath: string,
   modelName = 'base.en',
+  signal?: AbortSignal,
 ): Promise<TranscriptSegment[]> {
-  let nodewhisper: (typeof import('nodejs-whisper'))['nodewhisper'];
-  try {
-    ({ nodewhisper } = await import('nodejs-whisper'));
-  } catch {
-    throw new Error(
-      'local_whisper_not_installed: run `npm install` to pull in the optional nodejs-whisper dependency, or paste an SRT/VTT transcript, or set an OpenAI key in Settings.',
-    );
-  }
+  signal?.throwIfAborted();
+  const runtime = resolveLocalWhisper(modelName);
 
   const wavPath = await toWhisperWav(filePath);
   // whisper-cli's default output naming APPENDS the extension to the full
@@ -445,24 +436,53 @@ export async function transcribeViaLocalWhisper(
   const srtPath = `${wavPath}.srt`;
   const jsonPath = `${wavPath}.json`;
   try {
-    await nodewhisper(wavPath, {
-      modelName,
-      autoDownloadModelName: modelName,
-      removeWavFileAfterTranscription: false,
-      whisperOptions: {
-        outputInSrt: true,
-        outputInText: false,
-        outputInVtt: false,
-        outputInJson: false,
-        // Token-level timestamps (word timing) for karaoke captions —
-        // best-effort: parseWhisperCppJsonWords() never throws, so a
-        // schema mismatch across whisper.cpp versions just means no word
-        // timing, not a broken transcript.
-        outputInJsonFull: true,
-        outputInCsv: false,
-        outputInLrc: false,
-        outputInWords: false,
-      },
+    signal?.throwIfAborted();
+    await new Promise<void>((resolve, reject) => {
+      const child = spawn(
+        runtime.executable,
+        [
+          '-m',
+          runtime.model,
+          '-f',
+          wavPath,
+          '-of',
+          wavPath,
+          '-osrt',
+          '-ojf',
+          '-t',
+          String(Math.max(1, Math.min(4, os.cpus().length))),
+        ],
+        { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'] },
+      );
+      let detail = '';
+      const abort = () => {
+        child.kill();
+      };
+      const timeout = setTimeout(
+        () => {
+          detail = 'Local transcription timed out';
+          child.kill();
+        },
+        60 * 60 * 1000,
+      );
+      signal?.addEventListener('abort', abort, { once: true });
+      child.stderr.on('data', (chunk) => {
+        detail = (detail + String(chunk)).slice(-4000);
+      });
+      child.once('error', (error) => {
+        clearTimeout(timeout);
+        signal?.removeEventListener('abort', abort);
+        reject(error);
+      });
+      child.once('close', (code) => {
+        clearTimeout(timeout);
+        signal?.removeEventListener('abort', abort);
+        if (signal?.aborted) reject(new Error('Local transcription cancelled'));
+        else if (code === 0) resolve();
+        else
+          reject(new Error(`Local transcription failed (${code}): ${detail}`));
+      });
+      if (signal?.aborted) abort();
     });
     if (!fs.existsSync(srtPath)) throw new Error('no_srt_output');
     const segments = parseSrtOrVtt(fs.readFileSync(srtPath, 'utf8'));
@@ -473,10 +493,7 @@ export async function transcribeViaLocalWhisper(
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     throw new Error(
-      `local_whisper_failed: ${detail} — first run needs a C++ build toolchain ` +
-        '(CMake + Visual Studio Build Tools on Windows) to compile whisper-cli and ' +
-        'download the model. Paste an SRT/VTT transcript, or set an OpenAI key in ' +
-        'Settings instead.',
+      `local_whisper_failed: ${detail}. Supply an SRT/VTT transcript or configure cloud transcription in Settings.`,
     );
   } finally {
     fs.rm(wavPath, () => {});
