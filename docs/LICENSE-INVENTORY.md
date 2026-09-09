@@ -52,3 +52,20 @@ folder (currently the `.ttf` files ship without their license).
 4. Confirm `@ffprobe-installer/ffprobe`'s build license.
 5. Verify no `devDependencies` leak into the packaged app (electron-builder
    bundles `dependencies` + `optionalDependencies` only — spot-check the asar).
+
+## Packaging bloat / hygiene (found in the 2026-09-09 `--publish never` build)
+
+The installer is ~513 MB. Trim before release:
+
+- `asarUnpack: **/node_modules/nodejs-whisper/**/*` ships the **entire**
+  whisper.cpp `build/` tree — ~20 extra executables (`whisper-server.exe`,
+  `whisper-bench.exe`, `parakeet-*.exe`, `test-*.exe`, `bench.exe`, `main.exe`,
+  CMake compiler-probe exes). Only `build/bin/Release/whisper-cli.exe` and
+  `models/ggml-base.en.bin` are used. Add `files` negations to drop the rest.
+- **Two** FFmpeg binaries bundled (`ffmpeg-static` **and** `@ffmpeg-installer`)
+  and **three** ffprobe binaries (`ffprobe-static` x64+ia32, `@ffprobe-installer`).
+  The live path is `ffmpeg-static` + `@ffprobe-installer` (see
+  `util/ffmpegBinary.ts` / `clips/transcription.ts`); the `@ffmpeg-installer`
+  and `ffprobe-static` copies are dead weight — remove those deps or exclude them.
+- The build **signed** every exe with `signtool.exe` — confirm which certificate
+  was used (a real publisher cert vs a self-signed/dev cert in the store).
