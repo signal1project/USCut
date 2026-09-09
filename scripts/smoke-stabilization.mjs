@@ -640,12 +640,27 @@ try {
             trackMuted: !!track.muted,
           })),
         );
-        return window.ipcRenderer.invoke('aicuts:export-for-share', clips, {
-          resolution: '720p',
-          aspect,
-          format: 'mp4',
-          fps: 24,
-        });
+        const started = await window.ipcRenderer.invoke(
+          'aicuts:export-job-start',
+          {
+            clips,
+            name: 'Share',
+            share: true,
+            options: { resolution: '720p', aspect, format: 'mp4', fps: 24 },
+          },
+        );
+        const id = started.job.id;
+        for (let i = 0; i < 120; i++) {
+          await new Promise((r) => setTimeout(r, 1000));
+          const job = (
+            await window.ipcRenderer.invoke('aicuts:export-jobs')
+          ).find((j) => j.id === id);
+          if (job.status === 'completed')
+            return { success: true, outputPath: job.result.outputPath };
+          if (['failed', 'cancelled'].includes(job.status))
+            return { success: false, error: job.error };
+        }
+        return { success: false, error: 'timeout' };
       },
       { project: savedStudio[0], aspect },
     );

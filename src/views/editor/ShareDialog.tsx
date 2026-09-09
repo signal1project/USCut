@@ -175,22 +175,48 @@ const ShareDialog: React.FC<Props> = ({ onClose }) => {
     }
 
     setLog([]);
-    setBusy('Exporting video…');
-    const exported = (await ipc.invoke('aicuts:export-for-share', clips, {
-      resolution: '1080p',
-      aspect,
-      format: 'mp4',
-      fps: 30,
-    })) as
-      | { success?: boolean; outputPath?: string; error?: string }
-      | undefined;
-
-    if (!exported?.success || !exported.outputPath) {
+    setBusy('Rendering video…');
+    let outputPath: string;
+    try {
+      const started = (await ipc.invoke('aicuts:export-job-start', {
+        clips,
+        name: 'Share',
+        share: true,
+        options: { resolution: '1080p', aspect, format: 'mp4', fps: 30 },
+      })) as { job?: { id: string } };
+      const jobId = started?.job?.id;
+      if (!jobId) throw new Error('Could not start the render');
+      // Durable job: survives navigation and app exit, shows in Export jobs,
+      // cancellable there. Poll it to completion before posting.
+      for (;;) {
+        await new Promise((r) => setTimeout(r, 1000));
+        const list = (await ipc.invoke('aicuts:export-jobs')) as Array<{
+          id: string;
+          status: string;
+          progress?: number;
+          error?: string;
+          result?: { outputPath?: string };
+        }>;
+        const job = list.find((j) => j.id === jobId);
+        if (!job) throw new Error('Render job disappeared');
+        if (job.status === 'running' || job.status === 'queued') {
+          setBusy(`Rendering video… ${Math.round(job.progress ?? 0)}%`);
+          continue;
+        }
+        if (job.status !== 'completed' || !job.result?.outputPath)
+          throw new Error(job.error ?? 'Render failed or was cancelled');
+        outputPath = job.result.outputPath;
+        break;
+      }
+    } catch (err) {
       setBusy(null);
-      appendLog(`Export failed: ${exported?.error ?? 'unknown error'}`);
+      appendLog(
+        `Render failed: ${err instanceof Error ? err.message : 'unknown error'}`,
+      );
       return;
     }
-    appendLog(`✓ Exported ${aspect} video`);
+    const exported = { outputPath };
+    appendLog(`✓ Rendered ${aspect} video`);
 
     const fullText = [caption.trim(), hashtags.trim()]
       .filter(Boolean)

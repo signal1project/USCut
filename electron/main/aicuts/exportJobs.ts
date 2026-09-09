@@ -117,10 +117,29 @@ export function registerExportJobHandlers(
         clips: z.array(clipSchema).min(1).max(5000),
         options: optionsSchema,
         name: z.string().max(150),
+        share: z.boolean().optional(),
       })
       .parse(request);
     if (!parsed.clips.some((c) => c.type === 'video' || c.type === 'image'))
       throw new Error('Add video or images before exporting');
+
+    // Share renders skip the save dialog and land in userData/shares — the
+    // caller (ShareDialog) attaches the finished file to platform windows.
+    if (parsed.share) {
+      const sharesDir = path.join(app.getPath('userData'), 'shares');
+      await fs.mkdir(sharesDir, { recursive: true });
+      const outputPath = path.join(
+        sharesDir,
+        `share-${randomUUID()}.${parsed.options.format}`,
+      );
+      const job = jobs.submit(randomUUID(), 'Share render', {
+        clips: parsed.clips as TimelineClip[],
+        options: parsed.options,
+        outputPath,
+      });
+      return { job };
+    }
+
     const directory = outputDirectory();
     await fs.mkdir(directory, { recursive: true });
     const result = await dialog.showSaveDialog(win, {
