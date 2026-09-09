@@ -11,6 +11,7 @@ import {
 import { ensurePreviewMedia } from './previewProxy';
 import { registerProjectHandlers } from './projects';
 import { registerStudioHandlers } from './studio';
+import { registerStudioDocHandlers } from './studioDocs';
 import { registerExportJobHandlers } from './exportJobs';
 import {
   transcribeVideoAudio,
@@ -48,6 +49,7 @@ export function registerAiCutHandlers(win: Electron.BrowserWindow) {
   // — auto-edit and one-click captions must never talk to a hardcoded SDK.
   const resolveProvider = createProviderResolver(settings);
   registerStudioHandlers(resolveProvider, () => settings.getMusicDir());
+  registerStudioDocHandlers();
   const proxyCacheDir = path.join(app.getPath('userData'), 'preview-proxies');
   const thumbsDir = path.join(app.getPath('userData'), 'thumbs');
   const voiceoverDir = path.join(app.getPath('userData'), 'voiceovers');

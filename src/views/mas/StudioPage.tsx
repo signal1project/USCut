@@ -52,11 +52,32 @@ export default function StudioPage() {
   const [musicChoices, setMusicChoices] = useState<
     { name: string; src: string }[]
   >([]);
+  type DocSummary = {
+    id: string;
+    title: string;
+    updatedAt: string;
+    version: number;
+    versions: number;
+  };
+  type DocVersion = { version: number; savedAt: string; label: string };
+  const [productions, setProductions] = useState<DocSummary[]>([]);
+  const [activeDoc, setActiveDoc] = useState<{
+    id: string;
+    version: number;
+    history: DocVersion[];
+  } | null>(null);
+  const [saveLabel, setSaveLabel] = useState('');
+  const refreshProductions = () =>
+    ipc
+      .invoke('aicuts:studio-doc-list')
+      .then((list) => Array.isArray(list) && setProductions(list))
+      .catch(() => {});
   useEffect(() => {
     void ipc
       .invoke('aicuts:studio-music-list')
       .then((list) => Array.isArray(list) && setMusicChoices(list))
       .catch(() => {});
+    void refreshProductions();
   }, []);
   useEffect(() => {
     try {
@@ -113,6 +134,48 @@ export default function StudioPage() {
         (await ipc.invoke('aicuts:studio-jobs')) as ProductionJob<Result>[],
       );
     });
+  type DocResult = {
+    id: string;
+    version: number;
+    current: StudioDraft;
+    history: DocVersion[];
+  };
+  const adoptDoc = (doc: DocResult) => {
+    setDraft(studioDraftSchema.parse(doc.current));
+    setActiveDoc({ id: doc.id, version: doc.version, history: doc.history });
+  };
+  const saveProduction = () =>
+    act(async () => {
+      const doc = (await ipc.invoke('aicuts:studio-doc-save', {
+        id: activeDoc?.id,
+        draft,
+        label: saveLabel.trim(),
+      })) as DocResult;
+      setSaveLabel('');
+      adoptDoc(doc);
+      await refreshProductions();
+    });
+  const loadProduction = (id: string) =>
+    act(async () => {
+      adoptDoc((await ipc.invoke('aicuts:studio-doc-get', id)) as DocResult);
+    });
+  const restoreVersion = (version: number) =>
+    act(async () => {
+      if (!activeDoc) return;
+      adoptDoc(
+        (await ipc.invoke('aicuts:studio-doc-restore', {
+          id: activeDoc.id,
+          version,
+        })) as DocResult,
+      );
+      await refreshProductions();
+    });
+  const deleteProduction = (id: string) =>
+    act(async () => {
+      await ipc.invoke('aicuts:studio-doc-delete', id);
+      if (activeDoc?.id === id) setActiveDoc(null);
+      await refreshProductions();
+    });
   const reviseScene = (index: number) =>
     act(async () => {
       const instruction = (reviseText[index] ?? '').trim();
@@ -146,6 +209,91 @@ export default function StudioPage() {
           {error}
         </div>
       )}
+      <section className="rounded border border-border p-3 space-y-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <strong className="text-sm">
+            {activeDoc
+              ? `Production saved — v${activeDoc.version}`
+              : 'Unsaved production'}
+          </strong>
+          <input
+            aria-label="Version note"
+            className={field + ' flex-1 min-w-[10rem]'}
+            placeholder="Version note (optional)"
+            maxLength={200}
+            value={saveLabel}
+            onChange={(e) => setSaveLabel(e.target.value)}
+          />
+          <button
+            className={button}
+            disabled={busy || !draft.title.trim()}
+            onClick={() => void saveProduction()}
+          >
+            {activeDoc ? 'Save new version' : 'Save as production'}
+          </button>
+          {activeDoc && (
+            <button
+              className={button}
+              disabled={busy}
+              onClick={() => {
+                setActiveDoc(null);
+                setDraft(empty);
+              }}
+            >
+              New production
+            </button>
+          )}
+        </div>
+        {productions.length > 0 && (
+          <div className="text-sm space-y-1">
+            {productions.map((p) => (
+              <div key={p.id} className="flex items-center gap-2">
+                <span className="flex-1 truncate">
+                  {p.title} · v{p.version} · {p.versions} saved
+                </span>
+                <button
+                  className={button}
+                  disabled={busy || activeDoc?.id === p.id}
+                  onClick={() => void loadProduction(p.id)}
+                >
+                  Load
+                </button>
+                <button
+                  className={button}
+                  disabled={busy}
+                  onClick={() => void deleteProduction(p.id)}
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {activeDoc && activeDoc.history.length > 1 && (
+          <details className="text-sm text-ink-muted">
+            <summary>Version history</summary>
+            <ul className="pt-1 space-y-1">
+              {[...activeDoc.history].reverse().map((v) => (
+                <li key={v.version} className="flex items-center gap-2">
+                  <span className="flex-1 truncate">
+                    v{v.version} · {v.label} ·{' '}
+                    {new Date(v.savedAt).toLocaleString()}
+                  </span>
+                  {v.version !== activeDoc.version && (
+                    <button
+                      className={button}
+                      disabled={busy}
+                      onClick={() => void restoreVersion(v.version)}
+                    >
+                      Restore
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+      </section>
       <label className="block">
         Production title
         <input

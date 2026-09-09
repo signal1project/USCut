@@ -498,6 +498,51 @@ try {
   console.log(
     'PASS: bundled local Whisper transcribes actual SAPI narration without cloud credentials.',
   );
+  const production = await page.evaluate(async () => {
+    const v1 = await window.ipcRenderer.invoke('aicuts:studio-doc-save', {
+      draft: {
+        title: 'Prod doc smoke',
+        brief: 'x',
+        music: null,
+        assets: [
+          { id: 'a', src: 'a.mp4', name: 'A', type: 'video', duration: 20 },
+        ],
+        scenes: [
+          { assetId: 'a', sourceStart: 0, duration: 5, headline: 'One', narration: '' },
+        ],
+      },
+      label: 'first cut',
+    });
+    const v2 = await window.ipcRenderer.invoke('aicuts:studio-doc-save', {
+      id: v1.id,
+      draft: { ...v1.current, scenes: [{ ...v1.current.scenes[0], headline: 'Two' }] },
+      label: 'headline change',
+    });
+    const restored = await window.ipcRenderer.invoke('aicuts:studio-doc-restore', {
+      id: v1.id,
+      version: 1,
+    });
+    const list = await window.ipcRenderer.invoke('aicuts:studio-doc-list');
+    await window.ipcRenderer.invoke('aicuts:studio-doc-delete', v1.id);
+    const after = await window.ipcRenderer.invoke('aicuts:studio-doc-list');
+    return {
+      v2Version: v2.version,
+      v2Headline: v2.current.scenes[0].headline,
+      restoredVersion: restored.version,
+      restoredHeadline: restored.current.scenes[0].headline,
+      listed: list.some((d) => d.id === v1.id),
+      afterDelete: after.some((d) => d.id === v1.id),
+    };
+  });
+  assert.equal(production.v2Version, 2);
+  assert.equal(production.v2Headline, 'Two');
+  assert.equal(production.restoredVersion, 3);
+  assert.equal(production.restoredHeadline, 'One'); // v1 content, new version
+  assert.equal(production.listed, true);
+  assert.equal(production.afterDelete, false);
+  console.log(
+    'PASS: versioned production documents persist, restore a past version as a new version, and delete.',
+  );
   await page.getByRole('button', { name: 'Open a copy in editor' }).click();
   await expect(
     page.getByText('Studio smoke', { exact: true }).first(),
