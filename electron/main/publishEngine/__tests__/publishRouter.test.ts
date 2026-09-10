@@ -48,11 +48,15 @@ function buildEngine() {
       return rec;
     },
     async update(id, patch) {
-      Object.assign(historyRows.find((r) => r.id === id), patch);
+      Object.assign(
+        historyRows.find((r) => r.id === id),
+        patch,
+      );
     },
     async list(filter) {
       let rows = historyRows;
-      if (filter?.platform) rows = rows.filter((r) => r.platform === filter.platform);
+      if (filter?.platform)
+        rows = rows.filter((r) => r.platform === filter.platform);
       if (filter?.status) rows = rows.filter((r) => r.status === filter.status);
       return rows.slice(0, filter?.limit ?? 25);
     },
@@ -209,7 +213,9 @@ describe('GET /api/publish/scheduled and DELETE /api/publish/scheduled/:id', () 
     const { scheduledPostIds } = await scheduleRes.json();
     const id = scheduledPostIds[0];
 
-    const listRes = await fetch(`${api.url}/api/publish/scheduled`, { headers });
+    const listRes = await fetch(`${api.url}/api/publish/scheduled`, {
+      headers,
+    });
     expect(listRes.status).toBe(200);
     const { scheduled } = await listRes.json();
     expect(scheduled.some((s: any) => s.id === id)).toBe(true);
@@ -220,7 +226,9 @@ describe('GET /api/publish/scheduled and DELETE /api/publish/scheduled/:id', () 
     });
     expect(cancelRes.status).toBe(200);
 
-    const afterRes = await fetch(`${api.url}/api/publish/scheduled`, { headers });
+    const afterRes = await fetch(`${api.url}/api/publish/scheduled`, {
+      headers,
+    });
     const { scheduled: afterCancel } = await afterRes.json();
     expect(afterCancel.some((s: any) => s.id === id)).toBe(false);
   });

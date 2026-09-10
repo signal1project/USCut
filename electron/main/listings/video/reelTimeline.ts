@@ -103,7 +103,8 @@ export function buildReelTimeline(
         trimEnd: 0,
         duration: perPhoto,
         motion: clipIndex % 2 === 0 ? 'zoom_in' : 'zoom_out',
-        transitionIn: clipIndex === 0 ? undefined : transitionFor(opts.tier, clipIndex),
+        transitionIn:
+          clipIndex === 0 ? undefined : transitionFor(opts.tier, clipIndex),
       });
       cursor += perPhoto;
       clipIndex += 1;
@@ -137,7 +138,8 @@ export function buildReelTimeline(
     trimStart: 0,
     trimEnd: 0,
     duration: CTA_BLOCK_DURATION_SECONDS,
-    transitionIn: clipIndex === 0 ? undefined : transitionFor(opts.tier, clipIndex),
+    transitionIn:
+      clipIndex === 0 ? undefined : transitionFor(opts.tier, clipIndex),
   });
   clips.push({
     id: 'reel-cta-text',

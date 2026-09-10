@@ -9,7 +9,8 @@ function makeMusicDir(files: Record<string, string[]>): string {
   for (const [tier, names] of Object.entries(files)) {
     const tierDir = path.join(dir, tier);
     fs.mkdirSync(tierDir, { recursive: true });
-    for (const name of names) fs.writeFileSync(path.join(tierDir, name), 'fake');
+    for (const name of names)
+      fs.writeFileSync(path.join(tierDir, name), 'fake');
   }
   return dir;
 }

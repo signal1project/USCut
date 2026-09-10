@@ -49,7 +49,8 @@ export async function trackSubject(
 
     const raw = await provider.analyzeFrames(
       frames.map((f) => ({
-        timestampSeconds: Math.round((f.timestampSeconds - window.start) * 100) / 100,
+        timestampSeconds:
+          Math.round((f.timestampSeconds - window.start) * 100) / 100,
         base64Jpeg: f.base64Jpeg,
       })),
       trackingPrompt(frames.length),
@@ -57,7 +58,9 @@ export async function trackSubject(
 
     const jsonStart = raw.search(/\{/);
     if (jsonStart === -1) return null;
-    const parsed = JSON.parse(raw.slice(jsonStart, raw.lastIndexOf('}') + 1)) as {
+    const parsed = JSON.parse(
+      raw.slice(jsonStart, raw.lastIndexOf('}') + 1),
+    ) as {
       points?: Array<{ t: number; cx: number; cy: number }>;
     };
     const points = (parsed.points ?? [])

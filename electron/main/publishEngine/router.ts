@@ -11,7 +11,16 @@ const scheduledQuerySchema = z.object({
 
 const historyQuerySchema = z.object({
   platform: z.enum(PLATFORMS).optional(),
-  status: z.enum(['draft', 'queued', 'publishing', 'published', 'failed', 'part-success']).optional(),
+  status: z
+    .enum([
+      'draft',
+      'queued',
+      'publishing',
+      'published',
+      'failed',
+      'part-success',
+    ])
+    .optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
 

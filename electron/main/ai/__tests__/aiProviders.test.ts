@@ -91,7 +91,10 @@ describe('ClaudeProvider', () => {
       media_type: 'image/jpeg',
       data: 'AAA',
     });
-    expect(content.at(-1)).toEqual({ type: 'text', text: 'locate the subject' });
+    expect(content.at(-1)).toEqual({
+      type: 'text',
+      text: 'locate the subject',
+    });
   });
 });
 

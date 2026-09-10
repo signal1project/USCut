@@ -54,12 +54,16 @@ async function writeDescriptionDocx(
   folder: string,
 ): Promise<void> {
   const loc = [listing.city, listing.state].filter(Boolean).join(', ');
-  const heading = [listing.address, loc, listing.zip].filter(Boolean).join(', ');
+  const heading = [listing.address, loc, listing.zip]
+    .filter(Boolean)
+    .join(', ');
 
   const detailLines = [
     formatPrice(listing.price),
     formatSpecsShort(listing),
-    listing.daysOnMarket != null ? `${listing.daysOnMarket} days on market` : '',
+    listing.daysOnMarket != null
+      ? `${listing.daysOnMarket} days on market`
+      : '',
     listing.listingUrl ?? '',
   ].filter(Boolean);
 
@@ -79,7 +83,9 @@ async function writeDescriptionDocx(
           new Paragraph({
             children: [new TextRun({ text: 'Description', bold: true })],
           }),
-          new Paragraph({ text: listing.description || 'No description captured.' }),
+          new Paragraph({
+            text: listing.description || 'No description captured.',
+          }),
           ...(agentLines.length
             ? [
                 new Paragraph({ text: '' }),
@@ -149,9 +155,15 @@ export class ListingFilesService {
   async archiveListingFiles(listing: PropertyListingSummary): Promise<void> {
     if (!listing.filesFolder || !fs.existsSync(listing.filesFolder)) return;
 
-    const archiveRoot = path.join(this.settings.getZillowScraperDir(), 'Archive');
+    const archiveRoot = path.join(
+      this.settings.getZillowScraperDir(),
+      'Archive',
+    );
     fs.mkdirSync(archiveRoot, { recursive: true });
-    const dest = resolveUniqueDir(archiveRoot, path.basename(listing.filesFolder));
+    const dest = resolveUniqueDir(
+      archiveRoot,
+      path.basename(listing.filesFolder),
+    );
     await moveDir(listing.filesFolder, dest);
   }
 }

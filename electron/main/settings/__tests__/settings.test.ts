@@ -168,7 +168,9 @@ describe('Settings — storage locations', () => {
 
   it('defaults the Zillow Scraper dir under the general output dir, unset', () => {
     settings.setGeneralOutputDir('D:\\Media\\USCut');
-    expect(settings.getZillowScraperDir()).toBe('D:\\Media\\USCut\\Zillow Scraper');
+    expect(settings.getZillowScraperDir()).toBe(
+      'D:\\Media\\USCut\\Zillow Scraper',
+    );
   });
 
   it('persists a custom Zillow Scraper dir independent of the general dir', () => {

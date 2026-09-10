@@ -29,7 +29,10 @@ export function createApiApp(options: ApiAppOptions): Express {
   // 401 every preflight (browsers never send Authorization on preflight).
   app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,PUT,DELETE,OPTIONS');
+    res.setHeader(
+      'Access-Control-Allow-Methods',
+      'GET,POST,PATCH,PUT,DELETE,OPTIONS',
+    );
     res.setHeader('Access-Control-Allow-Headers', 'authorization,content-type');
     if (req.method === 'OPTIONS') {
       res.sendStatus(204);

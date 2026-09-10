@@ -110,7 +110,9 @@ export class TypeOrmScheduledPostStore implements ScheduledPostStore {
     return rows as unknown as ScheduledPostRecord[];
   }
   async remove(id: string): Promise<boolean> {
-    const result = await this.ds.getRepository(ScheduledPostModel).delete({ id });
+    const result = await this.ds
+      .getRepository(ScheduledPostModel)
+      .delete({ id });
     return (result.affected ?? 0) > 0;
   }
 }

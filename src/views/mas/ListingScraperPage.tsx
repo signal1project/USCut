@@ -142,9 +142,7 @@ export default function ListingScraperPage(): React.ReactElement {
     if (!hasIpc()) return;
     const onCaptured = (_event: unknown, listing: unknown) => {
       const address = (listing as { address?: string })?.address;
-      toast.success(
-        address ? `Captured: ${address}` : 'New listing captured',
-      );
+      toast.success(address ? `Captured: ${address}` : 'New listing captured');
       void refresh();
     };
     ipc.on('listings:captured', onCaptured);
@@ -270,11 +268,7 @@ export default function ListingScraperPage(): React.ReactElement {
       : [...current, index];
     setPhotoSelection((prev) => ({ ...prev, [l.id]: next }));
   };
-  const movePhoto = (
-    l: PropertyListingSummary,
-    from: number,
-    to: number,
-  ) => {
+  const movePhoto = (l: PropertyListingSummary, from: number, to: number) => {
     const current = [...getPhotoSelection(l)];
     if (to < 0 || to >= current.length) return;
     const [moved] = current.splice(from, 1);
@@ -482,9 +476,9 @@ export default function ListingScraperPage(): React.ReactElement {
           </div>
 
           <p className="text-xs text-ink-muted pl-[30px]">
-            If Chrome doesn’t land on the extensions page by itself, open a
-            new tab and paste (<strong>chrome://extensions</strong> is
-            already copied to your clipboard). Then: turn on{' '}
+            If Chrome doesn’t land on the extensions page by itself, open a new
+            tab and paste (<strong>chrome://extensions</strong> is already
+            copied to your clipboard). Then: turn on{' '}
             <strong>Developer mode</strong> (top right), click{' '}
             <strong>Load unpacked</strong>, and pick the folder above.
           </p>
@@ -778,12 +772,8 @@ export default function ListingScraperPage(): React.ReactElement {
                               <SelectItem value="kokoro">
                                 Kokoro (neural voice)
                               </SelectItem>
-                              <SelectItem value="sapi">
-                                Windows SAPI
-                              </SelectItem>
-                              <SelectItem value="none">
-                                No narration
-                              </SelectItem>
+                              <SelectItem value="sapi">Windows SAPI</SelectItem>
+                              <SelectItem value="none">No narration</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -793,9 +783,7 @@ export default function ListingScraperPage(): React.ReactElement {
                             Narration
                           </label>
                           <Select
-                            value={
-                              getReelOpts(l.id).narrationOn ? 'on' : 'off'
-                            }
+                            value={getReelOpts(l.id).narrationOn ? 'on' : 'off'}
                             onValueChange={(v) =>
                               setReelOpt(l.id, 'narrationOn', v === 'on')
                             }
@@ -887,8 +875,8 @@ export default function ListingScraperPage(): React.ReactElement {
                         <div>
                           <p className="text-xs text-ink-muted mb-1.5">
                             {getPhotoSelection(l).length} of{' '}
-                            {l.photoUrls.length} photos selected for the reel
-                            — click to toggle. Numbers show reel order.
+                            {l.photoUrls.length} photos selected for the reel —
+                            click to toggle. Numbers show reel order.
                           </p>
                           <div className="grid grid-cols-4 gap-1.5">
                             {l.photoUrls.map((url, i) => {
@@ -955,7 +943,9 @@ export default function ListingScraperPage(): React.ReactElement {
                                     <div className="absolute bottom-1 inset-x-1 flex justify-between">
                                       <button
                                         type="button"
-                                        onClick={() => movePhoto(l, pos, pos - 1)}
+                                        onClick={() =>
+                                          movePhoto(l, pos, pos - 1)
+                                        }
                                         disabled={pos === 0}
                                         className="bg-black/60 text-white rounded p-0.5 disabled:opacity-30"
                                         title="Move earlier"
@@ -964,9 +954,12 @@ export default function ListingScraperPage(): React.ReactElement {
                                       </button>
                                       <button
                                         type="button"
-                                        onClick={() => movePhoto(l, pos, pos + 1)}
+                                        onClick={() =>
+                                          movePhoto(l, pos, pos + 1)
+                                        }
                                         disabled={
-                                          pos === getPhotoSelection(l).length - 1
+                                          pos ===
+                                          getPhotoSelection(l).length - 1
                                         }
                                         className="bg-black/60 text-white rounded p-0.5 disabled:opacity-30"
                                         title="Move later"

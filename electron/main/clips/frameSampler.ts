@@ -29,7 +29,9 @@ export async function sampleFrames(
 ): Promise<AnalyzeFramesInput[]> {
   const start = opts.startSeconds ?? 0;
   const duration =
-    opts.endSeconds !== undefined ? Math.max(0, opts.endSeconds - start) : undefined;
+    opts.endSeconds !== undefined
+      ? Math.max(0, opts.endSeconds - start)
+      : undefined;
   const fps = 1 / opts.intervalSeconds;
 
   const work = path.join(os.tmpdir(), `aicut-frames-${crypto.randomUUID()}`);

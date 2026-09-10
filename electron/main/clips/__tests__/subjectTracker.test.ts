@@ -11,13 +11,22 @@ vi.mock('../frameSampler', () => ({
 
 describe('trackSubject', () => {
   it('returns null when the provider has no analyzeFrames capability', async () => {
-    const provider = { name: 'mock', generateText: async () => '' } as unknown as AIProvider;
-    const result = await trackSubject('video.mp4', { start: 10, end: 20 }, provider);
+    const provider = {
+      name: 'mock',
+      generateText: async () => '',
+    } as unknown as AIProvider;
+    const result = await trackSubject(
+      'video.mp4',
+      { start: 10, end: 20 },
+      provider,
+    );
     expect(result).toBeNull();
   });
 
   it('returns null when no provider is given', async () => {
-    expect(await trackSubject('video.mp4', { start: 10, end: 20 }, null)).toBeNull();
+    expect(
+      await trackSubject('video.mp4', { start: 10, end: 20 }, null),
+    ).toBeNull();
   });
 
   it('parses provider output into TrackPoints relative to the window start', async () => {
@@ -27,7 +36,11 @@ describe('trackSubject', () => {
       analyzeFrames: async () =>
         '{"points": [{"t": 0, "cx": 0.3, "cy": 0.4}, {"t": 1, "cx": 0.6, "cy": 0.5}]}',
     } as unknown as AIProvider;
-    const result = await trackSubject('video.mp4', { start: 10, end: 20 }, provider);
+    const result = await trackSubject(
+      'video.mp4',
+      { start: 10, end: 20 },
+      provider,
+    );
     expect(result).toEqual([
       { t: 0, cx: 0.3, cy: 0.4 },
       { t: 1, cx: 0.6, cy: 0.5 },
@@ -41,7 +54,11 @@ describe('trackSubject', () => {
       analyzeFrames: async () =>
         '{"points": [{"t": 0, "cx": 1.5, "cy": -0.5}, {"t": 1, "cx": "nope", "cy": 0.5}]}',
     } as unknown as AIProvider;
-    const result = await trackSubject('video.mp4', { start: 0, end: 10 }, provider);
+    const result = await trackSubject(
+      'video.mp4',
+      { start: 0, end: 10 },
+      provider,
+    );
     expect(result).toEqual([{ t: 0, cx: 1, cy: 0 }]);
   });
 
@@ -51,7 +68,11 @@ describe('trackSubject', () => {
       generateText: async () => '',
       analyzeFrames: async () => 'sorry, I cannot help with that',
     } as unknown as AIProvider;
-    const result = await trackSubject('video.mp4', { start: 0, end: 10 }, provider);
+    const result = await trackSubject(
+      'video.mp4',
+      { start: 0, end: 10 },
+      provider,
+    );
     expect(result).toBeNull();
   });
 
@@ -63,7 +84,11 @@ describe('trackSubject', () => {
         throw new Error('boom');
       },
     } as unknown as AIProvider;
-    const result = await trackSubject('video.mp4', { start: 0, end: 10 }, provider);
+    const result = await trackSubject(
+      'video.mp4',
+      { start: 0, end: 10 },
+      provider,
+    );
     expect(result).toBeNull();
   });
 });

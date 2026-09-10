@@ -80,12 +80,16 @@ describe('toAss', () => {
     expect(ass).toContain('[V4+ Styles]');
     expect(ass).toContain('[Events]');
     // Style line: ...,Bold,Italic,Underline,StrikeOut,... — "-1" (bold=true) here.
-    expect(ass).toMatch(/^Style: Default,Arial,\d+,&H\w+,&H\w+,&H\w+,&H\w+,-1,/m);
+    expect(ass).toMatch(
+      /^Style: Default,Arial,\d+,&H\w+,&H\w+,&H\w+,&H\w+,-1,/m,
+    );
   });
 
   it('falls back to a static line when a segment has no word timing', () => {
     const ass = toAss([segNoWords]);
-    expect(ass).toContain('Dialogue: 0,0:00:00.00,0:00:03.00,Default,,0,0,0,,Hello world');
+    expect(ass).toContain(
+      'Dialogue: 0,0:00:00.00,0:00:03.00,Default,,0,0,0,,Hello world',
+    );
     expect(ass).not.toContain('\\k');
   });
 
@@ -212,7 +216,9 @@ describe('highlight picking', () => {
   });
 
   it('heuristic query filter boosts segments matching the query', () => {
-    const withoutQuery = scoreSegment('Mistake number one is skipping pre-approval.');
+    const withoutQuery = scoreSegment(
+      'Mistake number one is skipping pre-approval.',
+    );
     const withQuery = scoreSegment(
       'Mistake number one is skipping pre-approval.',
       'pre-approval mistakes',

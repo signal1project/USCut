@@ -67,7 +67,9 @@ describe('buildKenBurnsFilter', () => {
     expect(filter).toContain('split=2[bg][fg]');
     expect(filter).toContain('force_original_aspect_ratio=increase');
     expect(filter).toContain('gblur=sigma=30');
-    expect(filter).toContain('force_original_aspect_ratio=decrease:flags=lanczos');
+    expect(filter).toContain(
+      'force_original_aspect_ratio=decrease:flags=lanczos',
+    );
     expect(filter).toContain('unsharp=');
     expect(filter).toContain('overlay=(W-w)/2:(H-h)/2[composite]');
   });
@@ -117,7 +119,10 @@ describe('buildNarrationScript', () => {
   });
 
   it('honors a ctaText override for the closing line', () => {
-    const script = buildNarrationScript(listing, 'Comment TOUR below to schedule a viewing');
+    const script = buildNarrationScript(
+      listing,
+      'Comment TOUR below to schedule a viewing',
+    );
     expect(script).toContain('Comment TOUR below to schedule a viewing');
     expect(script).not.toContain('private showing');
   });

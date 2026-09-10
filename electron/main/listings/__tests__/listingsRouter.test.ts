@@ -209,7 +209,9 @@ describe('listings router over HTTP', () => {
       routes: [
         {
           path: '/listings',
-          router: createListingsRouter(store, { videoService: videoService as any }),
+          router: createListingsRouter(store, {
+            videoService: videoService as any,
+          }),
         },
       ],
     });

@@ -86,7 +86,10 @@ export async function exportProjectArchive(
   destinationZip: string,
 ): Promise<{ missing: string[] }> {
   const staging = await mkdtemp('uscut-archive-');
-  const pendingZip = path.join(path.dirname(destinationZip), `.uscut-${randomUUID()}.zip`);
+  const pendingZip = path.join(
+    path.dirname(destinationZip),
+    `.uscut-${randomUUID()}.zip`,
+  );
   try {
     const mediaDir = path.join(staging, ARCHIVE_MEDIA_DIR);
     await fs.mkdir(mediaDir, { recursive: true });

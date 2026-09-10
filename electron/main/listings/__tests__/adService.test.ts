@@ -152,7 +152,8 @@ describe('ListingAdService', () => {
   });
 
   it('buildListingBrief truncates a long description at a sentence boundary, not mid-word', () => {
-    const sentence = 'This home has a gorgeous renovated kitchen with quartz counters. ';
+    const sentence =
+      'This home has a gorgeous renovated kitchen with quartz counters. ';
     const longDescription = sentence.repeat(20); // well over 800 chars
     const brief = buildListingBrief(
       { ...listing, description: longDescription },

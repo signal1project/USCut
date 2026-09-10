@@ -43,7 +43,9 @@ describe('buildCtaLines', () => {
   });
 
   it('lets ctaText override only the final line', () => {
-    expect(buildCtaLines(base, { ctaText: 'Open house Saturday 1-3pm' })).toEqual([
+    expect(
+      buildCtaLines(base, { ctaText: 'Open house Saturday 1-3pm' }),
+    ).toEqual([
       'Yorkville, GA',
       '3 bd · 2 ba',
       '$389,000',

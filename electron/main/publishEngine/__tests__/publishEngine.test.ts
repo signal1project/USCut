@@ -41,9 +41,14 @@ class FakeHistory implements PublishHistoryStore {
   async update(id: string, patch: any) {
     Object.assign(this.rows.get(id)!, patch);
   }
-  async list(filter?: { platform?: Platform; status?: PubStatus; limit?: number }) {
+  async list(filter?: {
+    platform?: Platform;
+    status?: PubStatus;
+    limit?: number;
+  }) {
     let rows = [...this.rows.values()];
-    if (filter?.platform) rows = rows.filter((r) => r.platform === filter.platform);
+    if (filter?.platform)
+      rows = rows.filter((r) => r.platform === filter.platform);
     if (filter?.status) rows = rows.filter((r) => r.status === filter.status);
     return rows.slice(0, filter?.limit ?? 25);
   }
@@ -245,8 +250,8 @@ describe('PublishEngine.listHistory', () => {
     await engine.publishNow(['a1', 'a2'], content);
     expect(await engine.listHistory()).toHaveLength(2);
     expect(await engine.listHistory({ platform: 'facebook' })).toHaveLength(1);
-    expect(
-      await engine.listHistory({ status: PubStatus.FAILED }),
-    ).toHaveLength(1);
+    expect(await engine.listHistory({ status: PubStatus.FAILED })).toHaveLength(
+      1,
+    );
   });
 });

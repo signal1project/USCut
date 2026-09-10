@@ -66,7 +66,9 @@ export function buildReelNarrationScript(
   const price = formatPrice(listing.price);
   if (price) parts.push(`Offered at ${price}.`);
 
-  parts.push(opts.ctaText || `DM "TOUR" today to schedule your private showing.`);
+  parts.push(
+    opts.ctaText || `DM "TOUR" today to schedule your private showing.`,
+  );
 
   return parts.join(' ');
 }

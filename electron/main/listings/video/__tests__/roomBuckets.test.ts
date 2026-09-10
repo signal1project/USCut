@@ -67,9 +67,7 @@ describe('assignPhotoBuckets', () => {
   });
 
   it('degrades gracefully with fewer photos than buckets, never throwing', () => {
-    expect(() =>
-      assignPhotoBuckets([{ url: 'only-one' }]),
-    ).not.toThrow();
+    expect(() => assignPhotoBuckets([{ url: 'only-one' }])).not.toThrow();
     const { assignments } = assignPhotoBuckets([{ url: 'only-one' }]);
     expect(assignments.get('hook')!.map((p) => p.url)).toEqual(['only-one']);
     expect(assignments.get('kitchen')).toEqual([]);

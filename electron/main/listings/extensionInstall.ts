@@ -79,7 +79,8 @@ export function registerExtensionInstallIpc(): void {
       child.on('error', reject);
       child.on('close', (code) => {
         if (code === 0) resolve();
-        else reject(new Error(stderr.trim() || `build exited with code ${code}`));
+        else
+          reject(new Error(stderr.trim() || `build exited with code ${code}`));
       });
     });
     return { path: extensionDir() };

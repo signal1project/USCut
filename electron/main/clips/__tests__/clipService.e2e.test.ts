@@ -55,8 +55,14 @@ And here is the second moment.
   } as unknown as AIProvider;
 
   beforeAll(async () => {
-    const workDir = path.join(os.tmpdir(), `uscut-clip-e2e-${crypto.randomUUID()}`);
-    outDir = path.join(os.tmpdir(), `uscut-clip-e2e-out-${crypto.randomUUID()}`);
+    const workDir = path.join(
+      os.tmpdir(),
+      `uscut-clip-e2e-${crypto.randomUUID()}`,
+    );
+    outDir = path.join(
+      os.tmpdir(),
+      `uscut-clip-e2e-out-${crypto.randomUUID()}`,
+    );
     fs.mkdirSync(workDir, { recursive: true });
     videoPath = path.join(workDir, 'source.mp4');
 
@@ -85,8 +91,13 @@ And here is the second moment.
     fs.rmSync(outDir, { recursive: true, force: true });
   });
 
-  async function probeDims(file: string): Promise<{ width: number; height: number }> {
-    const ffprobePath = resolveFfmpegPath().replace(/ffmpeg(\.exe)?$/, 'ffprobe$1');
+  async function probeDims(
+    file: string,
+  ): Promise<{ width: number; height: number }> {
+    const ffprobePath = resolveFfmpegPath().replace(
+      /ffmpeg(\.exe)?$/,
+      'ffprobe$1',
+    );
     const probeBin = fs.existsSync(ffprobePath) ? ffprobePath : 'ffprobe';
     const { stdout } = await run(probeBin, [
       '-v',

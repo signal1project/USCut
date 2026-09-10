@@ -15,7 +15,9 @@ type BrandKitLike = BrandKit & { name?: string };
  * tagline if set) — null when no brand identity is configured, so callers
  * can skip rendering the card entirely rather than showing an empty one.
  */
-export function buildBrandIntroLines(kit: BrandKitLike | null): string[] | null {
+export function buildBrandIntroLines(
+  kit: BrandKitLike | null,
+): string[] | null {
   const name = kit?.brandName?.trim() || kit?.name?.trim();
   if (!name) return null;
   const lines = [name];

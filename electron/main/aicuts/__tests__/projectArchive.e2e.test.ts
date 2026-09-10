@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { exportProjectArchive, importProjectArchive } from '../projectArchive';
 import type { ProjectFileV1 } from '../projects';
 
@@ -48,7 +49,10 @@ describe.skipIf(process.platform !== 'win32')(
       const zip = path.join(work, "backup $([int]7) ` ' [draft].zip");
       await fsp.writeFile(zip, 'previous backup');
       await exportProjectArchive(project(), zip);
-      const restored = await importProjectArchive(zip, path.join(work, 'literal-restored'));
+      const restored = await importProjectArchive(
+        zip,
+        path.join(work, 'literal-restored'),
+      );
       expect(restored.name).toBe('Trip (restored)');
       expect((await fsp.readFile(zip)).subarray(0, 2).toString()).toBe('PK');
     }, 60000);
@@ -57,9 +61,40 @@ describe.skipIf(process.platform !== 'win32')(
       const zip = path.join(work, 'preserved.zip');
       await fsp.writeFile(zip, 'previous backup');
       const invalid = project();
-      invalid.mediaLibrary.push({ id: 'directory', src: work, name: 'Not a file' });
+      invalid.mediaLibrary.push({
+        id: 'directory',
+        src: work,
+        name: 'Not a file',
+      });
       await expect(exportProjectArchive(invalid, zip)).rejects.toThrow();
       expect(await fsp.readFile(zip, 'utf8')).toBe('previous backup');
+    }, 60000);
+
+    it('rejects traversal and duplicate ZIP entries before restoring media', async () => {
+      for (const names of [
+        ['../escaped.txt'],
+        ['project.json', 'project.json'],
+      ]) {
+        const zip = path.join(work, `invalid-${names.length}.zip`);
+        const literal = (value: string) =>
+          "'" + value.replace(/'/g, "''") + "'";
+        execFileSync(
+          'powershell.exe',
+          [
+            '-NoProfile',
+            '-NonInteractive',
+            '-Command',
+            `$ErrorActionPreference = 'Stop'; Add-Type -AssemblyName System.IO.Compression.FileSystem; $z = [System.IO.Compression.ZipFile]::Open(${literal(zip)}, 'Create'); try { ${names.map((name) => `$z.CreateEntry(${literal(name)}) | Out-Null;`).join(' ')} } finally { $z.Dispose() }`,
+          ],
+          { windowsHide: true },
+        );
+        const destination = path.join(work, `invalid-restore-${names.length}`);
+        await expect(importProjectArchive(zip, destination)).rejects.toThrow(
+          /Unexpected archive entry|Duplicate archive entry/,
+        );
+        expect(fs.existsSync(destination)).toBe(false);
+        expect(fs.existsSync(path.join(work, 'escaped.txt'))).toBe(false);
+      }
     }, 60000);
 
     it('bundles present media, reports missing, and restores to a fresh self-contained project', async () => {

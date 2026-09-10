@@ -112,7 +112,10 @@ describe('ListingFilesService', () => {
     const folderAfterFirst = rows.get(listing.id)!.filesFolder!;
 
     // Simulate a re-capture of the same row (same id, filesFolder already set).
-    const recaptured = { ...rows.get(listing.id)!, description: 'Updated copy.' };
+    const recaptured = {
+      ...rows.get(listing.id)!,
+      description: 'Updated copy.',
+    };
     rows.set(listing.id, recaptured);
     await service.syncListingFiles(recaptured);
 

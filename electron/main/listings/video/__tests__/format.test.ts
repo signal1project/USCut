@@ -25,11 +25,7 @@ describe('formatSpecsShort', () => {
   });
 
   it('omits missing specs cleanly', () => {
-    expect(formatSpecsShort({ beds: 3, baths: null, sqft: null })).toBe(
-      '3 bd',
-    );
-    expect(formatSpecsShort({ beds: null, baths: null, sqft: null })).toBe(
-      '',
-    );
+    expect(formatSpecsShort({ beds: 3, baths: null, sqft: null })).toBe('3 bd');
+    expect(formatSpecsShort({ beds: null, baths: null, sqft: null })).toBe('');
   });
 });

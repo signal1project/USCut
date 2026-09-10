@@ -64,11 +64,14 @@ export const REEL_BUCKET_PLAN: BucketSpec[] = [
 ];
 
 const KITCHEN_RE = /\bkitchen\b/i;
-const LIVING_RE = /\b(living\s*room|great\s*room|family\s*room|open\s*concept|dining\s*room)\b/i;
-const PRIMARY_BATH_RE = /\b(bed\s*room|bedroom|bath\s*room|bathroom|en\s*-?\s*suite|master|primary\s*suite)\b/i;
+const LIVING_RE =
+  /\b(living\s*room|great\s*room|family\s*room|open\s*concept|dining\s*room)\b/i;
+const PRIMARY_BATH_RE =
+  /\b(bed\s*room|bedroom|bath\s*room|bathroom|en\s*-?\s*suite|master|primary\s*suite)\b/i;
 const MONEY_SHOT_RE =
   /\bacre\w*\b|\bback\s*yard\b|\bdeck\b|\bpatio\b|\bgarage\b|\bpool\b|\byard\b|\bview\b|\boutdoor\s*living\b|\blot\b/i;
-const HOOK_RE = /\b(exterior|front\s*(of\s*(the\s*)?)?(house|home)?|curb\s*appeal|facade|façade|welcome\s*home)\b/i;
+const HOOK_RE =
+  /\b(exterior|front\s*(of\s*(the\s*)?)?(house|home)?|curb\s*appeal|facade|façade|welcome\s*home)\b/i;
 
 /**
  * Keyword heuristic over a photo's caption text. No AI, no I/O — a starting
@@ -134,7 +137,11 @@ export function assignPhotoBuckets(
   // Pass 1: honor explicit caption classification.
   for (const spec of REEL_BUCKET_PLAN) {
     const bucketList = assignments.get(spec.bucket)!;
-    for (let i = 0; i < remaining.length && bucketList.length < spec.maxPhotos; ) {
+    for (
+      let i = 0;
+      i < remaining.length && bucketList.length < spec.maxPhotos;
+
+    ) {
       if (remaining[i].bucket === spec.bucket) {
         bucketList.push(remaining[i]);
         remaining.splice(i, 1);
