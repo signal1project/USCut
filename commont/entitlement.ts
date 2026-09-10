@@ -70,19 +70,25 @@ export function verifyEntitlement(
   nowSeconds: number = Math.floor(Date.now() / 1000),
 ): EntitlementCheck {
   const parts = typeof token === 'string' ? token.trim().split('.') : [];
-  if (parts.length !== 2) return { valid: false, reason: 'malformed token' };
+  if (
+    typeof token !== 'string' ||
+    token.length > 16384 ||
+    parts.length !== 2 ||
+    parts.some((part) => !/^[A-Za-z0-9_-]+$/.test(part))
+  )
+    return { valid: false, reason: 'malformed token' };
   let claims: EntitlementClaims;
   try {
     claims = JSON.parse(b64urlDecode(parts[0]).toString('utf8'));
   } catch {
     return { valid: false, reason: 'unreadable token' };
   }
-  const key =
-    typeof publicKeyPem === 'string'
-      ? createPublicKey(publicKeyPem)
-      : publicKeyPem;
   let signatureOk = false;
   try {
+    const key =
+      typeof publicKeyPem === 'string'
+        ? createPublicKey(publicKeyPem)
+        : publicKeyPem;
     signatureOk = edVerify(
       null,
       Buffer.from(parts[0]),
@@ -93,12 +99,25 @@ export function verifyEntitlement(
     signatureOk = false;
   }
   if (!signatureOk) return { valid: false, reason: 'bad signature' };
+  if (!claims || typeof claims !== 'object')
+    return { valid: false, reason: 'incomplete claims' };
   if (claims.product !== ENTITLEMENT_PRODUCT)
     return { valid: false, reason: 'not a USCut licence', claims };
   if (
     typeof claims.sub !== 'string' ||
-    typeof claims.exp !== 'number' ||
-    typeof claims.iat !== 'number'
+    !claims.sub.trim() ||
+    claims.sub.length > 320 ||
+    typeof claims.plan !== 'string' ||
+    !claims.plan.trim() ||
+    claims.plan.length > 200 ||
+    typeof claims.jti !== 'string' ||
+    !claims.jti.trim() ||
+    claims.jti.length > 300 ||
+    !Number.isSafeInteger(claims.exp) ||
+    !Number.isSafeInteger(claims.iat) ||
+    claims.iat < 0 ||
+    claims.exp <= claims.iat ||
+    !Number.isFinite(nowSeconds)
   )
     return { valid: false, reason: 'incomplete claims', claims };
   if (nowSeconds >= claims.exp)

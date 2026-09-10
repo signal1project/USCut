@@ -29,6 +29,26 @@ const claims = (over: Partial<EntitlementClaims> = {}): EntitlementClaims => ({
 });
 
 describe('entitlement token crypto', () => {
+  it('rejects signed but invalid subscription claims', () => {
+    for (const over of [
+      { sub: '' },
+      { plan: ' ' },
+      { jti: '' },
+      { exp: Infinity },
+      { exp: NOW + 0.5 },
+      { exp: NOW - 7200 },
+      { iat: -1 },
+    ]) {
+      expect(
+        verifyEntitlement(signEntitlement(claims(over), priv), pub, NOW).valid,
+      ).toBe(false);
+    }
+    expect(
+      verifyEntitlement(signEntitlement(claims(), priv), 'invalid key', NOW)
+        .valid,
+    ).toBe(false);
+    expect(verifyEntitlement('x'.repeat(20000), pub, NOW).valid).toBe(false);
+  });
   it('round-trips sign → verify with the matching key', () => {
     const token = signEntitlement(claims(), priv);
     const check = verifyEntitlement(token, pub, NOW);

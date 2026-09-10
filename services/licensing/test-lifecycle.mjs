@@ -43,10 +43,7 @@ assert.equal(verifyEntitlement(token, pub, now + 45 * 86400).valid, true);
 console.log('PASS: renewal token verifies past the original period end');
 
 // 3. Cancellation → the old token simply expires at period end
-assert.equal(
-  verifyEntitlement(token, pub, now + 61 * 86400).reason,
-  'expired',
-);
+assert.equal(verifyEntitlement(token, pub, now + 61 * 86400).reason, 'expired');
 console.log('PASS: after the paid period the token reports expired');
 
 // 4. Wrong key is rejected
@@ -55,9 +52,19 @@ const rogue = generateKeyPairSync('ed25519').privateKey.export({
   format: 'pem',
 });
 assert.equal(
-  verifyEntitlement(signEntitlement(entitlementForSubscription({
-    email: 'x@y.com', plan: 'p', customer: 'c', periodEndSeconds: now + 86400,
-  }), rogue), pub, now).reason,
+  verifyEntitlement(
+    signEntitlement(
+      entitlementForSubscription({
+        email: 'x@y.com',
+        plan: 'p',
+        customer: 'c',
+        periodEndSeconds: now + 86400,
+      }),
+      rogue,
+    ),
+    pub,
+    now,
+  ).reason,
   'bad signature',
 );
 console.log('PASS: a token from a different signing key is rejected');
