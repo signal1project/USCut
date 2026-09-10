@@ -3,11 +3,11 @@
 **From:** Mick / ClaudeClaw
 **Supersedes:** `SILAS-HANDOFF.md` (2026-09-07) and `MICK-HANDOFF-2026-09-09.md` where they conflict — both are still useful background, this is the current state.
 **Repo:** `C:\home\dalebrown138\projects\Social-Engine-USCut` · GitHub `signal1project/USCut`
-**Branch:** local `push-v4-2`, **even with `origin/main` at `953e853`**, working tree clean.
+**Branch:** local `push-v4-2`, **even with `origin/main` at `487e5c0`**, working tree clean.
 **Push:** `git push origin push-v4-2:main` (fast-forward). Dale authorises pushes per-task; the last several sessions have been push-as-you-go once each change verifies clean.
 
 **Health (last full run 2026-09-09, after the licensing-service round):**
-`npx tsc --noEmit` clean · `npm run lint:eslint` clean · `npx vitest run` = **553 passed / 12 skipped** · `node scripts/test-database-upgrades.mjs` = 4/4 under the Electron ABI · `npx vite build` clean · `services/licensing` `npm test` green (offline lifecycle + 9 `node --test` cases incl. a full HTTP round trip). Packaged-app smoke last green on `ae64f88`; a rebuild after the dep + entitlement changes was in progress at handoff — **re-run `npm run rebuild && npx electron-builder --win nsis --publish never` then `node scripts/smoke-stabilization.mjs "release/0.1.0/win-unpacked/USCut.exe"` and confirm green.**
+`npx tsc --noEmit` clean · `npm run lint:eslint` clean · `npx vitest run` = **553 passed / 12 skipped** · `node scripts/test-database-upgrades.mjs` = 4/4 under the Electron ABI · `npx vite build` clean · `services/licensing` `npm test` green (offline lifecycle + 9 `node --test` cases incl. a full HTTP round trip). **Packaged-app smoke green on the rebuild after this round** (`npm run rebuild && npx electron-builder --win nsis --publish never` → afterPack gate passed → `node scripts/smoke-stabilization.mjs "release/0.1.0/win-unpacked/USCut.exe"` all PASS). Re-run that pair after any dependency or native-path change.
 
 ### Update — 2026-09-09 late (Silas's rate-limited work, picked up by Mick)
 
@@ -17,7 +17,7 @@
 - Still **NOT done** on subscriptions (all Dale-blocked, unchanged): Stripe account + test keys, deployed private signing key, a real identity provider (`AUTH_ISSUER`/`AUTH_AUDIENCE`/`AUTH_JWKS_URL`), a persistent volume, the customer checkout + billing-portal UI, and app-side **feature gating** (still not wired — status shown, nothing locked).
 - **`22c44d9`** (Mick) — removed unused `image-size` + `echarts` direct deps (clears 1 high + 1 moderate); `docs/SECURITY-AUDIT-2026-09-09.md` assesses every remaining finding. `npm audit --omit=dev` now **9 (6 high / 3 moderate / 0 critical)**. Runtime items to track: `sharp`/libvips (upstream), `electron` 33 → current (scoped major upgrade — ABI rebuild + full re-test). Build-time only (not shipped): `extract-zip`, `esbuild`, `vite`. Not reachable: `react-router` (no SSR, static nav).
 - **Packaged rebuild after this round: green.** `npm run rebuild && electron-builder --win nsis --publish never` (exit 0, afterPack gate passed) → `release/0.1.0/win-unpacked/USCut.exe` passed the full stabilization smoke.
-- origin/main == `22c44d9` at this update.
+- **`487e5c0`** (Mick) — this handoff update + the `docs/COMMERCIAL-RELEASE.md` gate table (subscription row now "implemented, blocked on Dale"; new Dependency-security row). origin/main == `487e5c0`.
 
 Read `AGENT-HANDOFF.md` (repo root) for architecture/topology. Read `docs/COMMERCIAL-RELEASE.md` for the gate table.
 
