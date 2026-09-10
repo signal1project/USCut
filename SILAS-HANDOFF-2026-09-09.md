@@ -3,11 +3,19 @@
 **From:** Mick / ClaudeClaw
 **Supersedes:** `SILAS-HANDOFF.md` (2026-09-07) and `MICK-HANDOFF-2026-09-09.md` where they conflict — both are still useful background, this is the current state.
 **Repo:** `C:\home\dalebrown138\projects\Social-Engine-USCut` · GitHub `signal1project/USCut`
-**Branch:** local `push-v4-2`, **even with `origin/main` at `ae64f88`**, working tree clean.
-**Push:** `git push origin push-v4-2:main` (fast-forward). Dale authorises pushes per-task; this session he said "finish all this work" and pushes went out as each change was verified.
+**Branch:** local `push-v4-2`, **even with `origin/main` at `953e853`**, working tree clean.
+**Push:** `git push origin push-v4-2:main` (fast-forward). Dale authorises pushes per-task; the last several sessions have been push-as-you-go once each change verifies clean.
 
-**Health (last full run 2026-09-09):**
-`npx tsc --noEmit` clean · `npx vitest run` = **549 passed / 12 skipped** · `node scripts/test-database-upgrades.mjs` = 4/4 under the Electron ABI · `npx vite build` clean · `node scripts/smoke-stabilization.mjs` green · **`node scripts/smoke-stabilization.mjs "release/0.1.0/win-unpacked/USCut.exe"` green** (the real signed packaged binary).
+**Health (last full run 2026-09-09, after the licensing-service round):**
+`npx tsc --noEmit` clean · `npm run lint:eslint` clean · `npx vitest run` = **553 passed / 12 skipped** · `node scripts/test-database-upgrades.mjs` = 4/4 under the Electron ABI · `npx vite build` clean · `services/licensing` `npm test` green (offline lifecycle + 9 `node --test` cases incl. a full HTTP round trip). Packaged-app smoke last green on `ae64f88`; a rebuild after the dep + entitlement changes was in progress at handoff — **re-run `npm run rebuild && npx electron-builder --win nsis --publish never` then `node scripts/smoke-stabilization.mjs "release/0.1.0/win-unpacked/USCut.exe"` and confirm green.**
+
+### Update — 2026-09-09 late (Silas's rate-limited work, picked up by Mick)
+
+- **`f5d9f26`** (Silas) — project-backup ZIP hardening (`System.IO.Compression` instead of `Compress-Archive`/`Expand-Archive`, entry-name whitelist + traversal/count/size limits, atomic pending-zip rename, non-ENOENT copy errors abort); Stripe webhook signature verification via the SDK; production `npm audit` findings 39 → 11 (0 critical) via dep updates; removed unused `build` dep. `docs/RELEASE-HARDENING-2026-09-09.md`.
+- **`43788bf`** (Mick) — mechanical Prettier sweep of ~30 files of pre-existing formatting drift (the §4C housekeeping item; line-wrapping only).
+- **`953e853`** (Mick, finishing Silas's uncommitted work) — the licensing **service is no longer a bare scaffold**: `webhook.mjs` (SDK raw-body verify), `billing.mjs` (queries *live* Stripe subscription state, price-restricted, never invents paid time), `store.mjs` (persistent JSON, event-id idempotency, atomic writes, restart-safe, single-writer), `auth.mjs` (`/activate` requires a verified-email JWKS JWT — email-only activation removed), `server.mjs` (async `createLicensingServer` factory). Desktop verifier (`commont/entitlement.ts`) got stricter token/claim validation (+7 negative cases). Tests: `test-{webhook,billing,store,auth,http}.mjs`.
+- Still **NOT done** on subscriptions (all Dale-blocked, unchanged): Stripe account + test keys, deployed private signing key, a real identity provider (`AUTH_ISSUER`/`AUTH_AUDIENCE`/`AUTH_JWKS_URL`), a persistent volume, the customer checkout + billing-portal UI, and app-side **feature gating** (still not wired — status shown, nothing locked).
+- Silas also flagged: **7 high + 4 moderate production `npm audit` findings remain** (plus dev-tool criticals) — needs compatibility-checked remediation. Not a blocker to the build, is a blocker to sale.
 
 Read `AGENT-HANDOFF.md` (repo root) for architecture/topology. Read `docs/COMMERCIAL-RELEASE.md` for the gate table.
 
