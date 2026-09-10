@@ -44,6 +44,24 @@ describe.skipIf(process.platform !== 'win32')(
       ],
     });
 
+    it('round-trips literal shell characters and safely replaces an existing backup', async () => {
+      const zip = path.join(work, "backup $([int]7) ` ' [draft].zip");
+      await fsp.writeFile(zip, 'previous backup');
+      await exportProjectArchive(project(), zip);
+      const restored = await importProjectArchive(zip, path.join(work, 'literal-restored'));
+      expect(restored.name).toBe('Trip (restored)');
+      expect((await fsp.readFile(zip)).subarray(0, 2).toString()).toBe('PK');
+    }, 60000);
+
+    it('preserves the previous backup when a media read fails', async () => {
+      const zip = path.join(work, 'preserved.zip');
+      await fsp.writeFile(zip, 'previous backup');
+      const invalid = project();
+      invalid.mediaLibrary.push({ id: 'directory', src: work, name: 'Not a file' });
+      await expect(exportProjectArchive(invalid, zip)).rejects.toThrow();
+      expect(await fsp.readFile(zip, 'utf8')).toBe('previous backup');
+    }, 60000);
+
     it('bundles present media, reports missing, and restores to a fresh self-contained project', async () => {
       const zip = path.join(work, 'backup.uscut.zip');
       const { missing } = await exportProjectArchive(project(), zip);

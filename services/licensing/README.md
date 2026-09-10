@@ -5,7 +5,14 @@ verifies offline (see `commont/entitlement.ts` / `electron/main/licensing/`).
 
 This is a **scaffold**. It implements the token format, the sign path, and the
 HTTP surface. It is **not connected to Stripe or deployed** — that needs
-material only Dale can provide (below).
+account configuration and additional engineering (below). Do not expose this
+scaffold publicly: authenticated activation, durable storage, payment-state
+handling, event deduplication, refresh/revocation, and application feature gates
+are still incomplete. Those engineering tasks do not require live credentials.
+
+Webhook signatures now use Stripe's SDK with the raw request body and its
+five-minute timestamp tolerance. Request bodies are limited to 1 MiB.
+See [Stripe signature verification](https://docs.stripe.com/webhooks/signature).
 
 ## What Dale must supply before this goes live
 
@@ -26,7 +33,7 @@ material only Dale can provide (below).
 Claims: `{ sub: email, product: "uscut", plan, customer, iat, exp, jti }`.
 `exp` is the subscription's current period end. The app treats a token as
 valid until `exp`, then keeps premium features for `OFFLINE_GRACE_DAYS` more
-while it tries to refresh.
+under the current local grace policy. Automatic service refresh is not yet implemented.
 
 ## Endpoints
 
@@ -34,12 +41,16 @@ while it tries to refresh.
   `customer.subscription.updated`, (re)issue an entitlement for the customer's
   email with `exp = current_period_end`. On `customer.subscription.deleted`,
   drop it.
-- `POST /activate` `{ email, key }` — returns `{ token }` for the current
-  entitlement. `key` is a per-customer claim code emailed at checkout (wire it
-  to Stripe customer metadata).
+- `POST /activate` currently accepts only an email and returns a token without
+  authenticating its owner. This must be replaced before deployment; a claim-code
+  flow is not implemented.
 - `GET /health`
 
 ## Lifecycle test
+
+Run `npm ci --ignore-scripts` and `npm test` in this directory. The additional
+webhook tests verify valid signatures and rejection of forged, modified, stale,
+and oversized inputs. They do not establish a working payment lifecycle.
 
 `node test-lifecycle.mjs` signs a subscription entitlement with a throwaway
 key and verifies it round-trips, then simulates renew and cancel. It does not

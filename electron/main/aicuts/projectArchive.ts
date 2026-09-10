@@ -31,15 +31,40 @@ function runPowerShell(args: string[]): Promise<void> {
   });
 }
 
+// PowerShell single-quoted literals do not expand $(), variables, or backticks.
+const psLiteral = (value: string) => "'" + value.replace(/'/g, "''") + "'";
 const compress = (source: string, destination: string) =>
   runPowerShell([
     '-Command',
-    `Compress-Archive -Path ${JSON.stringify(source + path.sep + '*')} -DestinationPath ${JSON.stringify(destination)} -Force`,
+    `$ErrorActionPreference = 'Stop'; Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::CreateFromDirectory(${psLiteral(source)}, ${psLiteral(destination)})`,
   ]);
 const expand = (zip: string, destination: string) =>
   runPowerShell([
     '-Command',
-    `Expand-Archive -Path ${JSON.stringify(zip)} -DestinationPath ${JSON.stringify(destination)} -Force`,
+    `$ErrorActionPreference = 'Stop'
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+$archive = [System.IO.Compression.ZipFile]::OpenRead(${psLiteral(zip)})
+try {
+  if ($archive.Entries.Count -gt 10000) { throw 'Archive contains too many entries.' }
+  $total = 0L
+  $names = @{}
+  foreach ($entry in $archive.Entries) {
+    $name = $entry.FullName.Replace([char]92, [char]47)
+    if ($name -cne 'project.json' -and $name -cne 'media/' -and $name -cnotmatch '^media/[a-f0-9]{12}-[a-zA-Z0-9._-]+$') { throw 'Unexpected archive entry.' }
+    if ($names.ContainsKey($name)) { throw 'Duplicate archive entry.' }
+    $names[$name] = $true
+    $total += $entry.Length
+    if ($total -gt 107374182400) { throw 'Archive exceeds the 100 GiB restore limit.' }
+    if ($name -ceq 'project.json' -and $entry.Length -gt 16777216) { throw 'Project metadata exceeds 16 MiB.' }
+  }
+  if (-not $names.ContainsKey('project.json')) { throw 'Archive has no project metadata.' }
+  foreach ($entry in $archive.Entries) {
+    if ($entry.FullName.Replace([char]92, [char]47) -ceq 'media/') { continue }
+    $target = [System.IO.Path]::Combine(${psLiteral(destination)}, $entry.FullName)
+    [System.IO.Directory]::CreateDirectory([System.IO.Path]::GetDirectoryName($target)) | Out-Null
+    [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $target, $false)
+  }
+} finally { $archive.Dispose() }`,
   ]);
 
 function keyFor(src: string): string {
@@ -61,6 +86,7 @@ export async function exportProjectArchive(
   destinationZip: string,
 ): Promise<{ missing: string[] }> {
   const staging = await mkdtemp('uscut-archive-');
+  const pendingZip = path.join(path.dirname(destinationZip), `.uscut-${randomUUID()}.zip`);
   try {
     const mediaDir = path.join(staging, ARCHIVE_MEDIA_DIR);
     await fs.mkdir(mediaDir, { recursive: true });
@@ -71,7 +97,8 @@ export async function exportProjectArchive(
         const key = keyFor(src);
         await fs.copyFile(src, path.join(mediaDir, key));
         map.set(src, `${ARCHIVE_MEDIA_DIR}/${key}`);
-      } catch {
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
         missing.push(src);
       }
     }
@@ -89,10 +116,12 @@ export async function exportProjectArchive(
       ),
       'utf8',
     );
-    await fs.rm(destinationZip, { force: true });
-    await compress(staging, destinationZip);
+    await compress(staging, pendingZip);
+    // Same-directory rename replaces the old backup only after compression succeeds.
+    await fs.rename(pendingZip, destinationZip);
     return { missing };
   } finally {
+    await fs.rm(pendingZip, { force: true });
     await fs.rm(staging, { recursive: true, force: true });
   }
 }
@@ -117,13 +146,14 @@ export async function importProjectArchive(
   restoreRoot: string,
 ): Promise<ProjectFileV1> {
   const staging = await mkdtemp('uscut-restore-');
+  const mediaTarget = path.join(restoreRoot, randomUUID());
+  let complete = false;
   try {
     await expand(zipPath, staging);
     const project = parseArchivedProject(
       await fs.readFile(path.join(staging, 'project.json'), 'utf8'),
     );
-    const newId = randomUUID();
-    const mediaTarget = path.join(restoreRoot, newId);
+    const newId = path.basename(mediaTarget);
     await fs.mkdir(mediaTarget, { recursive: true });
     let restored: string[] = [];
     try {
@@ -139,8 +169,12 @@ export async function importProjectArchive(
     const remapped = remapProjectMedia(project, (src) => {
       const rel = src.replace(/\\/g, '/');
       if (!rel.startsWith(`${ARCHIVE_MEDIA_DIR}/`)) return undefined;
-      return path.join(mediaTarget, rel.slice(ARCHIVE_MEDIA_DIR.length + 1));
+      const name = rel.slice(ARCHIVE_MEDIA_DIR.length + 1);
+      if (!name || name === '.' || name === '..' || /[/:]/.test(name))
+        throw new Error('Invalid media path in project archive.');
+      return path.join(mediaTarget, name);
     });
+    complete = true;
     return {
       ...remapped,
       id: newId,
@@ -148,6 +182,7 @@ export async function importProjectArchive(
       savedAt: new Date().toISOString(),
     };
   } finally {
+    if (!complete) await fs.rm(mediaTarget, { recursive: true, force: true });
     await fs.rm(staging, { recursive: true, force: true });
   }
 }

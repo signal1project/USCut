@@ -55,7 +55,6 @@
     "@types/form-data": "^2.5.2",
     "axios": "^1.7.9",
     "better-sqlite3": "^11.8.1",
-    "build": "^0.1.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "crc32": "^0.2.2",

@@ -6,7 +6,7 @@
   "description": "Signs USCut subscription entitlement tokens from Stripe events. SCAFFOLD — see README.md.",
   "scripts": {
     "start": "node server.mjs",
-    "test": "node test-lifecycle.mjs"
+    "test": "node test-lifecycle.mjs && node --test test-webhook.mjs"
   },
   "dependencies": {
     "stripe": "^17.0.0"

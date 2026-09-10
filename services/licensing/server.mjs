@@ -1,5 +1,6 @@
 // USCut licensing service — SCAFFOLD. Not connected to Stripe. See README.md.
 import { createServer } from 'node:http';
+import { parseStripeEvent } from './webhook.mjs';
 import { entitlementForSubscription, signEntitlement } from './entitlement.mjs';
 
 const PORT = Number(process.env.PORT || 8791);
@@ -16,7 +17,15 @@ const entitlements = new Map();
 function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    req.on('data', (c) => chunks.push(c));
+    let bytes = 0;
+    req.on('data', (c) => {
+      bytes += c.length;
+      if (bytes > 1024 * 1024) {
+        reject(Object.assign(new Error('Request body too large'), { status: 413 }));
+        return;
+      }
+      chunks.push(c);
+    });
     req.on('end', () => resolve(Buffer.concat(chunks)));
     req.on('error', reject);
   });
@@ -24,14 +33,6 @@ function readBody(req) {
 function json(res, code, body) {
   res.writeHead(code, { 'content-type': 'application/json' });
   res.end(JSON.stringify(body));
-}
-
-/** Placeholder — swap for `stripe.webhooks.constructEvent(raw, sig, secret)`. */
-function parseStripeEvent(raw, signature) {
-  if (!STRIPE_WEBHOOK_SECRET)
-    throw new Error('STRIPE_WEBHOOK_SECRET not configured');
-  if (!signature) throw new Error('missing Stripe-Signature');
-  return JSON.parse(raw.toString('utf8'));
 }
 
 function issue({ email, plan, customer, periodEndSeconds }) {
@@ -54,7 +55,13 @@ const server = createServer(async (req, res) => {
 
     if (req.method === 'POST' && req.url === '/webhook') {
       const raw = await readBody(req);
-      const event = parseStripeEvent(raw, req.headers['stripe-signature']);
+      if (!STRIPE_WEBHOOK_SECRET) return json(res, 503, { error: 'Billing is not configured' });
+      let event;
+      try {
+        event = parseStripeEvent(raw, req.headers['stripe-signature'], STRIPE_WEBHOOK_SECRET);
+      } catch {
+        return json(res, 400, { error: 'Invalid webhook' });
+      }
       const sub = event?.data?.object ?? {};
       const email =
         sub.customer_email || sub.customer_details?.email || sub.metadata?.email;
@@ -86,7 +93,7 @@ const server = createServer(async (req, res) => {
 
     json(res, 404, { error: 'not found' });
   } catch (error) {
-    json(res, 503, { error: error.message });
+    json(res, error.status || 503, { error: error.status === 413 ? 'Request body too large' : 'Service unavailable' });
   }
 });
 
