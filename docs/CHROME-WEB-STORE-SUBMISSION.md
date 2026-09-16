@@ -80,7 +80,7 @@ computer, entirely under your control.
 
 ## Contact
 
-[Dale — insert support email or contact page]
+dale@simpleaipros.com
 ```
 
 ## 2. Store listing copy

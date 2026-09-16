@@ -68,4 +68,4 @@ re-checks it.
 
 - Diagnostics / logs: `%APPDATA%\aicuts\logs\`
 - Config: `%APPDATA%\aicuts\config.json`
-- Support: _<add support email before release>_
+- Support: dale@simpleaipros.com

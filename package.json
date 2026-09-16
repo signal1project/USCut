@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "main": "dist-electron/main/index.js",
   "description": "USCut — AI-powered desktop video editor",
-  "author": "The Family Office / Dale Brown",
+  "author": {
+    "name": "The Family Office / Dale Brown",
+    "email": "dale@simpleaipros.com"
+  },
   "license": "MIT",
   "private": true,
   "workspaces": [

@@ -12,6 +12,7 @@ import {
   Link2,
   Loader2,
   LogOut,
+  Mail,
   MessageCircle,
   Mic,
   Palette,
@@ -32,6 +33,7 @@ import {
   CardTitle,
   Input,
 } from '@/components/ui';
+import { ipc as electronIpc } from '@/lib/ipc';
 import { useMasIpc } from './useMasIpc';
 import ConnectAccounts from '../onboarding/ConnectAccounts';
 import { ProductionReadinessCard } from './ProductionReadinessCard';
@@ -580,6 +582,42 @@ function StorageLocationsCard(): React.ReactElement {
   );
 }
 
+const SUPPORT_EMAIL = 'dale@simpleaipros.com';
+
+function AboutCard(): React.ReactElement {
+  const [version, setVersion] = useState('');
+
+  useEffect(() => {
+    electronIpc
+      .invoke('app:info')
+      .then((res) => setVersion((res as { version?: string })?.version ?? ''))
+      .catch(() => {
+        /* ignore — not critical */
+      });
+  }, []);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Mail size={16} className="text-[#4d7cff]" /> About &amp; Support
+        </CardTitle>
+        <CardDescription>
+          USCut{version ? ` v${version}` : ''} — The Family Office
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <a
+          href={`mailto:${SUPPORT_EMAIL}`}
+          className="text-sm text-accent hover:underline"
+        >
+          {SUPPORT_EMAIL}
+        </a>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function SettingsPage(): React.ReactElement {
   const ipc = useMasIpc();
   const navigate = useNavigate();
@@ -742,6 +780,9 @@ export default function SettingsPage(): React.ReactElement {
           </p>
         </CardContent>
       </Card>
+
+      {/* About / support contact */}
+      <AboutCard />
 
       {showAccounts && (
         <ConnectAccounts onClose={() => setShowAccounts(false)} />

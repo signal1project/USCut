@@ -22,7 +22,7 @@ See [Stripe signature verification](https://docs.stripe.com/webhooks/signature).
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | env only | never in the app or repo |
 | ed25519 **private** key | `LICENSE_SIGNING_KEY` env | pair of the public key bundled in `electron/main/licensing/entitlement.ts`; generated 2026-09-09, stored at `projects/_secrets/uscut-license.private.pem` (outside the repo) |
 | Datastore | replace the in-memory `Map` in `server.mjs` | entitlements keyed by lower-cased email |
-| Seller identity + support email | Stripe dashboard + app "About" | required for checkout |
+| Legal seller identity (entity/address) | Stripe dashboard | required for checkout; support email (dale@simpleaipros.com) already wired into the app "About & Support" card + installer metadata, 2026-09-16 |
 | Hosting | any Node host | one small always-on process + a Stripe webhook endpoint |
 | Code-signing certificate | electron-builder, separate | not this service, but a release blocker |
 
