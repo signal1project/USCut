@@ -7,7 +7,7 @@
     "name": "The Family Office / Dale Brown",
     "email": "dale@simpleaipros.com"
   },
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "private": true,
   "workspaces": [
     "packages/*"

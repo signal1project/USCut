@@ -79,6 +79,15 @@
       "from": "dist-ext",
       "to": "dist-ext",
       "filter": ["**/*"]
+    },
+    {
+      "from": "NOTICES",
+      "to": "NOTICES",
+      "filter": ["**/*"]
+    },
+    {
+      "from": "LICENSE",
+      "to": "LICENSE"
     }
   ]
 }

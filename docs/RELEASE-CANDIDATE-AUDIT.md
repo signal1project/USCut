@@ -7,11 +7,11 @@ substitute for the item owner's sign-off.
 ## 0. Prerequisites resolved (Dale)
 
 - [x] FFmpeg licence path chosen and implemented (`docs/LICENSE-INVENTORY.md` row 1) — 2026-09-16
-- [ ] Proprietary EULA replaces the MIT `LICENSE`; `package.json` `"license"` fixed
-- [ ] `NOTICES/` bundled (whisper.cpp MIT, Apache NOTICEs, OFL fonts, Chromium `LICENSES`, FFmpeg LGPL text — already vendored at `resources/ffmpeg/win-x64/FFMPEG-LGPL-LICENSE.txt`, just needs surfacing)
-- [ ] Code-signing certificate obtained; `electron-builder` configured to sign the installer + updates
+- [x] Proprietary EULA replaces the MIT `LICENSE`; `package.json` `"license"` fixed — 2026-09-16, drafted, **needs attorney review** before real customers (esp. subscription auto-renewal language)
+- [x] `NOTICES/` bundled (MIT + Apache-2.0 texts, OFL fonts already present, FFmpeg LGPL already vendored, Chromium `LICENSES` auto-bundled by Electron itself) — 2026-09-16
+- [ ] Code-signing certificate obtained; `electron-builder` configured to sign the installer + updates — **investigated 2026-09-16: no cert exists at all (not even self-signed), every packaged file is genuinely `NotSigned` despite the build log's misleading "signing" lines; on hold per Dale**
 - [ ] Stripe account live; price/currency set; `services/licensing` deployed with the private signing key; webhook registered
-- [x] Support email in the installer metadata (`package.json` author) and the app Settings "About & Support" card — dale@simpleaipros.com, 2026-09-16. Legal seller entity/address still outstanding.
+- [x] Support email in the installer metadata (`package.json` author) and the app Settings "About & Support" card — dale@simpleaipros.com, 2026-09-16. Legal seller entity/address still outstanding (Dale weighing a registered-agent/virtual-mailbox address over his home address).
 - [ ] Text-to-video provider + spend cap decided (or "generated footage" cut from launch scope explicitly)
 
 ## 1. Build

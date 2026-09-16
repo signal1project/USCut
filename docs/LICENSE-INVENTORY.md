@@ -44,11 +44,40 @@ full stabilization smoke test, and the packaged-build `afterPack` gate (which
 now does a real `h264_mf` one-frame encode, not just `-version`) all verified
 green against the new binary.
 
+**Code-signing cert — investigated, real finding (corrects the prior
+assumption):** checked the actual built files with `Get-AuthenticodeSignature`
+rather than trusting the build log's "signing with signtool.exe" lines —
+every packaged file comes back `NotSigned`. Both certificate stores
+(`Cert:\CurrentUser\My`, `Cert:\LocalMachine\My`) have zero code-signing
+certificates, real or self-signed. electron-builder's auto-sign step finds no
+usable cert and silently no-ops instead of failing the build. Today's
+installer triggers Windows SmartScreen's full "Unknown Publisher" warning for
+every downloader. **On hold per Dale** — needs a real CA-issued cert (OV or
+EV), which requires the same business-identity verification as the Stripe/
+seller-entity item below.
+
+**Proprietary LICENSE + NOTICES bundle — done 2026-09-16.** Root `LICENSE`
+replaced with a proprietary EULA (license grant, subscription/billing terms,
+content ownership, third-party component reference, warranty disclaimer,
+liability cap, termination, governing-law placeholder). `package.json`
+`"license"` changed from `"MIT"` to `"SEE LICENSE IN LICENSE"`. New
+`NOTICES/` folder (`README.md` index + `MIT.txt` + `APACHE-2.0.txt`) covers
+every permissive dependency; the FFmpeg LGPL text and the two fonts' OFL
+texts were already bundled from earlier work, just referenced from the new
+index rather than duplicated. Electron's own packaging already auto-bundles
+`LICENSE.electron.txt` + `LICENSES.chromium.html` — confirmed present in the
+`win-unpacked` output, so that action item needed no work at all. `NOTICES/`
+and `LICENSE` both added to `electron-builder.json` `extraResources` so they
+ship in the installer. **This is a drafted EULA, not attorney-reviewed** —
+in particular the subscription auto-renewal language should get a real
+lawyer's pass before Dale takes paying customers' money, since auto-renewal
+disclosure requirements vary by US state.
+
 ## Blocking / needs a decision
 
-| Component | Version | License | Issue | Options |
-|---|---|---|---|---|
-| ⚠️ Repository `LICENSE` / `package.json` `"license": "MIT"` | — | — | The project declares itself MIT. A commercial closed-source product must not ship an MIT grant for the whole app. | Replace with a proprietary EULA; set `package.json` `"license": "UNLICENSED"` or a SEE-LICENSE ref; keep third-party notices separate (this file + a bundled NOTICES). |
+*(none remaining in this file — the two outstanding items above, code-signing
+cert and EULA attorney review, are tracked here as notes, not open license
+questions.)*
 
 ## Permissive — bundle with attribution
 
@@ -74,18 +103,17 @@ green against the new binary.
 | Montserrat-Bold | SIL Open Font License 1.1 | ✅ permitted — ship `OFL.txt` alongside |
 | PlayfairDisplay-Bold | SIL Open Font License 1.1 | ✅ permitted — ship `OFL.txt` alongside |
 
-**Action:** add the OFL license text for both families to a bundled `NOTICES/`
-folder (currently the `.ttf` files ship without their license).
+**Action:** ✅ already done before this session — `OFL.txt` ships alongside
+each `.ttf` in `public/assets/fonts/`, packaged via the existing
+`extraResources` entry to `resources/assets/fonts/`. Referenced (not
+duplicated) from the new `NOTICES/README.md` index.
 
 ## Actions before release
 
 1. ~~Resolve the FFmpeg license question~~ ✅ done 2026-09-16 (see above).
-2. Replace the MIT `LICENSE` with a proprietary EULA; fix `package.json`.
-3. Create a bundled `NOTICES/` (or in-app "Third-party licenses" screen) with:
-   whisper.cpp MIT, Kokoro/transformers/onnxruntime Apache NOTICE files, the two
-   OFL font licenses, Chromium `LICENSES`, and the FFmpeg LGPL-3.0 license text
-   (already bundled at `resources/ffmpeg/win-x64/FFMPEG-LGPL-LICENSE.txt`,
-   just needs surfacing in-app/in the installer).
+2. ~~Replace the MIT `LICENSE` with a proprietary EULA; fix `package.json`~~
+   ✅ done 2026-09-16 (see above) — pending attorney review.
+3. ~~Create a bundled `NOTICES/`~~ ✅ done 2026-09-16 (see above).
 4. Verify no `devDependencies` leak into the packaged app (electron-builder
    bundles `dependencies` + `optionalDependencies` only — spot-check the asar).
 
