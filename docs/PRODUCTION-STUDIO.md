@@ -22,4 +22,4 @@ An optional music bed is chosen from a configured music folder (`Settings → li
 
 ## Remaining for the complete product
 
-This is a working supplied-media production path with frame-grounded planning and scene-level revision, not completion of the entire AI production roadmap. Still open: generated-footage provider integration and spending controls, durable cancellable caption/share jobs, portable project/media backup/restore, installer/upgrade validation, and controlled live delivery verification. Exports currently use the editor's existing export/share workflow.
+This is a working supplied-media production path with frame-grounded planning and scene-level revision, not completion of the entire AI production roadmap. Auto-Edit and one-click captions became durable, cancellable jobs 2026-09-16 (see `docs/PRODUCTION-JOBS.md`). Still open: generated-footage provider integration and spending controls, durable cancellable share jobs, portable project/media backup/restore, installer/upgrade validation, and controlled live delivery verification. Exports currently use the editor's existing export/share workflow.

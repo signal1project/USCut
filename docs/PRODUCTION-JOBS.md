@@ -36,4 +36,6 @@ Unit/integration coverage includes queue serialization, duplicate submission, ca
 
 Final checks: TypeScript and Vite builds passed; ESLint on changed application/test files passed; full Vitest suite passed 494 tests with 12 expected Electron-ABI skips. The isolated Electron smoke scenario passed after the Windows persistence fix. The existing renderer bundle-size warning remains.
 
-Remaining: extend jobs to Auto-Edit, captions, listing reels, export and future media-generation services; add checkpointed resumption where safe; finish database migration/backup and installer upgrades; validate live media/provider/account workflows; then connect the brief-to-finished-video production workspace.
+**2026-09-16**: Auto-Edit (`aicuts:auto-edit-start/-jobs/-cancel`) and one-click captions (`aicuts:transcribe-video-start/-jobs/-cancel`) now run through the same `JobManager` pattern — queued, progress-reported per stage, cancellable, and interruption-safe across a restart, with a shared renderer polling hook (`src/lib/useJobRunner.ts`) driving Toolbar and MediaPanel.
+
+Remaining: extend jobs to Share (render+publish), listing reels, export and future media-generation services; add checkpointed resumption where safe; finish database migration/backup and installer upgrades; validate live media/provider/account workflows; then connect the brief-to-finished-video production workspace.
