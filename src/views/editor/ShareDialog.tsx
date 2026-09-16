@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useEditorStore } from '@/store/editorStore';
 import { ipc } from '@/lib/ipc';
+import { usePremiumUnlocked, notifyLicenseRequired } from '@/lib/licenseGate';
 import { useMasApi } from '@/views/mas/useMasApi';
 import { useActiveBrandStore } from '@/store/activeBrandStore';
 import type { ConnectedAccountSummary } from '@mas/ui';
@@ -40,6 +41,7 @@ interface Props {
 
 /** Export the timeline and push it out — webview sessions and/or API accounts. */
 const ShareDialog: React.FC<Props> = ({ onClose }) => {
+  const premiumUnlocked = usePremiumUnlocked();
   const masApi = useMasApi();
   const {
     activeBrandId,
@@ -171,6 +173,10 @@ const ShareDialog: React.FC<Props> = ({ onClose }) => {
       selInstagram.size === 0
     ) {
       appendLog('Pick at least one destination.');
+      return;
+    }
+    if (!premiumUnlocked) {
+      notifyLicenseRequired();
       return;
     }
 
@@ -529,7 +535,12 @@ const ShareDialog: React.FC<Props> = ({ onClose }) => {
 
         <button
           onClick={() => void handleShare()}
-          disabled={!!busy}
+          disabled={!!busy || !premiumUnlocked}
+          title={
+            premiumUnlocked
+              ? undefined
+              : 'Needs an active USCut subscription — add your license key in Settings.'
+          }
           className="mt-4 w-full flex items-center justify-center gap-2 bg-[#22c55e] hover:bg-[#1faa52] disabled:opacity-60 text-[#06210f] text-xs font-semibold rounded-lg py-2.5 transition-colors"
         >
           {busy ? (

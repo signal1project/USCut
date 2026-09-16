@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { BadgeCheck } from 'lucide-react';
-import { ipc } from '@/lib/ipc';
+import { useLicenseStore, isPremiumUnlocked, type LicenseState } from '@/store/licenseStore';
 import {
   Badge,
   Button,
@@ -12,16 +12,7 @@ import {
   CardTitle,
 } from '@/components/ui';
 
-interface LicenseStatus {
-  state: 'unlicensed' | 'active' | 'grace' | 'expired' | 'invalid';
-  plan: string | null;
-  email: string | null;
-  expiresAt: string | null;
-  graceUntil: string | null;
-  detail: string;
-}
-
-const TONE: Record<LicenseStatus['state'], string> = {
+const TONE: Record<LicenseState, string> = {
   active: 'bg-[#22c55e]',
   grace: 'bg-[#e0a93a]',
   expired: 'bg-[#f0556a]',
@@ -30,29 +21,25 @@ const TONE: Record<LicenseStatus['state'], string> = {
 };
 
 export function SubscriptionCard() {
-  const [status, setStatus] = useState<LicenseStatus | null>(null);
+  const status = useLicenseStore((s) => s.status);
+  const loaded = useLicenseStore((s) => s.loaded);
+  const load = useLicenseStore((s) => s.load);
+  const activateKey = useLicenseStore((s) => s.activate);
+  const deactivateKey = useLicenseStore((s) => s.deactivate);
   const [token, setToken] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const refresh = useCallback(() => {
-    ipc
-      .invoke('license:status')
-      .then((s) => setStatus(s as LicenseStatus))
-      .catch(() => setStatus(null));
-  }, []);
-  useEffect(refresh, [refresh]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const activate = async () => {
     setBusy(true);
     try {
-      const next = (await ipc.invoke(
-        'license:activate',
-        token.trim(),
-      )) as LicenseStatus;
-      setStatus(next);
+      const next = await activateKey(token.trim());
       setToken('');
       toast.success(
-        next.state === 'active' || next.state === 'grace'
+        isPremiumUnlocked(next)
           ? 'Subscription activated'
           : `Licence saved (${next.state})`,
       );
@@ -66,7 +53,7 @@ export function SubscriptionCard() {
   const deactivate = async () => {
     setBusy(true);
     try {
-      setStatus((await ipc.invoke('license:deactivate')) as LicenseStatus);
+      await deactivateKey();
       toast.success('Licence removed from this device');
     } catch {
       toast.error('Could not remove the licence');
@@ -80,18 +67,18 @@ export function SubscriptionCard() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <BadgeCheck size={16} className="text-[#4d7cff]" /> Subscription
-          {status && (
+          {loaded && (
             <Badge className={`${TONE[status.state]} text-white capitalize`}>
               {status.state}
             </Badge>
           )}
         </CardTitle>
         <CardDescription>
-          {status?.detail ?? 'Checking your USCut subscription…'}
+          {loaded ? status.detail : 'Checking your USCut subscription…'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        {status && status.email && (
+        {status.email && (
           <p className="text-xs text-ink-muted">
             {status.email}
             {status.plan ? ` · ${status.plan}` : ''}
@@ -112,7 +99,7 @@ export function SubscriptionCard() {
           <Button size="sm" disabled={busy || !token.trim()} onClick={activate}>
             Activate
           </Button>
-          {status && status.state !== 'unlicensed' && (
+          {status.state !== 'unlicensed' && (
             <Button
               size="sm"
               variant="outline"

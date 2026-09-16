@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useEditorStore } from '@/store/editorStore';
 import { ipc } from '@/lib/ipc';
+import { usePremiumUnlocked, notifyLicenseRequired } from '@/lib/licenseGate';
 import { saveCurrentProject, saveProjectAs } from '@/lib/projectPersistence';
 import ShareDialog from './ShareDialog';
 import ExportJobsPanel from './ExportJobsPanel';
@@ -53,6 +54,7 @@ function fmt(s: number) {
 }
 
 const Toolbar: React.FC = () => {
+  const premiumUnlocked = usePremiumUnlocked();
   // Narrow selectors — no playhead subscription here (see Timecode); a
   // full-store subscription would re-render the toolbar every frame.
   const isPlaying = useEditorStore((s) => s.isPlaying);
@@ -195,6 +197,10 @@ const Toolbar: React.FC = () => {
 
   const handleAutoEdit = async () => {
     if (!autoEditPrompt.trim()) return;
+    if (!premiumUnlocked) {
+      notifyLicenseRequired();
+      return;
+    }
     setAutoEditing(true);
     const allClips = tracks.flatMap((t) =>
       t.clips.map((c) => ({
@@ -232,6 +238,8 @@ const Toolbar: React.FC = () => {
       toast.success(`Auto-edit complete: ${result.summary}`, {
         duration: 15000,
       });
+    } else if (result?.error === 'LICENSE_REQUIRED') {
+      notifyLicenseRequired();
     } else if (result?.error) {
       toast.error(`Auto-edit failed: ${result.error}`, { duration: 15000 });
     }
@@ -417,7 +425,12 @@ const Toolbar: React.FC = () => {
             />
             <button
               onClick={handleAutoEdit}
-              disabled={autoEditing || !autoEditPrompt.trim()}
+              disabled={autoEditing || !autoEditPrompt.trim() || !premiumUnlocked}
+              title={
+                premiumUnlocked
+                  ? undefined
+                  : 'Needs an active USCut subscription — add your license key in Settings.'
+              }
               className="mt-2.5 w-full flex items-center justify-center gap-2 bg-[#4d7cff] hover:bg-[#3d6cf0] disabled:opacity-50 text-white text-xs font-medium rounded-lg py-2 transition-colors"
             >
               {autoEditing ? (

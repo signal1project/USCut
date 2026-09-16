@@ -5,6 +5,8 @@ import type { ClipService } from './clipService';
 import type { AutoClipInput, AutoClipResult } from './clipService';
 import type { JobManager } from '../jobs/jobManager';
 import path from 'node:path';
+import type { Settings } from '../settings/settings';
+import { requireLicenseRoute } from '../licensing/guard';
 
 const autoClipSchema = z.object({
   videoPath: z.string().min(1),
@@ -20,8 +22,12 @@ const autoClipSchema = z.object({
 export function createClipsRouter(
   service: ClipService,
   jobs?: JobManager<AutoClipInput, AutoClipResult>,
+  settings?: Settings,
 ): Router {
   const router = express.Router();
+  const gate = settings
+    ? requireLicenseRoute(settings)
+    : (_req: express.Request, _res: express.Response, next: express.NextFunction) => next();
   if (jobs) {
     router.get('/jobs', (_req, res) => {
       res.json({ jobs: jobs.list() });
@@ -36,6 +42,7 @@ export function createClipsRouter(
     });
     router.post(
       '/jobs',
+      gate,
       validateBody(autoClipSchema.extend({ requestId: z.string().uuid() })),
       asyncHandler(async (req, res) => {
         const { requestId, ...input } = req.body;
@@ -69,6 +76,7 @@ export function createClipsRouter(
    */
   router.post(
     '/auto',
+    gate,
     validateBody(autoClipSchema),
     asyncHandler(async (req, res) => {
       const b = req.body as z.infer<typeof autoClipSchema>;

@@ -250,8 +250,9 @@ app.whenReady().then(async () => {
     new App();
     const bWin = await createWindow();
     registerAiCutHandlers(bWin);
-    registerLicenseHandlers(new Settings(settingsStore));
-    registerWebviewBridge(bWin);
+    const settings = new Settings(settingsStore);
+    registerLicenseHandlers(settings);
+    registerWebviewBridge(bWin, settings);
     await startAgentBridge();
     await startMasBackend();
     update(bWin);

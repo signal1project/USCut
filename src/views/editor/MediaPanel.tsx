@@ -18,6 +18,11 @@ import {
 } from 'lucide-react';
 import { useEditorStore, type MediaItem } from '@/store/editorStore';
 import { ipc } from '@/lib/ipc';
+import {
+  usePremiumUnlocked,
+  notifyLicenseRequired,
+  isLicenseRequiredError,
+} from '@/lib/licenseGate';
 import { toMediaUrl } from '@/lib/media';
 import { v4 as uuidv4 } from 'uuid';
 import { useMasApi } from '@/views/mas/useMasApi';
@@ -43,6 +48,7 @@ interface Props {
 }
 
 const MediaPanel: React.FC<Props> = ({ section }) => {
+  const premiumUnlocked = usePremiumUnlocked();
   // Narrow selectors — a full-store subscription would re-render this whole
   // panel on every 60fps playhead tick during playback. The playhead itself
   // is read via getState() at click time in addCaption.
@@ -95,6 +101,10 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
       setWhisperStatus('Add a video clip to the timeline first.');
       return;
     }
+    if (!premiumUnlocked) {
+      notifyLicenseRequired();
+      return;
+    }
     setWhisperBusy(true);
     setWhisperStatus(null);
     const result = (await ipc.invoke(
@@ -108,7 +118,11 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
       | undefined;
     setWhisperBusy(false);
     if (!result || result.error) {
-      setWhisperStatus(result?.error ?? 'Transcription failed');
+      setWhisperStatus(
+        result?.error === 'LICENSE_REQUIRED'
+          ? 'Needs an active USCut subscription — add your license key in Settings.'
+          : (result?.error ?? 'Transcription failed'),
+      );
       return;
     }
     const segments = result.segments ?? [];
@@ -153,7 +167,11 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
       | undefined;
     setTtsBusy(false);
     if (!result?.path) {
-      setTtsStatus(result?.error ?? 'Voiceover failed');
+      setTtsStatus(
+        result?.error === 'LICENSE_REQUIRED'
+          ? 'ElevenLabs voiceover needs an active USCut subscription — add your license key in Settings (or remove the ElevenLabs key to use the free Windows voice).'
+          : (result?.error ?? 'Voiceover failed'),
+      );
       return;
     }
     addMediaItem({
@@ -206,6 +224,10 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
       clipVideoOptions.find((m) => m.id === clipSourceId) ??
       clipVideoOptions[0];
     if (!masApi || !sourceVideo) return;
+    if (!premiumUnlocked) {
+      notifyLicenseRequired();
+      return;
+    }
     setClipBusy(true);
     setClipStatus(null);
     setClipResults(null);
@@ -226,7 +248,13 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
       setClipSrt('');
       setClipQuery('');
     } catch (err) {
-      setClipStatus(err instanceof Error ? err.message : 'Auto-clip failed');
+      setClipStatus(
+        isLicenseRequiredError(err)
+          ? 'Needs an active USCut subscription — add your license key in Settings.'
+          : err instanceof Error
+            ? err.message
+            : 'Auto-clip failed',
+      );
     } finally {
       setClipBusy(false);
     }
@@ -346,6 +374,10 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
       setAutoEditMessage('Add clips to an unlocked track first.');
       return;
     }
+    if (!premiumUnlocked) {
+      notifyLicenseRequired();
+      return;
+    }
     setAutoEditBusy(true);
     setAutoEditMessage('');
     try {
@@ -364,7 +396,11 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
       setAutoEditPrompt('');
     } catch (err) {
       setAutoEditMessage(
-        err instanceof Error ? err.message : 'Auto-Edit failed. Try again.',
+        isLicenseRequiredError(err)
+          ? 'Needs an active USCut subscription — add your license key in Settings.'
+          : err instanceof Error
+            ? err.message
+            : 'Auto-Edit failed. Try again.',
       );
     } finally {
       setAutoEditBusy(false);
@@ -578,7 +614,12 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
               </p>
               <button
                 onClick={handleWhisperCaptions}
-                disabled={whisperBusy}
+                disabled={whisperBusy || !premiumUnlocked}
+                title={
+                  premiumUnlocked
+                    ? undefined
+                    : 'Needs an active USCut subscription — add your license key in Settings.'
+                }
                 className="w-full flex items-center justify-center gap-1.5 bg-[#4d7cff] hover:bg-[#3d6cf0] disabled:opacity-50 text-white text-[11px] font-medium rounded-lg py-2 transition-colors"
               >
                 {whisperBusy ? (
@@ -638,7 +679,14 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
               />
               <button
                 onClick={handleAutoEdit}
-                disabled={autoEditBusy || !autoEditPrompt.trim()}
+                disabled={
+                  autoEditBusy || !autoEditPrompt.trim() || !premiumUnlocked
+                }
+                title={
+                  premiumUnlocked
+                    ? undefined
+                    : 'Needs an active USCut subscription — add your license key in Settings.'
+                }
                 className="mt-2 w-full flex items-center justify-center gap-1.5 bg-[#1d2540] hover:bg-[#243056] disabled:opacity-50 text-[#8aa6ff] text-[11px] font-medium rounded-lg py-2 transition-colors"
               >
                 {autoEditBusy ? (
@@ -779,7 +827,17 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
 
               <button
                 onClick={handleAutoClip}
-                disabled={clipBusy || !masApi || clipVideoOptions.length === 0}
+                disabled={
+                  clipBusy ||
+                  !masApi ||
+                  clipVideoOptions.length === 0 ||
+                  !premiumUnlocked
+                }
+                title={
+                  premiumUnlocked
+                    ? undefined
+                    : 'Needs an active USCut subscription — add your license key in Settings.'
+                }
                 className="mt-2.5 w-full flex items-center justify-center gap-1.5 bg-[#12352a] hover:bg-[#174534] disabled:opacity-50 text-[#34d399] text-[11px] font-medium rounded-lg py-2 transition-colors"
               >
                 {clipBusy ? (

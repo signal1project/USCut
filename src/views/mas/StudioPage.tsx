@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ProductionJob } from '@mas/types';
 import { ipc } from '@/lib/ipc';
+import {
+  usePremiumUnlocked,
+  isLicenseRequiredError,
+} from '@/lib/licenseGate';
 import { saveCurrentProject, openProject } from '@/lib/projectPersistence';
 import type { ProjectSnapshot } from '@/store/editorStore';
 import {
@@ -31,6 +35,7 @@ const button =
 
 export default function StudioPage() {
   const navigate = useNavigate();
+  const premiumUnlocked = usePremiumUnlocked();
   const [draft, setDraft] = useState<StudioDraft>(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(storageKey) ?? 'null');
@@ -111,7 +116,13 @@ export default function StudioPage() {
     try {
       await run();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(
+        isLicenseRequiredError(e)
+          ? 'AI storyboard generation and scene revision need an active USCut subscription — add your license key in Settings.'
+          : e instanceof Error
+            ? e.message
+            : String(e),
+      );
     } finally {
       setBusy(false);
     }
@@ -377,7 +388,14 @@ export default function StudioPage() {
       <div className="flex flex-wrap gap-3">
         <button
           className={button}
-          disabled={busy || !draft.assets.length || !draft.brief.trim()}
+          disabled={
+            busy || !draft.assets.length || !draft.brief.trim() || !premiumUnlocked
+          }
+          title={
+            premiumUnlocked
+              ? undefined
+              : 'Needs an active USCut subscription — add your license key in Settings.'
+          }
           onClick={() => void start('plan')}
         >
           Generate AI storyboard
@@ -528,7 +546,14 @@ export default function StudioPage() {
               />
               <button
                 className={button}
-                disabled={busy || !(reviseText[i] ?? '').trim()}
+                disabled={
+                  busy || !(reviseText[i] ?? '').trim() || !premiumUnlocked
+                }
+                title={
+                  premiumUnlocked
+                    ? undefined
+                    : 'Needs an active USCut subscription — add your license key in Settings.'
+                }
                 onClick={() => void reviseScene(i)}
               >
                 Revise with AI

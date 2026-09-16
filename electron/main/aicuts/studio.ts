@@ -24,6 +24,8 @@ import { describeStudioAssets } from './studioVision';
 import { listStudioMusic, prepareMusicBed } from './studioMusic';
 import { synthesizeVoiceover } from './audioTools';
 import { probeVideo } from './ffmpegOps';
+import type { Settings } from '../settings/settings';
+import { assertLicensed } from '../licensing/guard';
 
 type Input =
   | {
@@ -41,6 +43,7 @@ type Input =
     };
 
 export function registerStudioHandlers(
+  settings: Settings,
   resolveProvider: () => AIProvider,
   resolveMusicDir: () => string | null = () => null,
 ) {
@@ -184,6 +187,9 @@ export function registerStudioHandlers(
         kind: z.enum(['plan', 'build', 'revise']),
       })
       .parse(request);
+    // Local timeline assembly ('build') stays free; AI storyboard generation
+    // and AI scene revision are the paid-tier part of Studio.
+    if (base.kind !== 'build') assertLicensed(settings);
     const raw = request as Record<string, unknown>;
     let input: Input;
     let label: string;

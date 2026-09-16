@@ -35,6 +35,7 @@ import { settingsStore } from '../../global/store';
 import { logger } from '../../global/log';
 import { createProviderResolver } from '../ai';
 import { GoogleTrendsFetcher } from '../research/googleTrendsFetcher';
+import { assertLicensed } from '../licensing/guard';
 
 /** Cap how many clips we pay to transcribe in one Auto-Edit call — enough for
  * a typical short project without runaway Whisper cost/latency on long timelines. */
@@ -49,7 +50,9 @@ export function registerAiCutHandlers(win: Electron.BrowserWindow) {
   // Same provider-resolution the rest of the app uses (Settings → AI Providers)
   // — auto-edit and one-click captions must never talk to a hardcoded SDK.
   const resolveProvider = createProviderResolver(settings);
-  registerStudioHandlers(resolveProvider, () => settings.getMusicDir());
+  registerStudioHandlers(settings, resolveProvider, () =>
+    settings.getMusicDir(),
+  );
   registerStudioDocHandlers();
   registerProjectArchiveHandlers(win);
   const proxyCacheDir = path.join(app.getPath('userData'), 'preview-proxies');
@@ -61,6 +64,7 @@ export function registerAiCutHandlers(win: Electron.BrowserWindow) {
   // free local whisper.cpp — same fallback chain as Auto-Clip).
   ipcMain.handle('aicuts:transcribe-video', async (_, videoPath: string) => {
     try {
+      assertLicensed(settings);
       const key = settings.getProviderSettings('openai')?.apiKey;
       const segments = key
         ? await transcribeVideoAudio(videoPath, key)
@@ -79,6 +83,7 @@ export function registerAiCutHandlers(win: Electron.BrowserWindow) {
     try {
       const elevenLabsKey = settings.getElevenLabsKey();
       if (elevenLabsKey) {
+        assertLicensed(settings);
         return await synthesizeVoiceoverElevenLabs(
           text,
           voiceoverDir,
@@ -252,6 +257,7 @@ export function registerAiCutHandlers(win: Electron.BrowserWindow) {
   // names and a duration guess.
   ipcMain.handle('aicuts:auto-edit', async (_, input: AutoEditInput) => {
     try {
+      assertLicensed(settings);
       const openAiKey = settings.getProviderSettings('openai')?.apiKey;
       const transcripts: Record<string, TranscriptSegment[]> = {};
       let transcriptionFailed = false;

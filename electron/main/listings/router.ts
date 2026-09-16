@@ -7,6 +7,8 @@ import type { ListingVideoService } from './videoService';
 import type { ListingFilesService } from './listingFiles';
 import type { PropertyListingSummary } from './types';
 import { captureFromUrl } from './urlCapture';
+import type { Settings } from '../settings/settings';
+import { currentLicenseStatus, isPremiumUnlocked } from '../licensing';
 
 const capturePayloadSchema = z.object({
   source: z.enum(['zillow', 'manual']),
@@ -103,6 +105,10 @@ export function createListingsRouter(
      * capture request comes from a Chrome extension or a paste-URL fetch,
      * never from the UI itself, so the UI has no other way to know. */
     onCaptured?: (listing: PropertyListingSummary) => void;
+    /** Gates AI ad-copy generation (`/:id/generate-ad`) behind an active
+     * license. Omitted by the unauthenticated capture server, which never
+     * builds this router with `adService` in the first place. */
+    settings?: Settings;
   } = {},
 ): Router {
   const router = Router();
@@ -192,6 +198,13 @@ export function createListingsRouter(
       if (!opts.adService) {
         res.status(503).json({ error: 'ad_generation_unavailable' });
         return;
+      }
+      if (opts.settings) {
+        const status = currentLicenseStatus(opts.settings);
+        if (!isPremiumUnlocked(status)) {
+          res.status(402).json({ error: 'LICENSE_REQUIRED', status });
+          return;
+        }
       }
       const body = generateAdSchema.parse(req.body);
       const result = await opts.adService.generateAd(req.params.id, body);

@@ -7,6 +7,7 @@ import { PubType, PLATFORMS, PLATFORM_CONFIG, type Platform } from '@mas/types';
 import { PlatformBadge } from '@mas/ui';
 import { useMasApi } from './useMasApi';
 import { ipc, hasIpc } from '@/lib/ipc';
+import { usePremiumUnlocked, notifyLicenseRequired } from '@/lib/licenseGate';
 import { useActiveBrandStore } from '@/store/activeBrandStore';
 import {
   Button,
@@ -63,6 +64,7 @@ const PLATFORM_COLOR: Partial<Record<Platform, string>> = {
 
 /** Compose and publish (or schedule) a post to connected social accounts. */
 export default function PublishPage(): React.ReactElement {
+  const premiumUnlocked = usePremiumUnlocked();
   const api = useMasApi();
   const location = useLocation();
   const navigate = useNavigate();
@@ -277,6 +279,10 @@ export default function PublishPage(): React.ReactElement {
       selectedInstagramIds.length === 0
     ) {
       toast.error('Select at least one account or platform to post to');
+      return;
+    }
+    if (!premiumUnlocked) {
+      notifyLicenseRequired();
       return;
     }
 
@@ -689,7 +695,12 @@ export default function PublishPage(): React.ReactElement {
             <Button
               type="submit"
               loading={submitting}
-              disabled={!hasAnySession}
+              disabled={!hasAnySession || !premiumUnlocked}
+              title={
+                premiumUnlocked
+                  ? undefined
+                  : 'Needs an active USCut subscription — add your license key in Settings.'
+              }
               className="w-full"
             >
               <Send size={16} />

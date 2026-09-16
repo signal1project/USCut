@@ -279,6 +279,7 @@ export function buildMasRuntime(deps: MasRuntimeDeps): MasRuntime {
           );
           return asset.id;
         },
+        settings,
       ),
     },
     { path: '/accounts', router: createAccountsRouter(dataSource) },
@@ -297,6 +298,7 @@ export function buildMasRuntime(deps: MasRuntimeDeps): MasRuntime {
         videoService: listingVideos,
         filesService: listingFiles,
         onCaptured: deps.notifyListingCaptured,
+        settings,
       }),
     },
     {
@@ -307,6 +309,7 @@ export function buildMasRuntime(deps: MasRuntimeDeps): MasRuntime {
           path.join(dataDir, 'jobs', 'auto-clip'),
           (input, context) => clips.autoClip(input, context),
         ),
+        settings,
       ),
     },
     {

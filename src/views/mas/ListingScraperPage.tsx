@@ -48,6 +48,11 @@ import {
 } from '@/components/ui';
 import type { ComposerPrefill } from './composerPrefill';
 import { ipc, hasIpc } from '@/lib/ipc';
+import {
+  usePremiumUnlocked,
+  notifyLicenseRequired,
+  isLicenseRequiredError,
+} from '@/lib/licenseGate';
 
 const AD_PLATFORMS = ['facebook', 'instagram'] as const;
 
@@ -103,6 +108,7 @@ function reelCaption(l: PropertyListingSummary): string {
  * structured property data.
  */
 export default function ListingScraperPage(): React.ReactElement {
+  const premiumUnlocked = usePremiumUnlocked();
   const api = useMasApi();
   const navigate = useNavigate();
   const [listings, setListings] = useState<PropertyListingSummary[]>([]);
@@ -172,6 +178,10 @@ export default function ListingScraperPage(): React.ReactElement {
 
   const generateAd = async (id: string) => {
     if (!api || generatingId) return;
+    if (!premiumUnlocked) {
+      notifyLicenseRequired();
+      return;
+    }
     setGeneratingId(id);
     setError(null);
     try {
@@ -180,7 +190,13 @@ export default function ListingScraperPage(): React.ReactElement {
       });
       setAds((prev) => ({ ...prev, [id]: result }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Ad generation failed');
+      setError(
+        isLicenseRequiredError(err)
+          ? 'Needs an active USCut subscription — add your license key in Settings.'
+          : err instanceof Error
+            ? err.message
+            : 'Ad generation failed',
+      );
     } finally {
       setGeneratingId(null);
     }
@@ -637,8 +653,12 @@ export default function ListingScraperPage(): React.ReactElement {
                     <Button
                       size="sm"
                       onClick={() => void generateAd(l.id)}
-                      disabled={!api || generatingId !== null}
-                      title="Generate platform-ready listing ads"
+                      disabled={!api || generatingId !== null || !premiumUnlocked}
+                      title={
+                        premiumUnlocked
+                          ? 'Generate platform-ready listing ads'
+                          : 'Needs an active USCut subscription — add your license key in Settings.'
+                      }
                     >
                       {generatingId === l.id ? (
                         <RefreshCw size={13} className="animate-spin" />

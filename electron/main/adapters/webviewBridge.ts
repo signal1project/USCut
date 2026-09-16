@@ -16,6 +16,8 @@
 
 import { BrowserWindow, ipcMain, session, clipboard } from 'electron';
 import { logger } from '../../global/log';
+import type { Settings } from '../settings/settings';
+import { assertLicensed } from '../licensing/guard';
 
 interface PlatformMeta {
   label: string;
@@ -588,7 +590,10 @@ export async function detectInstagramAccounts(
 
 // ── IPC handlers ──────────────────────────────────────────────────────────────
 
-export function registerWebviewBridge(mainWindow: BrowserWindow): void {
+export function registerWebviewBridge(
+  mainWindow: BrowserWindow,
+  settings: Settings,
+): void {
   /** Open platform login window. Returns when window is closed. */
   ipcMain.handle('mas:social:open-login', async (_e, platform: string) => {
     const meta = WEBVIEW_PLATFORMS[platform];
@@ -678,6 +683,7 @@ export function registerWebviewBridge(mainWindow: BrowserWindow): void {
         accountId?: string;
       },
     ) => {
+      assertLicensed(settings);
       const meta = WEBVIEW_PLATFORMS[platform];
       if (!meta) throw new Error(`Unknown platform: ${platform}`);
 

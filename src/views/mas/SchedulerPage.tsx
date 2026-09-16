@@ -25,6 +25,7 @@ import {
 } from '@mas/ui';
 import { useMasApi } from './useMasApi';
 import { ipc, hasIpc } from '@/lib/ipc';
+import { usePremiumUnlocked, notifyLicenseRequired } from '@/lib/licenseGate';
 import { useActiveBrandStore } from '@/store/activeBrandStore';
 import {
   Button,
@@ -56,6 +57,7 @@ interface ConnectedAccount {
 
 /** Scheduler: pick accounts, write caption, set date/time, queue the post. */
 export default function SchedulerPage(): React.ReactElement {
+  const premiumUnlocked = usePremiumUnlocked();
   const api = useMasApi();
   const location = useLocation();
   const navigate = useNavigate();
@@ -158,6 +160,10 @@ export default function SchedulerPage(): React.ReactElement {
       );
       return;
     }
+    if (!premiumUnlocked) {
+      notifyLicenseRequired();
+      return;
+    }
     setImporting(true);
     try {
       const text = await file.text();
@@ -252,6 +258,10 @@ export default function SchedulerPage(): React.ReactElement {
     const runAt = new Date(scheduledAt);
     if (runAt <= new Date()) {
       toast.error('Scheduled time must be in the future');
+      return;
+    }
+    if (!premiumUnlocked) {
+      notifyLicenseRequired();
       return;
     }
     setSubmitting(true);
@@ -458,7 +468,17 @@ export default function SchedulerPage(): React.ReactElement {
           <Button
             onClick={submit}
             loading={submitting}
-            disabled={!api || selectedAccountIds.length === 0 || !scheduledAt}
+            disabled={
+              !api ||
+              selectedAccountIds.length === 0 ||
+              !scheduledAt ||
+              !premiumUnlocked
+            }
+            title={
+              premiumUnlocked
+                ? undefined
+                : 'Needs an active USCut subscription — add your license key in Settings.'
+            }
             className="w-full"
           >
             <Send size={15} />

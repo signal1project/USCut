@@ -4,6 +4,8 @@ import { PubType, PLATFORMS, type PubStatus } from '@mas/types';
 import { asyncHandler, validateBody } from '../server/middleware';
 import type { Scheduler } from '../scheduling/scheduler';
 import type { PublishEngine } from './publishEngine';
+import type { Settings } from '../settings/settings';
+import { requireLicenseRoute } from '../licensing/guard';
 
 const scheduledQuerySchema = z.object({
   platform: z.enum(PLATFORMS).optional(),
@@ -59,11 +61,16 @@ export function createPublishRouter(
       mediaUrls: string[];
     },
   ) => Promise<string>,
+  settings?: Settings,
 ): Router {
   const router = express.Router();
+  const gate = settings
+    ? requireLicenseRoute(settings)
+    : (_req: express.Request, _res: express.Response, next: express.NextFunction) => next();
 
   router.post(
     '/',
+    gate,
     validateBody(publishBodySchema),
     asyncHandler(async (req, res) => {
       const b = req.body as z.infer<typeof publishBodySchema>;
