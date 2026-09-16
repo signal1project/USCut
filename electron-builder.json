@@ -45,7 +45,14 @@
         "arch": ["x64"]
       }
     ],
-    "artifactName": "${productName}-${version}.${ext}"
+    "artifactName": "${productName}-${version}.${ext}",
+    "extraResources": [
+      {
+        "from": "resources/ffmpeg/win-x64",
+        "to": "ffmpeg",
+        "filter": ["**/*"]
+      }
+    ]
   },
   "nsis": {
     "oneClick": false,

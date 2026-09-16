@@ -187,7 +187,9 @@ export function buildKenBurnsFilter(
     : '';
   return [
     `[0:v]split=2[bg][fg]`,
-    `[bg]scale=${OUT_W}:${OUT_H}:force_original_aspect_ratio=increase,crop=${OUT_W}:${OUT_H},gblur=sigma=30,eq=brightness=-0.15[bgblur]`,
+    // eq's brightness is GPL-only (excluded from our LGPL ffmpeg build);
+    // lutyuv reproduces a flat -0.15 luma darken directly.
+    `[bg]scale=${OUT_W}:${OUT_H}:force_original_aspect_ratio=increase,crop=${OUT_W}:${OUT_H},gblur=sigma=30,lutyuv=y='clip(val+(-0.15*255),0,255)'[bgblur]`,
     `[fg]scale=${OUT_W}:${OUT_H}:force_original_aspect_ratio=decrease:flags=lanczos,unsharp=5:5:0.6:5:5:0.3[fgsharp]`,
     `[bgblur][fgsharp]overlay=(W-w)/2:(H-h)/2[composite]`,
     // Oversample the composite before zoompan to avoid jitter.
@@ -257,9 +259,14 @@ function renderPhotoSegment(
       .inputOptions(['-loop 1'])
       .complexFilter(filterComplex, 'outv')
       .duration(seconds)
-      .videoCodec('libx264')
+      .videoCodec('h264_mf')
       .noAudio()
-      .outputOptions(['-preset fast', '-crf 20'])
+      .outputOptions([
+        '-rate_control pc_vbr',
+        '-b:v 8M',
+        '-maxrate 10M',
+        '-pix_fmt yuv420p',
+      ])
       .output(out)
       .on('end', () => resolve())
       .on('error', reject)
@@ -295,7 +302,7 @@ function renderCardSegment(
     )
       .inputFormat('lavfi')
       .videoFilters(`format=yuv420p${texts ? `,${texts}` : ''}`)
-      .videoCodec('libx264');
+      .videoCodec('h264_mf');
     if (opts.silentAudio) {
       cmd = cmd
         .input(`anullsrc=r=44100:cl=stereo`)
@@ -307,7 +314,12 @@ function renderCardSegment(
       cmd = cmd.noAudio();
     }
     cmd
-      .outputOptions(['-preset fast', '-crf 20'])
+      .outputOptions([
+        '-rate_control pc_vbr',
+        '-b:v 8M',
+        '-maxrate 10M',
+        '-pix_fmt yuv420p',
+      ])
       .output(out)
       .on('end', () => resolve())
       .on('error', reject)
@@ -336,11 +348,15 @@ function concatWithFilter(inputs: string[], out: string): Promise<void> {
         '-map',
         '[a]',
         '-c:v',
-        'libx264',
-        '-preset',
-        'fast',
-        '-crf',
-        '20',
+        'h264_mf',
+        '-rate_control',
+        'pc_vbr',
+        '-b:v',
+        '8M',
+        '-maxrate',
+        '10M',
+        '-pix_fmt',
+        'yuv420p',
         '-c:a',
         'aac',
         '-b:a',

@@ -80,7 +80,7 @@ describe('transactional export jobs', () => {
         '-i',
         'color=c=blue:s=320x180:r=24:d=60',
         '-c:v',
-        'libx264',
+        'h264_mf',
         '-pix_fmt',
         'yuv420p',
         '-y',

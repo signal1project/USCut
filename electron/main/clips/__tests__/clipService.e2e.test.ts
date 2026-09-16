@@ -79,9 +79,7 @@ And here is the second moment.
       'anullsrc=r=44100:cl=stereo',
       '-shortest',
       '-c:v',
-      'libx264',
-      '-preset',
-      'ultrafast',
+      'h264_mf',
       videoPath,
     ]);
   }, 30_000);
@@ -207,9 +205,7 @@ describe('toAss() karaoke captions — real libass E2E', () => {
       '-vf',
       `subtitles='${assPath.replace(/\\/g, '/').replace(/:/g, '\\:')}'`,
       '-c:v',
-      'libx264',
-      '-preset',
-      'ultrafast',
+      'h264_mf',
       outPath,
     ]);
 

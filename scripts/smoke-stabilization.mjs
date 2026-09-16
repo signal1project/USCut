@@ -6,7 +6,6 @@ import path from 'node:path';
 import net from 'node:net';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -17,17 +16,20 @@ const results = path.join(root, 'test-results');
 await fs.mkdir(results, { recursive: true });
 const run = await fs.mkdtemp(path.join(results, 'stabilization-'));
 const profile = path.join(run, 'profile');
-const requireCjs = createRequire(import.meta.url);
+// Vendored LGPL FFmpeg build (resources/ffmpeg/win-x64) — see
+// electron/util/ffmpegBinary.ts and docs/LICENSE-INVENTORY.md.
+const ffmpegBin = path.join(root, 'resources', 'ffmpeg', 'win-x64', 'ffmpeg.exe');
+const ffprobeBin = path.join(root, 'resources', 'ffmpeg', 'win-x64', 'ffprobe.exe');
 const sourceVideo = path.join(run, 'smoke-video.mp4');
 execFileSync(
-  requireCjs('ffmpeg-static'),
+  ffmpegBin,
   [
     '-f',
     'lavfi',
     '-i',
     'color=c=blue:s=320x180:r=15:d=12',
     '-c:v',
-    'libx264',
+    'h264_mf',
     '-pix_fmt',
     'yuv420p',
     '-y',
@@ -40,7 +42,7 @@ const music = path.join(run, 'music');
 await fs.mkdir(path.join(music, 'standard'), { recursive: true });
 await fs.mkdir(path.join(music, 'luxury'), { recursive: true });
 execFileSync(
-  requireCjs('ffmpeg-static'),
+  ffmpegBin,
   [
     '-f',
     'lavfi',
@@ -701,7 +703,7 @@ try {
     assert.equal(exported.success, true, exported.error);
     const probe = JSON.parse(
       execFileSync(
-        requireCjs('@ffprobe-installer/ffprobe').path,
+        ffprobeBin,
         [
           '-v',
           'quiet',

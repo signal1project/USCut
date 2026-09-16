@@ -1,6 +1,5 @@
 import ffmpeg from 'fluent-ffmpeg';
-import ffprobePath from '@ffprobe-installer/ffprobe';
-import { resolveFfmpegPath } from '../../util/ffmpegBinary';
+import { resolveFfmpegPath, resolveFfprobePath } from '../../util/ffmpegBinary';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -16,9 +15,7 @@ import {
 } from './exportGraph';
 
 ffmpeg.setFfmpegPath(resolveFfmpegPath());
-ffmpeg.setFfprobePath(
-  ffprobePath.path.replace('app.asar', 'app.asar.unpacked'),
-);
+ffmpeg.setFfprobePath(resolveFfprobePath());
 
 export interface ProbeResult {
   duration: number;
@@ -227,11 +224,15 @@ export async function exportProject(
           '-map',
           `[${graph.audioLabel}]`,
           '-c:v',
-          'libx264',
-          '-preset',
-          'fast',
-          '-crf',
-          '18',
+          'h264_mf',
+          '-rate_control',
+          'pc_vbr',
+          '-b:v',
+          '10M',
+          '-maxrate',
+          '12M',
+          '-pix_fmt',
+          'yuv420p',
           '-c:a',
           'aac',
           '-b:a',

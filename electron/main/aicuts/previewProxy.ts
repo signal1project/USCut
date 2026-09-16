@@ -100,8 +100,13 @@ function transcodeToProxy(
       cmd = cmd
         // Cap width at 1280 keeping aspect ratio; force even dimensions for h264.
         .videoFilters("scale='trunc(min(iw,1280)/2)*2':-2")
-        .videoCodec('libx264')
-        .outputOptions(['-preset veryfast', '-crf 23', '-pix_fmt yuv420p']);
+        .videoCodec('h264_mf')
+        .outputOptions([
+          '-rate_control pc_vbr',
+          '-b:v 4M',
+          '-maxrate 5M',
+          '-pix_fmt yuv420p',
+        ]);
     } else {
       cmd = cmd.noVideo();
     }

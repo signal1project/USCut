@@ -97,9 +97,15 @@ function cutClip(
       .seekInput(win.start)
       .duration(win.end - win.start)
       .videoFilters(vf.length ? vf.join(',') : 'null')
-      .videoCodec('libx264')
+      .videoCodec('h264_mf')
       .audioCodec('aac')
-      .outputOptions(['-preset fast', '-crf 20', '-movflags +faststart'])
+      .outputOptions([
+        '-rate_control pc_vbr',
+        '-b:v 8M',
+        '-maxrate 10M',
+        '-pix_fmt yuv420p',
+        '-movflags +faststart',
+      ])
       .output(outPath)
       .on('start', () => {
         if (signal?.aborted) command.kill('SIGKILL');

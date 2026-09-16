@@ -15,7 +15,7 @@ Owner direction: USCut, subscription based (2026-09-09). The complete AI video p
 | Dependency security | `npm audit --omit=dev` 39 → 9 (6 high / 3 moderate / 0 critical); unused `image-size` + `echarts` removed; every remaining finding assessed for reachability in `docs/SECURITY-AUDIT-2026-09-09.md` | Track `sharp`/libvips upstream fix; scoped `electron` 33 → current upgrade; sweep build-tool findings |
 | Live workflows | Existing social adapters and Zillow pipeline | Required: controlled real capture and supported delivery checks; assisted posting remains a human final action |
 | Customer documentation | `docs/ONBOARDING.md`, `docs/FEATURE-MATRIX.md`, technical docs, in-app diagnostics paths | Support email + release notes still to add |
-| Distribution rights | `docs/LICENSE-INVENTORY.md` complete | ⚠️ **`ffmpeg-static` is GPL-3.0** — Dale must choose an LGPL build or a compliant-aggregation path; replace the MIT `LICENSE`/`package.json` with a proprietary EULA; bundle a NOTICES set (fonts OFL, Apache NOTICEs, Chromium) |
+| Distribution rights | `docs/LICENSE-INVENTORY.md`; FFmpeg GPL-3.0 issue ✅ resolved 2026-09-16 (vendored LGPL build, `libx264`→`h264_mf`) | Replace the MIT `LICENSE`/`package.json` with a proprietary EULA; bundle a NOTICES set (fonts OFL, Apache NOTICEs, Chromium, FFmpeg LGPL text already vendored) |
 | Billing/support business details | Product name USCut; subscription selected; licence keypair generated (public key bundled, private key at projects/_secrets/, outside the repo) | Price/currency, Stripe account, support email, seller details, code-signing cert remain to be supplied |
 
 ## Working order

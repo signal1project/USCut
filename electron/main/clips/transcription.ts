@@ -5,8 +5,7 @@ import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { resolveLocalWhisper } from './localWhisperRuntime';
 import ffmpeg from 'fluent-ffmpeg';
-import ffprobeInstaller from '@ffprobe-installer/ffprobe';
-import { resolveFfmpegPath } from '../../util/ffmpegBinary';
+import { resolveFfmpegPath, resolveFfprobePath } from '../../util/ffmpegBinary';
 
 export interface TranscriptWord {
   /** Seconds. */
@@ -295,9 +294,7 @@ export async function transcribeViaOpenAI(
     );
   }
   options.signal?.throwIfAborted();
-  ffmpeg.setFfprobePath(
-    ffprobeInstaller.path.replace('app.asar', 'app.asar.unpacked'),
-  );
+  ffmpeg.setFfprobePath(resolveFfprobePath());
   const duration = await new Promise<number>((resolve, reject) => {
     ffmpeg.ffprobe(filePath, (err, metadata) => {
       if (err) return reject(err);
@@ -394,7 +391,7 @@ export async function transcribeViaOpenAI(
   return segments;
 }
 
-/** Convert to a 16kHz mono WAV via our bundled ffmpeg-static binary. Doing this
+/** Convert to a 16kHz mono WAV via our bundled ffmpeg binary. Doing this
  * ourselves (rather than letting nodejs-whisper shell out to a system `ffmpeg`
  * on PATH) means local transcription doesn't depend on the user having one
  * installed — this project deliberately bundles its own for that reason. */

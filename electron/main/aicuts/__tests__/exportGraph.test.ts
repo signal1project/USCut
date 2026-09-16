@@ -197,10 +197,8 @@ describe('helpers', () => {
     expect(atempoChain(0.25)).toEqual(['atempo=0.5', 'atempo=0.5']);
   });
 
-  it('adjustFilter maps presets to eq chains', () => {
-    expect(adjustFilter({ preset: 'mono' }).join(',')).toContain(
-      'saturation=0.000',
-    );
+  it('adjustFilter maps presets to lutyuv/hue chains', () => {
+    expect(adjustFilter({ preset: 'mono' }).join(',')).toContain('hue=s=0.000');
     expect(adjustFilter({ preset: 'warm' }).join(',')).toContain(
       'colortemperature',
     );

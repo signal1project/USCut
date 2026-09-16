@@ -246,14 +246,17 @@ export function adjustFilter(adjust?: GraphClip['adjust']): string[] {
       brightness += 0.12;
       break;
   }
-  if (
-    Math.abs(brightness) > 0.001 ||
-    Math.abs(contrast - 1) > 0.001 ||
-    Math.abs(saturation - 1) > 0.001
-  ) {
+  // eq's brightness/contrast/saturation is GPL-only (excluded from our LGPL
+  // ffmpeg build) — reproduced with lutyuv (brightness+contrast, luma-only,
+  // same mid-gray-centered formula eq uses) and hue's `s=` (saturation,
+  // chroma-only), which together match eq's per-plane split exactly.
+  if (Math.abs(brightness) > 0.001 || Math.abs(contrast - 1) > 0.001) {
     parts.push(
-      `eq=brightness=${brightness.toFixed(3)}:contrast=${contrast.toFixed(3)}:saturation=${saturation.toFixed(3)}`,
+      `lutyuv=y='clip((val-128)*${contrast.toFixed(3)}+128+${(brightness * 255).toFixed(3)},0,255)'`,
     );
+  }
+  if (Math.abs(saturation - 1) > 0.001) {
+    parts.push(`hue=s=${saturation.toFixed(3)}`);
   }
   return parts;
 }

@@ -1,31 +1,35 @@
-import { createRequire } from 'node:module';
-import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-// dist-electron/main/index.js is loaded as an ES module (Node's ESM loader,
-// not CJS), so a bare `require(...)` has no global to resolve against and
-// throws `ReferenceError: require is not defined` — silently caught below,
-// which meant this ALWAYS fell back to the ancient no-xfade installer in the
-// real running app (dev and packaged alike), never just in tests, since
-// vitest runs under plain Node where a bare `require` happens to exist.
-// `createRequire` gives a real CJS require bound to this file's own URL,
-// which resolves `ffmpeg-static` (a CJS package, kept external in
-// vite.config.ts so Rollup doesn't try to bundle its native binary) correctly
-// under both ESM and CJS.
-const requireCjs = createRequire(import.meta.url);
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
- * Single source of truth for the ffmpeg binary path.
+ * Vendored LGPL-licensed FFmpeg build (BtbN/FFmpeg-Builds win64-lgpl-shared,
+ * --disable-libx264 --disable-libx265 --enable-version3) — replaces the
+ * GPL-3.0 `ffmpeg-static` binary this repo shipped before. Encoding uses
+ * `h264_mf` (Windows Media Foundation) instead of `libx264`, since libx264
+ * itself is GPL and has no LGPL equivalent to switch to. See
+ * docs/LICENSE-INVENTORY.md.
  *
- * Prefers ffmpeg-static (6.x — needed for xfade transitions, adelay=all,
- * colortemperature, and years of fixes) and falls back to the legacy
- * @ffmpeg-installer binary (a 2018 build) if the static download is missing.
+ * Deliberately checks `process.resourcesPath`/`process.defaultApp` instead of
+ * importing `electron`'s `app` (which `app.isPackaged` is a thin wrapper
+ * around internally) — this module gets pulled into vitest suites that run
+ * under plain Node with no Electron runtime and no `electron` mock, so a hard
+ * `electron` import would crash them.
  */
+function resourceDir(): string {
+  const runningInElectron = typeof process.resourcesPath === 'string';
+  const isPackaged = runningInElectron && !process.defaultApp;
+  return isPackaged
+    ? path.join(process.resourcesPath, 'ffmpeg')
+    : path.join(__dirname, '../../resources/ffmpeg/win-x64');
+}
+
 export function resolveFfmpegPath(): string {
-  try {
-    const staticPath = requireCjs('ffmpeg-static') as string | null;
-    if (staticPath) return staticPath.replace('app.asar', 'app.asar.unpacked');
-  } catch {
-    // fall through to the legacy installer
-  }
-  return ffmpegInstaller.path.replace('app.asar', 'app.asar.unpacked');
+  return path.join(resourceDir(), 'ffmpeg.exe');
+}
+
+export function resolveFfprobePath(): string {
+  return path.join(resourceDir(), 'ffprobe.exe');
 }
