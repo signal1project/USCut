@@ -23,6 +23,7 @@ import {
   notifyLicenseRequired,
   isLicenseRequiredError,
 } from '@/lib/licenseGate';
+import { useJobRunner } from '@/lib/useJobRunner';
 import { toMediaUrl } from '@/lib/media';
 import { v4 as uuidv4 } from 'uuid';
 import { useMasApi } from '@/views/mas/useMasApi';
@@ -62,8 +63,18 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
   const [transcript, setTranscript] = useState('');
   const [captionsBusy, setCaptionsBusy] = useState(false);
   const [autoEditPrompt, setAutoEditPrompt] = useState('');
-  const [autoEditBusy, setAutoEditBusy] = useState(false);
   const [autoEditMessage, setAutoEditMessage] = useState('');
+  const autoEditJob = useJobRunner<
+    {
+      clips: { id: string; name: string; duration: number; src: string }[];
+      prompt: string;
+    },
+    unknown
+  >({
+    start: 'aicuts:auto-edit-start',
+    list: 'aicuts:auto-edit-jobs',
+    cancel: 'aicuts:auto-edit-cancel',
+  });
   const masApi = useMasApi();
   const [clipSrt, setClipSrt] = useState('');
   const [clipSourceId, setClipSourceId] = useState<string>('');
@@ -85,8 +96,15 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
       durationSeconds: number;
     }>;
   } | null>(null);
-  const [whisperBusy, setWhisperBusy] = useState(false);
   const [whisperStatus, setWhisperStatus] = useState<string | null>(null);
+  const captionsJob = useJobRunner<
+    { videoPath: string },
+    { segments: Array<{ start: number; end: number; text: string }> }
+  >({
+    start: 'aicuts:transcribe-video-start',
+    list: 'aicuts:transcribe-video-jobs',
+    cancel: 'aicuts:transcribe-video-cancel',
+  });
   const [ttsText, setTtsText] = useState('');
   const [ttsBusy, setTtsBusy] = useState(false);
   const [ttsStatus, setTtsStatus] = useState<string | null>(null);
@@ -105,27 +123,29 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
       notifyLicenseRequired();
       return;
     }
-    setWhisperBusy(true);
     setWhisperStatus(null);
-    const result = (await ipc.invoke(
-      'aicuts:transcribe-video',
-      baseVideo.src,
-    )) as
-      | {
-          segments?: Array<{ start: number; end: number; text: string }>;
-          error?: string;
-        }
-      | undefined;
-    setWhisperBusy(false);
-    if (!result || result.error) {
+    let job;
+    try {
+      job = await captionsJob.start({ videoPath: baseVideo.src });
+    } catch (err) {
       setWhisperStatus(
-        result?.error === 'LICENSE_REQUIRED'
+        isLicenseRequiredError(err)
           ? 'Needs an active USCut subscription — add your license key in Settings.'
-          : (result?.error ?? 'Transcription failed'),
+          : err instanceof Error
+            ? err.message
+            : 'Transcription failed',
       );
       return;
     }
-    const segments = result.segments ?? [];
+    if (job.status !== 'completed' || !job.result) {
+      setWhisperStatus(
+        job.status === 'cancelled'
+          ? 'Cancelled.'
+          : (job.error ?? 'Transcription failed'),
+      );
+      return;
+    }
+    const segments = job.result.segments ?? [];
     if (segments.length === 0) {
       setWhisperStatus('No speech detected.');
       return;
@@ -358,7 +378,7 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
   };
 
   const handleAutoEdit = async () => {
-    if (!autoEditPrompt.trim() || autoEditBusy) return;
+    if (!autoEditPrompt.trim() || autoEditJob.busy) return;
     const before = useEditorStore.getState();
     const clips = before.tracks
       .filter((t) => !t.locked)
@@ -378,17 +398,18 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
       notifyLicenseRequired();
       return;
     }
-    setAutoEditBusy(true);
     setAutoEditMessage('');
     try {
-      const result = (await ipc.invoke('aicuts:auto-edit', {
-        clips,
-        prompt: autoEditPrompt,
-      })) as { error?: string } | undefined;
-      if (result?.error) throw new Error(result.error);
+      const job = await autoEditJob.start({ clips, prompt: autoEditPrompt });
+      if (job.status === 'cancelled') {
+        setAutoEditMessage('Cancelled.');
+        return;
+      }
+      if (job.status !== 'completed' || !job.result)
+        throw new Error(job.error ?? 'Auto-Edit failed. Try again.');
       const summary = useEditorStore
         .getState()
-        .applyAutoEdit(result, before.tracks, before.projectId);
+        .applyAutoEdit(job.result, before.tracks, before.projectId);
       setAutoEditMessage(
         summary ||
           'AI edit applied. Use Undo to restore the previous timeline.',
@@ -402,8 +423,6 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
             ? err.message
             : 'Auto-Edit failed. Try again.',
       );
-    } finally {
-      setAutoEditBusy(false);
     }
   };
 
@@ -614,7 +633,7 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
               </p>
               <button
                 onClick={handleWhisperCaptions}
-                disabled={whisperBusy || !premiumUnlocked}
+                disabled={captionsJob.busy || !premiumUnlocked}
                 title={
                   premiumUnlocked
                     ? undefined
@@ -622,15 +641,23 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
                 }
                 className="w-full flex items-center justify-center gap-1.5 bg-[#4d7cff] hover:bg-[#3d6cf0] disabled:opacity-50 text-white text-[11px] font-medium rounded-lg py-2 transition-colors"
               >
-                {whisperBusy ? (
+                {captionsJob.busy ? (
                   <>
                     <Loader2 size={11} className="animate-spin" />
-                    Listening…
+                    {captionsJob.job?.stage ?? 'Listening…'}
                   </>
                 ) : (
                   'Generate from video audio'
                 )}
               </button>
+              {captionsJob.busy && (
+                <button
+                  onClick={() => void captionsJob.cancel()}
+                  className="mt-1 text-[10px] text-amber-300"
+                >
+                  Cancel
+                </button>
+              )}
               {whisperStatus && (
                 <p className="text-[10px] text-[#a1a1ab] mt-1.5">
                   {whisperStatus}
@@ -680,7 +707,7 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
               <button
                 onClick={handleAutoEdit}
                 disabled={
-                  autoEditBusy || !autoEditPrompt.trim() || !premiumUnlocked
+                  autoEditJob.busy || !autoEditPrompt.trim() || !premiumUnlocked
                 }
                 title={
                   premiumUnlocked
@@ -689,15 +716,23 @@ const MediaPanel: React.FC<Props> = ({ section }) => {
                 }
                 className="mt-2 w-full flex items-center justify-center gap-1.5 bg-[#1d2540] hover:bg-[#243056] disabled:opacity-50 text-[#8aa6ff] text-[11px] font-medium rounded-lg py-2 transition-colors"
               >
-                {autoEditBusy ? (
+                {autoEditJob.busy ? (
                   <>
                     <Loader2 size={11} className="animate-spin" />
-                    Editing…
+                    {autoEditJob.job?.stage ?? 'Editing…'}
                   </>
                 ) : (
                   'Apply AI Edit'
                 )}
               </button>
+              {autoEditJob.busy && (
+                <button
+                  onClick={() => void autoEditJob.cancel()}
+                  className="mt-1 text-[10px] text-amber-300"
+                >
+                  Cancel
+                </button>
+              )}
             </div>
 
             {autoEditMessage && (

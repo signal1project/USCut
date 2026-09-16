@@ -21,7 +21,12 @@ import {
 } from 'lucide-react';
 import { useEditorStore } from '@/store/editorStore';
 import { ipc } from '@/lib/ipc';
-import { usePremiumUnlocked, notifyLicenseRequired } from '@/lib/licenseGate';
+import {
+  usePremiumUnlocked,
+  notifyLicenseRequired,
+  isLicenseRequiredError,
+} from '@/lib/licenseGate';
+import { useJobRunner } from '@/lib/useJobRunner';
 import { saveCurrentProject, saveProjectAs } from '@/lib/projectPersistence';
 import ShareDialog from './ShareDialog';
 import ExportJobsPanel from './ExportJobsPanel';
@@ -83,7 +88,25 @@ const Toolbar: React.FC = () => {
   );
   const [aspect, setAspect] = useState<'16:9' | '9:16' | '1:1' | '4:5'>('16:9');
   const [duckMusic, setDuckMusic] = useState(false);
-  const [autoEditing, setAutoEditing] = useState(false);
+  const autoEditJob = useJobRunner<
+    {
+      clips: { id: string; name: string; duration: number; src: string }[];
+      prompt: string;
+    },
+    {
+      decisions?: {
+        clipId: string;
+        trimStart: number;
+        trimEnd: number;
+        startTime: number;
+      }[];
+      summary?: string;
+    }
+  >({
+    start: 'aicuts:auto-edit-start',
+    list: 'aicuts:auto-edit-jobs',
+    cancel: 'aicuts:auto-edit-cancel',
+  });
   const [showSaveAs, setShowSaveAs] = useState(false);
   const [saveAsName, setSaveAsName] = useState('');
   const [savingAs, setSavingAs] = useState(false);
@@ -201,7 +224,6 @@ const Toolbar: React.FC = () => {
       notifyLicenseRequired();
       return;
     }
-    setAutoEditing(true);
     const allClips = tracks.flatMap((t) =>
       t.clips.map((c) => ({
         id: c.id,
@@ -210,38 +232,36 @@ const Toolbar: React.FC = () => {
         src: c.src,
       })),
     );
-    const result = (await ipc.invoke('aicuts:auto-edit', {
-      clips: allClips,
-      prompt: autoEditPrompt,
-    })) as
-      | {
-          decisions?: {
-            clipId: string;
-            trimStart: number;
-            trimEnd: number;
-            startTime: number;
-          }[];
-          summary?: string;
-          error?: string;
-        }
-      | undefined;
-    setAutoEditing(false);
-    if (result?.decisions) {
+    let job;
+    try {
+      job = await autoEditJob.start({ clips: allClips, prompt: autoEditPrompt });
+    } catch (err) {
+      if (isLicenseRequiredError(err)) notifyLicenseRequired();
+      else
+        toast.error(
+          `Auto-edit failed: ${err instanceof Error ? err.message : 'unknown error'}`,
+          { duration: 15000 },
+        );
+      return;
+    }
+    if (job.status === 'completed' && job.result?.decisions) {
       const { updateClip } = useEditorStore.getState();
-      for (const d of result.decisions) {
+      for (const d of job.result.decisions) {
         updateClip(d.clipId, {
           trimStart: d.trimStart,
           trimEnd: d.trimEnd,
           startTime: d.startTime,
         });
       }
-      toast.success(`Auto-edit complete: ${result.summary}`, {
+      toast.success(`Auto-edit complete: ${job.result.summary}`, {
         duration: 15000,
       });
-    } else if (result?.error === 'LICENSE_REQUIRED') {
+    } else if (job.status === 'cancelled') {
+      toast.info('Auto-edit cancelled.');
+    } else if (job.error === 'LICENSE_REQUIRED') {
       notifyLicenseRequired();
-    } else if (result?.error) {
-      toast.error(`Auto-edit failed: ${result.error}`, { duration: 15000 });
+    } else if (job.error) {
+      toast.error(`Auto-edit failed: ${job.error}`, { duration: 15000 });
     }
     setShowAutoEdit(false);
     setAutoEditPrompt('');
@@ -425,7 +445,9 @@ const Toolbar: React.FC = () => {
             />
             <button
               onClick={handleAutoEdit}
-              disabled={autoEditing || !autoEditPrompt.trim() || !premiumUnlocked}
+              disabled={
+                autoEditJob.busy || !autoEditPrompt.trim() || !premiumUnlocked
+              }
               title={
                 premiumUnlocked
                   ? undefined
@@ -433,14 +455,23 @@ const Toolbar: React.FC = () => {
               }
               className="mt-2.5 w-full flex items-center justify-center gap-2 bg-[#4d7cff] hover:bg-[#3d6cf0] disabled:opacity-50 text-white text-xs font-medium rounded-lg py-2 transition-colors"
             >
-              {autoEditing ? (
+              {autoEditJob.busy ? (
                 <>
-                  <Loader2 size={12} className="animate-spin" /> Editing…
+                  <Loader2 size={12} className="animate-spin" />
+                  {autoEditJob.job?.stage ?? 'Editing…'}
                 </>
               ) : (
                 'Apply AI Edit'
               )}
             </button>
+            {autoEditJob.busy && (
+              <button
+                onClick={() => void autoEditJob.cancel()}
+                className="mt-1.5 w-full text-center text-[11px] text-amber-300"
+              >
+                Cancel
+              </button>
+            )}
           </div>
         )}
       </div>

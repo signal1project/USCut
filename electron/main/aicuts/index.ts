@@ -36,6 +36,8 @@ import { logger } from '../../global/log';
 import { createProviderResolver } from '../ai';
 import { GoogleTrendsFetcher } from '../research/googleTrendsFetcher';
 import { assertLicensed } from '../licensing/guard';
+import { JobManager } from '../jobs/jobManager';
+import type { AutoEditResult } from './autoEdit';
 
 /** Cap how many clips we pay to transcribe in one Auto-Edit call — enough for
  * a typical short project without runaway Whisper cost/latency on long timelines. */
@@ -61,20 +63,32 @@ export function registerAiCutHandlers(win: Electron.BrowserWindow) {
   const waveformCacheDir = path.join(app.getPath('userData'), 'waveforms');
 
   // One-click captions: extract audio → Whisper (OpenAI key if set, otherwise
-  // free local whisper.cpp — same fallback chain as Auto-Clip).
-  ipcMain.handle('aicuts:transcribe-video', async (_, videoPath: string) => {
-    try {
-      assertLicensed(settings);
-      const key = settings.getProviderSettings('openai')?.apiKey;
-      const segments = key
-        ? await transcribeVideoAudio(videoPath, key)
-        : await transcribeViaLocalWhisper(videoPath);
-      return { segments };
-    } catch (err) {
-      return {
-        error: err instanceof Error ? err.message : 'Transcription failed',
-      };
-    }
+  // free local whisper.cpp — same fallback chain as Auto-Clip). Runs as a
+  // durable job (same JobManager Auto-Clip/Studio use) so it survives a
+  // restart and can be cancelled instead of blocking on one long IPC call.
+  const captionJobs = new JobManager<
+    { videoPath: string },
+    { segments: TranscriptSegment[] }
+  >(path.join(app.getPath('userData'), 'jobs', 'captions'), async (input, context) => {
+    context.report('Transcribing audio', 10);
+    const key = settings.getProviderSettings('openai')?.apiKey;
+    const segments = key
+      ? await transcribeVideoAudio(input.videoPath, key)
+      : await transcribeViaLocalWhisper(input.videoPath, 'base.en', context.signal);
+    context.signal.throwIfAborted();
+    return { segments };
+  });
+  ipcMain.handle('aicuts:transcribe-video-jobs', () => captionJobs.list());
+  ipcMain.handle('aicuts:transcribe-video-cancel', (_, id: string) =>
+    captionJobs.cancel(id),
+  );
+  ipcMain.handle('aicuts:transcribe-video-start', (_, request: unknown) => {
+    assertLicensed(settings);
+    const { requestId, videoPath } = request as {
+      requestId: string;
+      videoPath: string;
+    };
+    return captionJobs.submit(requestId, 'Auto-Captions', { videoPath });
   });
 
   // Voice Studio: ElevenLabs when a key is configured (Settings), otherwise
@@ -255,20 +269,34 @@ export function registerAiCutHandlers(win: Electron.BrowserWindow) {
   // real content (Whisper transcript, when an OpenAI key is set), platform
   // reach/algorithm guidance, and current trending topics — not just clip
   // names and a duration guess.
-  ipcMain.handle('aicuts:auto-edit', async (_, input: AutoEditInput) => {
-    try {
-      assertLicensed(settings);
+  // Durable job (same JobManager Auto-Clip/Studio use) so a multi-stage
+  // Auto-Edit (transcribe several clips, check trends, call the AI provider)
+  // survives a restart and can be cancelled instead of blocking on one call.
+  const autoEditJobs = new JobManager<AutoEditInput, AutoEditResult>(
+    path.join(app.getPath('userData'), 'jobs', 'auto-edit'),
+    async (input, context) => {
       const openAiKey = settings.getProviderSettings('openai')?.apiKey;
       const transcripts: Record<string, TranscriptSegment[]> = {};
       let transcriptionFailed = false;
-      for (const clip of input.clips.slice(
+      const clipsToTranscribe = input.clips.slice(
         0,
         AUTO_EDIT_MAX_TRANSCRIBED_CLIPS,
-      )) {
+      );
+      for (let i = 0; i < clipsToTranscribe.length; i++) {
+        context.signal.throwIfAborted();
+        const clip = clipsToTranscribe[i];
+        context.report(
+          `Transcribing clip ${i + 1} of ${clipsToTranscribe.length}`,
+          (10 * i) / clipsToTranscribe.length,
+        );
         try {
           transcripts[clip.id] = openAiKey
             ? await transcribeVideoAudio(clip.src, openAiKey)
-            : await transcribeViaLocalWhisper(clip.src);
+            : await transcribeViaLocalWhisper(
+                clip.src,
+                'base.en',
+                context.signal,
+              );
         } catch (err) {
           transcriptionFailed = true;
           logger.error(
@@ -278,6 +306,8 @@ export function registerAiCutHandlers(win: Electron.BrowserWindow) {
         }
       }
 
+      context.signal.throwIfAborted();
+      context.report('Checking trending topics', 60);
       let trending: string[] | undefined;
       try {
         const signals = await new GoogleTrendsFetcher().fetch();
@@ -286,6 +316,8 @@ export function registerAiCutHandlers(win: Electron.BrowserWindow) {
         /* trending context is a nice-to-have, never block the edit */
       }
 
+      context.signal.throwIfAborted();
+      context.report('Asking your AI provider for edit decisions', 75);
       const result = await autoEdit(
         {
           ...input,
@@ -297,15 +329,25 @@ export function registerAiCutHandlers(win: Electron.BrowserWindow) {
         },
         resolveProvider(),
       );
+      context.signal.throwIfAborted();
 
       if (transcriptionFailed && !openAiKey) {
         result.summary +=
           ' (Local transcription failed for one or more clips — see logs. Falls back to an OpenAI API key in Settings if you have one.)';
       }
       return result;
-    } catch (err: any) {
-      return { error: err.message };
-    }
+    },
+  );
+  ipcMain.handle('aicuts:auto-edit-jobs', () => autoEditJobs.list());
+  ipcMain.handle('aicuts:auto-edit-cancel', (_, id: string) =>
+    autoEditJobs.cancel(id),
+  );
+  ipcMain.handle('aicuts:auto-edit-start', (_, request: unknown) => {
+    assertLicensed(settings);
+    const { requestId, ...input } = request as AutoEditInput & {
+      requestId: string;
+    };
+    return autoEditJobs.submit(requestId, 'AI Auto-Edit', input);
   });
 
   // Generate captions from transcript
