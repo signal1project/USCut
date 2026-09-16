@@ -73,7 +73,7 @@ Post.
 |---|---|---|
 | Offline entitlement verification (ed25519), 14-day offline grace, Settings activate/deactivate | Local | `entitlement` crypto + state-machine tests + smoke |
 | Hosted checkout, Stripe webhook → issue entitlement | **Dale**: Stripe account, price, deployed signing key | `services/licensing` scaffold + lifecycle test only |
-| Feature gating enforcement | product decision | **not wired** — status surfaced, nothing locked |
+| Feature gating enforcement | Local | Wired 2026-09-16 — `assertLicensed`/`requireLicenseRoute` (`electron/main/licensing/guard.ts`) hard-block Studio AI plan/revise, Auto-Edit, Auto-Captions, Auto-Clip, ElevenLabs narration, listing AI ad-copy, and publish/schedule behind `isPremiumUnlocked`; local editor/export/Kokoro/Zillow capture stay free |
 
 ## Platform
 
