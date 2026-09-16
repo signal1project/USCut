@@ -4,6 +4,7 @@
   "productName": "USCut",
   "asar": true,
   "afterPack": "scripts/verify-packaged-runtime.cjs",
+  "beforePack": "scripts/generate-third-party-notices.cjs",
   "asarUnpack": [
     "**/node_modules/nodejs-whisper/**/*",
     "**/node_modules/sharp/**/*",
@@ -55,6 +56,7 @@
     ]
   },
   "nsis": {
+    "license": "build/eula.txt",
     "oneClick": false,
     "perMachine": false,
     "allowToChangeInstallationDirectory": true,

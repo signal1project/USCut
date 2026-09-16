@@ -12,6 +12,13 @@ dist
 dist-ssr
 dist-electron
 release
+build/eula.txt
+# Regenerated fresh by scripts/generate-third-party-notices.cjs (electron-builder's
+# beforePack hook) from the live dependency tree — committing a snapshot would go
+# stale on every dependency bump, same reasoning as dist/dist-electron/release above.
+NOTICES/THIRD-PARTY.txt
+NOTICES/MANIFEST.json
+NOTICES/FFMPEG-BUILD.txt
 *.local
 .eslintcache
 

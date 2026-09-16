@@ -1,3 +1,9 @@
+MIT license terms (reference copy)
+
+Individual upstream copyright notices and their accompanying licenses are
+preserved verbatim in THIRD-PARTY.txt. This reference is not a substitute
+for those notices and does not license USCut itself under MIT.
+
 MIT License
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -17,13 +23,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-This text is the standard MIT License and applies, with copyright held by
-each respective project's authors, to: nodejs-whisper, whisper.cpp,
-ggml-base.en.bin (OpenAI Whisper model weights), onnxruntime-node,
-onnxruntime-common, better-sqlite3, and USCut's other MIT-licensed npm
-dependencies (React, Zustand, Vite, TailwindCSS, TypeORM, Radix/shadcn UI,
-lucide-react, sonner, zod, and their transitive dependencies). See
-NOTICES/README.md for the full list.

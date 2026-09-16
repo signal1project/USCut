@@ -4,6 +4,7 @@ const { execFileSync } = require('node:child_process');
 
 module.exports = async function verifyPackagedRuntime(context) {
   if (context.electronPlatformName !== 'win32') return;
+  require('./verify-packaged-notices.cjs')(context.appOutDir);
   const modules = path.join(context.appOutDir, 'resources', 'app.asar.unpacked', 'node_modules');
   const cpp = path.join(modules, 'nodejs-whisper', 'cpp', 'whisper.cpp');
   const executable = ['build/bin/Release', 'build/bin', 'build/bin/Debug', 'build', ''].map(dir => path.join(cpp, dir, 'whisper-cli.exe')).find(file => fs.existsSync(file));

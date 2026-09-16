@@ -1,25 +1,31 @@
-# USCut — third-party notices
+# USCut third-party notices
 
-USCut is proprietary software (see the `LICENSE` file at the repository root)
-that bundles the open-source components listed below. Each remains governed
-by its own license; nothing in USCut's own license restricts your rights
-under these.
+USCut's proprietary EULA is installed at `resources/LICENSE`. Third-party
+components retain their own licenses; the EULA does not restrict those rights.
 
-| Component | License | Notes |
-|---|---|---|
-| FFmpeg / FFprobe | LGPL-3.0-or-later | Text bundled with the binaries at `resources/ffmpeg/win-x64/FFMPEG-LGPL-LICENSE.txt`; BtbN/FFmpeg-Builds `win64-lgpl-shared` |
-| nodejs-whisper | MIT | wrapper only — see `MIT.txt` |
-| whisper.cpp (`whisper-cli.exe`) | MIT | ggerganov/whisper.cpp — see `MIT.txt` |
-| ggml-base.en.bin (Whisper model weights) | MIT | OpenAI Whisper weights, from the official ggerganov Hugging Face repo — see `MIT.txt` |
-| onnxruntime-node / onnxruntime-common | MIT | see `MIT.txt` |
-| better-sqlite3 | MIT | native, rebuilt for the Electron ABI — see `MIT.txt` |
-| React, Zustand, Vite, TailwindCSS, TypeORM, Radix/shadcn UI, lucide-react, sonner, zod | MIT | standard npm dependencies — see `MIT.txt` |
-| kokoro-js | Apache-2.0 | local neural narration — see `APACHE-2.0.txt` |
-| Kokoro-82M model | Apache-2.0 | `hexgrad/Kokoro-82M`; fetched at runtime, not bundled in the installer — see `APACHE-2.0.txt` |
-| @huggingface/transformers | Apache-2.0 | see `APACHE-2.0.txt` |
-| sharp / @img/* | Apache-2.0 | image processing — see `APACHE-2.0.txt` |
-| Electron / Chromium / Node | MIT / BSD / MIT | bundled automatically by Electron's own packaging as `LICENSE.electron.txt` and `LICENSES.chromium.html` alongside `USCut.exe` |
-| Montserrat-Bold, PlayfairDisplay-Bold | SIL Open Font License 1.1 | text ships alongside each font in `public/assets/fonts/*-OFL.txt` (packaged to `resources/assets/fonts/`) |
+- `THIRD-PARTY.txt`: verbatim license, copyright and NOTICE files from the
+  installed dependency tree, with original paths and SHA-256 hashes. This is
+  a conservative superset including build tools, not a claim all entries ship.
+- `MANIFEST.json`: upstream-file fingerprints, package-lock fingerprint and
+  the exact shipped FFmpeg/FFprobe executable and DLL fingerprints.
+- `APACHE-2.0.txt`: complete unmodified Apache License 2.0.
+- `MIT.txt`: reference terms; individual copyright notices are in THIRD-PARTY.txt.
+- `LGPL-3.0.txt` and `GPL-3.0.txt`: complete license texts for the LGPLv3
+  FFmpeg build (LGPLv3 incorporates GPLv3 terms). Their inclusion does not
+  license the proprietary USCut application under GPL.
+- `FFMPEG-BUILD.txt`: actual binary version and full configure flags.
+- `FFMPEG-SOURCE-STATUS.md`: source-distribution status and unresolved release work.
 
-Full per-component detail and any items still needing a decision live in
-`docs/LICENSE-INVENTORY.md`.
+Installed FFmpeg files are at `resources/ffmpeg/`, not the source-tree
+`resources/ffmpeg/win-x64/` path. Font license texts are at
+`resources/assets/fonts/Montserrat-OFL.txt` and `PlayfairDisplay-OFL.txt`.
+Electron's own license and Chromium notices are supplied alongside USCut.exe.
+Whisper/whisper.cpp and native dependency legal files are included in
+THIRD-PARTY.txt where present in the installed tree. Runtime-downloaded models
+need their own version-specific licensing verification before release.
+
+This collection is not a certification of complete redistribution compliance.
+The exact native binaries, downloaded models and corresponding-source package
+must also be reconciled before public distribution. Regenerate with
+`node scripts/generate-third-party-notices.cjs` when dependencies change;
+electron-builder also runs it before packaging.

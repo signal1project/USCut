@@ -1,3 +1,9 @@
+> Updated by the 2026-09-16 notices correction. The historical inventory below
+> is not release clearance. Full upstream npm legal files are now preserved;
+> exact FFmpeg/dependency corresponding-source distribution, runtime model
+> notices, legal seller identity/jurisdiction and codec patent assessment remain
+> open. The EULA seller name must be confirmed before release.
+
 # USCut — third-party license inventory
 
 Bundled runtime components and their licenses, for a **commercial closed-source**
@@ -7,11 +13,11 @@ _Last reviewed: 2026-09-16. Re-run when dependencies change._
 
 ## Resolved 2026-09-16
 
-**FFmpeg GPL-3.0 issue — fixed.** Replaced `ffmpeg-static` (GPL-3.0, bundled
+**FFmpeg GPL binary replaced; distribution compliance remains open.** Replaced `ffmpeg-static` (GPL-3.0, bundled
 libx264/libx265) with a vendored **LGPL-3.0** build (BtbN/FFmpeg-Builds
 `win64-lgpl-shared`, `--disable-libx264 --disable-libx265 --enable-version3`)
-at `resources/ffmpeg/win-x64/` — no counsel needed, no source-offer obligation,
-just LICENSE.txt attribution (bundled alongside the binaries). Also dropped
+at `resources/ffmpeg/win-x64/` — the LGPL change does not remove corresponding-source obligations or
+establish codec patent coverage. See NOTICES/FFMPEG-SOURCE-STATUS.md. Also dropped
 `@ffmpeg-installer/ffmpeg`, `ffprobe-static`, `@ffprobe-installer/ffprobe`
 (all now dead weight — see `electron/util/ffmpegBinary.ts`).
 

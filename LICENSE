@@ -17,8 +17,9 @@ AGREE, DO NOT INSTALL OR USE THE SOFTWARE.
 Subject to your compliance with this Agreement and, where applicable, payment
 of all then-current subscription fees, Licensor grants you a limited,
 non-exclusive, non-transferable, revocable license to install and use the
-Software on devices you own or control, solely for your own internal business
-or personal purposes.
+Software on devices you own or control for personal or business purposes,
+including creating and delivering content for paying clients. This does not
+authorize reselling or sublicensing the Software itself.
 
 This Agreement licenses use of the Software; it does not sell the Software to
 you. Licensor and its licensors retain all right, title, and interest in and
@@ -26,19 +27,20 @@ to the Software, including all intellectual property rights therein.
 
 2. SUBSCRIPTION, BILLING, AND CANCELLATION
 
-2.1 Certain features of the Software require an active paid subscription,
-billed and processed through our third-party payment processor. Subscriptions
-renew automatically for successive periods matching your selected billing
-cycle unless cancelled before the renewal date.
+2.1 If you purchase a subscription, its price, billing cycle, included features,
+and any automatic renewal terms must be disclosed to you before purchase.
+Automatic renewal applies only where you expressly agree to it. Installing
+or using the Software alone does not authorize a charge or subscription.
 
-2.2 You may cancel your subscription at any time through the Software or by
-contacting support; cancellation takes effect at the end of the then-current
+2.2 You may request cancellation by emailing dale@simpleaipros.com, or use
+the cancellation method provided with your subscription confirmation.
+Cancellation takes effect at the end of the then-current
 billing period, and no partial refunds are issued for the remainder of a
 paid period except as required by applicable law.
 
-2.3 Licensor may change subscription pricing on a going-forward basis with
-reasonable advance notice. Continued use of the Software after a price change
-takes effect constitutes acceptance of the new pricing for your next renewal.
+2.3 Price changes apply only to future billing periods after advance notice,
+subject to applicable law and any consent required by it. The notice will
+explain the effective date and how to cancel before the change takes effect.
 
 3. RESTRICTIONS
 
@@ -48,7 +50,8 @@ You shall not, and shall not permit any third party to:
       extent expressly permitted by a separate open-source license governing
       a specific third-party component (see Section 6);
   (b) reverse engineer, decompile, or disassemble the Software, except to the
-      extent such restriction is prohibited by applicable law;
+      extent permitted by applicable law or a third-party component license,
+      including debugging modifications to LGPL-covered components;
   (c) rent, lease, lend, sell, sublicense, assign, or otherwise transfer
       rights to the Software;
   (d) remove, obscure, or alter any proprietary notice on the Software;
@@ -59,18 +62,24 @@ You shall not, and shall not permit any third party to:
 
 4. YOUR CONTENT
 
-You retain all ownership rights in the video footage, images, listing data,
-narration scripts, and other content you import into or generate with the
+You retain whatever rights you hold in the video footage, images, listing
+data, narration scripts, and other content you import or create with the
 Software ("Your Content"). Licensor claims no ownership over Your Content.
+You are responsible for obtaining the permissions needed to use and publish
+that content, including material belonging to clients and other third parties.
+The Software does not grant ownership of third-party material or guarantee
+that AI-generated output is exclusive, copyrightable, or free of other rights.
 Where the Software sends Your Content to a third-party AI provider you have
 configured (e.g., for caption generation or storyboard planning), that
-provider's own terms and privacy practices govern its handling of that data;
-Licensor is not a party to that exchange except as a conduit you control.
+provider's terms and privacy practices also apply to its handling of that data.
+This clause does not disclaim any data-protection obligations applicable to
+Licensor and does not replace a privacy notice describing actual data handling.
 
 5. PUBLISHING AND THIRD-PARTY PLATFORMS
 
-The Software may assist you in preparing and, where you take the final
-action yourself, publishing content to third-party social media platforms.
+The Software may assist you in preparing content, completing a manual posting
+flow, or publishing automatically through supported connections and schedules
+you authorize. Availability and behavior depend on the platform and connection.
 You are solely responsible for your compliance with each platform's terms of
 service and with all applicable advertising, disclosure, and fair-housing
 laws governing the content you publish. Licensor does not review or
@@ -79,14 +88,18 @@ pre-approve content you publish through the Software.
 6. THIRD-PARTY COMPONENTS
 
 The Software includes third-party open-source components, each governed by
-its own license. A full list of these components and their licenses is
-provided in the NOTICES/ directory bundled with the Software and available
-at NOTICES/README.md. Nothing in this Agreement limits your rights under
+its own license. Third-party components and their licenses are
+documented in the NOTICES/ directory bundled with the Software, starting at
+NOTICES/README.md. This includes separately distributed FFmpeg/FFprobe under
+LGPL-3.0-or-later; those components belong to their respective rights holders.
+Nothing in this Agreement, including its restrictions and termination terms,
+limits your rights under
 those separate licenses with respect to the components they cover.
 
 7. DISCLAIMER OF WARRANTIES
 
-THE SOFTWARE IS PROVIDED "AS IS," WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+TO THE EXTENT PERMITTED BY APPLICABLE LAW, THE SOFTWARE IS PROVIDED "AS IS,"
+WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. LICENSOR DOES NOT
 WARRANT THAT THE SOFTWARE WILL BE UNINTERRUPTED, ERROR-FREE, OR THAT ANY
@@ -124,5 +137,8 @@ Licensor is organized, without regard to conflict-of-law principles.
 
 10.4 Questions about this Agreement or the Software may be directed to
 dale@simpleaipros.com.
+
+10.5 Nothing in this Agreement excludes mandatory consumer rights or other
+rights or remedies that cannot lawfully be limited or waived.
 
 Copyright (c) 2026 The Family Office. All rights reserved.
